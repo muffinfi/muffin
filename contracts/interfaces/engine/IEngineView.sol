@@ -66,12 +66,12 @@ interface IEngineView {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    )
-        external
-        view
-        returns (
-            uint80 feeGrowthInside0,
-            uint80 feeGrowthInside1,
-            uint96 secondsPerLiquidityInside
-        );
+    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1);
+
+    function getSecondsPerLiquidityInside(
+        bytes32 poolId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint96 secondsPerLiquidityInside);
 }

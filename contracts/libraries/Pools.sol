@@ -104,7 +104,7 @@ library Pools {
         uint128 sqrtPrice
     ) internal returns (uint256 amount0, uint256 amount1) {
         uint256 tierId = pool.tiers.length;
-        require(pool.tiers.length < Constants.MAX_TIERS);
+        require(tierId < Constants.MAX_TIERS);
         require(sqrtGamma <= 100000);
 
         // initialize tier
@@ -154,20 +154,20 @@ library Pools {
         Pool storage pool,
         uint256 tierId,
         uint24 sqrtGamma
-    ) external {
+    ) internal {
         require(pool.unlocked);
         require(tierId < pool.tiers.length);
         require(sqrtGamma <= 100000);
         pool.tiers[tierId].sqrtGamma = sqrtGamma;
     }
 
-    function setProtocolFee(Pool storage pool, uint8 protocolFee) external {
+    function setProtocolFee(Pool storage pool, uint8 protocolFee) internal {
         require(pool.unlocked);
         require(protocolFee <= 10000);
         pool.protocolFee = protocolFee;
     }
 
-    function setTickSpacing(Pool storage pool, uint8 tickSpacing) external {
+    function setTickSpacing(Pool storage pool, uint8 tickSpacing) internal {
         require(pool.unlocked);
         require(int24(uint24(tickSpacing)) >= Constants.MIN_TICK_SPACING);
         pool.tickSpacing = tickSpacing;
@@ -613,6 +613,54 @@ library Pools {
                 // current price in range
                 feeGrowthInside0 = tier.feeGrowthGlobal0 - upper.feeGrowthOutside0 - lower.feeGrowthOutside0;
                 feeGrowthInside1 = tier.feeGrowthGlobal1 - upper.feeGrowthOutside1 - lower.feeGrowthOutside1;
+            }
+        }
+    }
+
+    /*===============================================================
+     *                        VIEW FUNCTIONS
+     *==============================================================*/
+
+    function getFeeGrowthInside(
+        Pool storage pool,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
+        return _feeGrowthInside(pool, tierId, tickLower, tickUpper);
+    }
+
+    function getSecondsPerLiquidityInside(
+        Pool storage pool,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint96 secsPerLiquidityInside) {
+        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+        Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
+        Tiers.Tier storage tier = pool.tiers[tierId];
+        int24 tickCurrent = tier.tick;
+        unchecked {
+            if (tickCurrent < tickLower) {
+                // current price below range
+                secsPerLiquidityInside = lower.secondsPerLiquidityOutside - upper.secondsPerLiquidityOutside;
+            } else if (tickCurrent >= tickUpper) {
+                // current price above range
+                secsPerLiquidityInside = upper.secondsPerLiquidityOutside - lower.secondsPerLiquidityOutside;
+            } else {
+                // current price in range
+                // calculate latest secondsPerLiquidityCumulative
+                uint96 secsPerLiqCum = pool.secondsPerLiquidityCumulative;
+                uint32 secs = uint32(block.timestamp) - pool.tickLastUpdate;
+                if (secs != 0) {
+                    uint256 sumL;
+                    for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
+                    secsPerLiqCum += uint96((uint256(secs) << Constants.SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+                }
+                secsPerLiquidityInside =
+                    secsPerLiqCum -
+                    upper.secondsPerLiquidityOutside -
+                    lower.secondsPerLiquidityOutside;
             }
         }
     }

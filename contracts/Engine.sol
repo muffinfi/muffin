@@ -16,7 +16,6 @@ contract Engine is IEngine {
     using Math for uint128;
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
-    using Positions for mapping(bytes32 => Positions.Position);
     using PathLib for bytes;
 
     address public governance;
@@ -37,6 +36,8 @@ contract Engine is IEngine {
     error FailedBalanceOf();
     error NotEnoughToken();
 
+    event GovernanceUpdated(address governance);
+
     constructor() {
         governance = msg.sender;
     }
@@ -44,6 +45,11 @@ contract Engine is IEngine {
     modifier onlyGovernance() {
         require(msg.sender == governance);
         _;
+    }
+
+    function setGovernance(address _governance) external onlyGovernance {
+        governance = _governance;
+        emit GovernanceUpdated(_governance);
     }
 
     /*===============================================================
@@ -346,8 +352,7 @@ contract Engine is IEngine {
      *==============================================================*/
 
     function getPoolBasics(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
-        Pools.Pool storage pool = pools[poolId];
-        return (pool.tickSpacing, pool.protocolFee);
+        return (pools[poolId].tickSpacing, pools[poolId].protocolFee);
     }
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory) {
@@ -386,8 +391,8 @@ contract Engine is IEngine {
             uint128 liquidity
         )
     {
-        Positions.Position memory p = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
-        return (p.feeGrowthInside0Last, p.feeGrowthInside1Last, p.liquidity);
+        Positions.Position memory pos = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
+        return (pos.feeGrowthInside0Last, pos.feeGrowthInside1Last, pos.liquidity);
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {
@@ -430,43 +435,16 @@ contract Engine is IEngine {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    )
-        external
-        view
-        returns (
-            uint80 feeGrowthInside0,
-            uint80 feeGrowthInside1,
-            uint96 secondsPerLiquidityInside
-        )
-    {
-        Pools.Pool storage pool = pools[poolId];
-        mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
-        int24 tickCurrent = pool.tiers[tierId].tick;
+    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
+        return pools[poolId].getFeeGrowthInside(tierId, tickLower, tickUpper);
+    }
 
-        Ticks.Tick storage upper = ticks[tickUpper];
-        Ticks.Tick storage lower = ticks[tickLower];
-        unchecked {
-            if (tickCurrent < tickLower) {
-                // current price below range
-                feeGrowthInside0 = lower.feeGrowthOutside0 - upper.feeGrowthOutside0;
-                feeGrowthInside1 = lower.feeGrowthOutside1 - upper.feeGrowthOutside1;
-                secondsPerLiquidityInside = lower.secondsPerLiquidityOutside - upper.secondsPerLiquidityOutside;
-            } else if (tickCurrent >= tickUpper) {
-                // current price above range
-                feeGrowthInside0 = upper.feeGrowthOutside0 - lower.feeGrowthOutside0;
-                feeGrowthInside1 = upper.feeGrowthOutside1 - lower.feeGrowthOutside1;
-                secondsPerLiquidityInside = upper.secondsPerLiquidityOutside - lower.secondsPerLiquidityOutside;
-            } else {
-                // current price in range
-                Tiers.Tier storage tier = pool.tiers[tierId];
-                feeGrowthInside0 = tier.feeGrowthGlobal0 - upper.feeGrowthOutside0 - lower.feeGrowthOutside0;
-                feeGrowthInside1 = tier.feeGrowthGlobal1 - upper.feeGrowthOutside1 - lower.feeGrowthOutside1;
-                // TODO: no up-to-date?
-                secondsPerLiquidityInside =
-                    pool.secondsPerLiquidityCumulative -
-                    upper.secondsPerLiquidityOutside -
-                    lower.secondsPerLiquidityOutside;
-            }
-        }
+    function getSecondsPerLiquidityInside(
+        bytes32 poolId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint96 secondsPerLiquidityInside) {
+        return pools[poolId].getSecondsPerLiquidityInside(tierId, tickLower, tickUpper);
     }
 }
