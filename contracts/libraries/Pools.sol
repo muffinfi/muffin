@@ -523,7 +523,7 @@ library Pools {
 
         {
             (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = _feeGrowthInside(pool, tierId, tickLower, tickUpper);
-            (uint256 feeAmtOut0, uint256 feeAmtOut1) = position.update2(
+            (uint256 feeAmtOut0, uint256 feeAmtOut1) = position.update(
                 liquidityDelta,
                 feeGrowthInside0,
                 feeGrowthInside1,

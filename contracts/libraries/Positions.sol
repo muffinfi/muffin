@@ -28,6 +28,7 @@ library Positions {
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (Position storage position) {
+        require(accId != 0); // TODO: add check here?
         position = positions[keccak256(abi.encodePacked(owner, accId, tierId, tickLower, tickUpper))];
     }
 
@@ -44,7 +45,7 @@ library Positions {
      * @return feeAmtOut0       Amount of fee0 to transfer to owner account (≤ 2^(128+80))
      * @return feeAmtOut1       Amount of fee1 to transfer to owner account (≤ 2^(128+80))
      */
-    function update2(
+    function update(
         Position storage self,
         int128 liquidityDelta,
         uint80 feeGrowthInside0,
