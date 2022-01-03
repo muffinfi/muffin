@@ -52,6 +52,18 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         }
     }
 
+    function mintCallback(
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external fromEngine {
+        address payer = abi.decode(data, (address));
+        if (amount0 > 0) pay(token0, payer, amount0);
+        if (amount1 > 0) pay(token1, payer, amount1);
+    }
+
     /*===============================================================
      *                         CREATE POOL
      *==============================================================*/
