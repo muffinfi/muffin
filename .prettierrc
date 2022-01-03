@@ -1,0 +1,36 @@
+{
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "printWidth": 120,
+        "explicitTypes": "always"
+      }
+    },
+    {
+      "files": ["PoolMath.sol"],
+      "options": {
+        "explicitTypes": "preserve"
+      }
+    },
+    {
+      "files": ["Engine.sol"],
+      "options": {
+        "printWidth": 130,
+        "explicitTypes": "always"
+      }
+    },
+    {
+      "files": ["*.ts", "*.js"],
+      "options": {
+        "printWidth": 100,
+        "singleQuote": true,
+        "trailingComma": "all"
+      }
+    },
+    {
+      "files": ["test/**/*.ts", "scripts/**/*.ts"],
+      "options": { "printWidth": 130, "singleQuote": true }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# dependency directories
+node_modules/
+
+# vscode
+.vscode
+
+# solidity
+cache
+artifacts
+typechain
+
+# env
+.env
+.env.test
+.env*.local
+env.ts
+secrets.ts
+keys.ts
+
+# echidna
+crytic-export/
+
+# miscellaneous
+/__*
+test/**/__*
+scripts/**/__*
+contracts/**/__*
