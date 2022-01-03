@@ -59,8 +59,8 @@ async function main() {
     token0: token0.address,
     token1: token1.address,
     recipient: caller.address,
-    recipientAccId: 0,
-    senderAccId: 1,
+    recipientAccId: 1,
+    senderAccId: 0,
     data: [],
   };
   // await logTxGas(caller.mint(engine.address, mintArgs), 'add liq to tier #0');
@@ -119,6 +119,15 @@ async function main() {
   await swap(true, wad('100'), 'swap #6');
   await swap(true, wad('300'), 'swap #7');
 
+  const burnArgs = {
+    token0: token0.address,
+    token1: token1.address,
+    accId: 1,
+    collectAllFees: true,
+  };
+  await logTxGas(caller.burn(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('522_259'), ...burnArgs }), 'burn all liq from tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('1_000_000'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('1_000_000'), ...mintArgs, recipientAccId: 2 }), 'add liq to tier #0'); // prettier-ignore
   // // ===== remove + collect and re-add liq =====
   // await logTxGas(manager.removeLiquidityAndCollect({ tokenId: 0, liquidity: wad('522_259'), amount0Min: 0, amount1Min: 0, recipient: caller.address, collectTokens: true, collectReward: true, }), 'remove liq from tier #0 + collect'); // prettier-ignore
   // await logTxGas(manager.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728'), ...mintArgs, }), 'add liq to tier #0'); // prettier-ignore
