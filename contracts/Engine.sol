@@ -226,21 +226,6 @@ contract Engine is IEngine {
     }
 
     /*===============================================================
-     *                          FLASH LOAN
-     *==============================================================*/
-
-    function flash(
-        address token0,
-        address token1,
-        uint256 amount0,
-        uint256 amount1,
-        address recipient,
-        bytes calldata data
-    ) external {
-        // TODO:
-    }
-
-    /*===============================================================
      *                            SWAP
      *==============================================================*/
 
