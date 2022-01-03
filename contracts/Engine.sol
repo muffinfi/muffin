@@ -19,7 +19,8 @@ contract Engine is IEngine {
     using PathLib for bytes;
 
     address public governance;
-    int24 public defaultTickSpacing = 200;
+    uint8 internal defaultTickSpacing = 200;
+    uint8 internal defaultProtocolFee = 0;
 
     mapping(bytes32 => Pools.Pool) internal pools;
     mapping(address => mapping(bytes32 => uint256)) public accounts;
@@ -45,11 +46,6 @@ contract Engine is IEngine {
     modifier onlyGovernance() {
         require(msg.sender == governance);
         _;
-    }
-
-    function setGovernance(address _governance) external onlyGovernance {
-        governance = _governance;
-        emit GovernanceUpdated(_governance);
     }
 
     /*===============================================================
@@ -114,14 +110,13 @@ contract Engine is IEngine {
         if (token0 >= token1 || token0 == address(0)) revert InvalidTokenOrder();
 
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
-        (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing);
+        (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
         accounts[token0][getAccHash(msg.sender, senderAccId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccId)] -= amount1;
 
         emit PoolCreated(token0, token1);
         emit UpdateTier(poolId, 0, sqrtGamma);
         pool.unlock();
-
         tokens[poolId] = Tokens(token0, token1);
     }
 
@@ -157,17 +152,6 @@ contract Engine is IEngine {
     function setProtocolFee(bytes32 poolId, uint8 protocolFee) external onlyGovernance {
         pools[poolId].setProtocolFee(protocolFee);
         emit UpdateProtocolFee(poolId, protocolFee);
-    }
-
-    /*===============================================================
-     *                          GOVERNANCE
-     *==============================================================*/
-
-    function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint256 amount = protocolFeeAmts[token] - 1;
-        protocolFeeAmts[token] = 1;
-        SafeTransferLib.safeTransfer(token, recipient, amount);
-        emit CollectProtocol(recipient, token, amount);
     }
 
     /*===============================================================
@@ -348,8 +332,33 @@ contract Engine is IEngine {
     }
 
     /*===============================================================
+     *                          GOVERNANCE
+     *==============================================================*/
+
+    function collectProtocolFee(address token, address recipient) external onlyGovernance {
+        uint256 amount = protocolFeeAmts[token] - 1;
+        protocolFeeAmts[token] = 1;
+        SafeTransferLib.safeTransfer(token, recipient, amount);
+        emit CollectProtocol(recipient, token, amount);
+    }
+
+    function setGovernance(address _governance) external onlyGovernance {
+        governance = _governance;
+        emit GovernanceUpdated(_governance);
+    }
+
+    function setDefaults(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
+        defaultTickSpacing = tickSpacing;
+        defaultProtocolFee = protocolFee;
+    }
+
+    /*===============================================================
      *                         VIEW FUNCTIONS
      *==============================================================*/
+
+    function getDefaults() external view returns (uint8 tickSpacing, uint8 protocolFee) {
+        return (defaultTickSpacing, defaultProtocolFee);
+    }
 
     function getPoolBasics(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
         return (pools[poolId].tickSpacing, pools[poolId].protocolFee);

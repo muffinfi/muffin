@@ -66,18 +66,15 @@ library Pools {
         Pool storage pool,
         uint24 sqrtGamma,
         uint128 sqrtPrice,
-        int24 tickSpacing
+        uint8 tickSpacing,
+        uint8 protocolFee
     ) external returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
         require(sqrtGamma == 99850 || sqrtGamma == 99975 || sqrtGamma == 99999); // FIXME:
 
-        // pool.tickSpacing = tickSpacing;
-        // pool.protocolFee = 1500;
-        // FIXME:
-        tickSpacing; // shh
-        pool.tickSpacing = 1;
-        pool.protocolFee = 26;
+        pool.tickSpacing = tickSpacing;
+        pool.protocolFee = protocolFee;
 
         int24 tick = TickMath.sqrtPToTick(sqrtPrice);
         (pool.tickLastUpdate, pool.tickEma20, pool.tickEma40) = (uint32(block.timestamp), tick, tick);

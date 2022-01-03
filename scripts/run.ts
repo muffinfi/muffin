@@ -43,16 +43,18 @@ async function main() {
   await logTxGas(caller.deposit(engine.address, me.address, accountId, token0.address, wad('100_000_000_000')), 'deposit token0 to me'); // prettier-ignore
   await logTxGas(caller.deposit(engine.address, me.address, accountId, token1.address, wad('100_000_000_000')), 'deposit token1 to me'); // prettier-ignore
 
-  // ===== create pool and init =====
+  // ===== create pool and add tiers =====
   const price = 3100.0;
   const sqrtP = bn(Math.floor(price ** 0.5 * 100_000_000)).shl(72).div(100_000_000); // prettier-ignore
   await logTxGas(caller.createPool(engine.address, token0.address, token1.address, 99850, sqrtP, accountId), 'create pool');
-
-  // ===== add tiers =====
   await engine.addTier(token0.address, token1.address, 99750, accountId); // add tier 50 bps
   await engine.addTier(token0.address, token1.address, 99925, accountId); // add tier 15 bps
   await engine.addTier(token0.address, token1.address, 99975, accountId); // add tier  5 bps
   await engine.addTier(token0.address, token1.address, 99990, accountId); // add tier  2 bps
+
+  const poolId = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address])); // prettier-ignore
+  await engine.setProtocolFee(poolId, Math.floor(0.15 * 255));
+  await engine.setTickSpacing(poolId, 1);
 
   // ===== add liquidity =====
   const mintArgs = {
