@@ -29,7 +29,7 @@ abstract contract SwapManager is ManagerBase {
         address recipient,
         bool fromAccount,
         bool toAccount
-    ) external returns (uint256 amountOut) {
+    ) external payable returns (uint256 amountOut) {
         (, amountOut) = IEngine(engine).swap(
             tokenIn,
             tokenOut,
@@ -50,7 +50,7 @@ abstract contract SwapManager is ManagerBase {
         address recipient,
         bool fromAccount,
         bool toAccount
-    ) external returns (uint256 amountOut) {
+    ) external payable returns (uint256 amountOut) {
         (, amountOut) = IEngine(engine).swapHop(
             IEngineActions.SwapHopParams({
                 path: path,
@@ -73,7 +73,7 @@ abstract contract SwapManager is ManagerBase {
         address recipient,
         bool fromAccount,
         bool toAccount
-    ) external returns (uint256 amountIn) {
+    ) external payable returns (uint256 amountIn) {
         (amountIn, ) = IEngine(engine).swap(
             tokenIn,
             tokenOut,
@@ -94,7 +94,7 @@ abstract contract SwapManager is ManagerBase {
         address recipient,
         bool fromAccount,
         bool toAccount
-    ) external returns (uint256 amountIn) {
+    ) external payable returns (uint256 amountIn) {
         (, amountOut) = IEngine(engine).swapHop(
             IEngineActions.SwapHopParams({
                 path: path,

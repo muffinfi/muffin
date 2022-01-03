@@ -8,9 +8,8 @@ import "../libraries/math/Math.sol";
 import "../libraries/Constants.sol";
 import "./base/ManagerBase.sol";
 import "./base/ERC721Extended.sol";
-import "./AccountManager.sol";
 
-abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended {
+abstract contract PositionManager is ManagerBase, ERC721Extended {
     struct Pair {
         address token0;
         address token1;

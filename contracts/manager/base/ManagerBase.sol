@@ -2,15 +2,24 @@
 pragma solidity 0.8.10;
 
 import "../../interfaces/common/IWETH.sol";
+import "../../interfaces/engine/IEngine.sol";
 import "../../libraries/utils/SafeTransferLib.sol";
 
 contract ManagerBase {
-    address public immutable engine;
     address public immutable WETH9;
+    address public immutable engine;
+    bool private unlocked = true;
 
     constructor(address _engine, address _WETH9) {
         engine = _engine;
         WETH9 = _WETH9;
+    }
+
+    modifier locked() {
+        require(unlocked);
+        unlocked = false;
+        _;
+        unlocked = true;
     }
 
     modifier fromEngine() {
@@ -20,6 +29,34 @@ contract ManagerBase {
 
     function getAccId(address user) internal pure returns (uint256 accId) {
         accId = uint256(uint160(user));
+    }
+
+    /*===============================================================
+     *                          ACCOUNTS
+     *==============================================================*/
+
+    function depositCallback(
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external fromEngine {
+        if (amount > 0) pay(token, abi.decode(data, (address)), amount);
+    }
+
+    function deposit(
+        address recipient,
+        address token,
+        uint256 amount
+    ) public payable {
+        IEngine(engine).deposit(address(this), getAccId(recipient), token, amount, abi.encode(msg.sender));
+    }
+
+    function withdraw(
+        address recipient,
+        address token,
+        uint256 amount
+    ) public {
+        IEngine(engine).withdraw(recipient, getAccId(msg.sender), token, amount);
     }
 
     /*===============================================================
@@ -43,6 +80,10 @@ contract ManagerBase {
             SafeTransferLib.safeTransferFrom(token, payer, engine, amount);
         }
     }
+
+    /*===============================================================
+     *                  ETH TRANSFER (FOR MULTICALL)
+     *==============================================================*/
 
     /// @notice Unwraps the contract's WETH balance and sends it to recipient as ETH.
     /// @dev The amountMinimum parameter prevents malicious contracts from stealing WETH from users.
