@@ -23,7 +23,9 @@ interface IEngineEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint128 liquidity
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1
     );
 
     event Burn(
@@ -33,7 +35,11 @@ interface IEngineEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint128 liquidity
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 feeAmount0,
+        uint256 feeAmount1
     );
 
     event Swap(

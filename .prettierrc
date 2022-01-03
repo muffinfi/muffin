@@ -14,7 +14,7 @@
       }
     },
     {
-      "files": ["Engine.sol"],
+      "files": ["Engine.sol", "PositionManager.sol"],
       "options": {
         "printWidth": 130,
         "explicitTypes": "always"

@@ -22,7 +22,7 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
         uint8 tierId;
         int24 tickLower;
         int24 tickUpper;
-        uint16 _ownedTokenIndex; // for token enumerability if info is tokenized
+        uint16 _ownedTokenIndex; // for token enumerability
     }
 
     uint24 internal nextPoolNum = 1;
@@ -88,7 +88,6 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
         uint256 amount1Min;
         address recipient;
         bool useAccount;
-        bool tokenized;
     }
 
     function mint(MintParams calldata params)
@@ -101,7 +100,8 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
         )
     {
         tokenId = nextTokenId++;
-        if (params.tokenized) _mint(params.recipient, tokenId);
+        _mint(params.recipient, tokenId);
+
         positions[tokenId] = PositionInfo({
             owner: params.recipient,
             poolNum: getPoolNum(params.token0, params.token1),
@@ -216,11 +216,16 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
     function removeLiquidity(RemoveLiquidityParams calldata params)
         external
         checkApproved(params.tokenId)
-        returns (uint256 amount0, uint256 amount1)
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmount0,
+            uint256 feeAmount1
+        )
     {
         PositionInfo memory info = positions[params.tokenId];
         Pair memory pair = pairs[info.poolNum];
-        (amount0, amount1) = IEngine(engine).burn(
+        (amount0, amount1, feeAmount0, feeAmount1) = IEngine(engine).burn(
             IEngineActions.BurnParams({
                 token0: pair.token0,
                 token1: pair.token1,
@@ -228,10 +233,12 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
                 tickLower: info.tickLower,
                 tickUpper: info.tickUpper,
                 liquidity: params.liquidity,
-                accId: getAccId(msg.sender),
+                accId: getAccId(info.owner),
                 collectAllFees: params.collectAllFees
             })
         );
+        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
+
         if (params.withdrawTo != address(0)) {
             if (amount0 > 0) withdraw(params.withdrawTo, pair.token0, amount0);
             if (amount1 > 0) withdraw(params.withdrawTo, pair.token1, amount1);
@@ -242,48 +249,83 @@ abstract contract PositionManager is ManagerBase, AccountManager, ERC721Extended
      *                          BURN NFT
      *==============================================================*/
 
-    function burn(uint256 tokenId) external {
-        require(msg.sender == positions[tokenId].owner, "NOT_OWNER");
-        require(_exists(tokenId), "NOT_TOKENIZED");
+    function burn(uint256[] calldata tokenIds) external {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            _checkApproved(tokenId);
 
-        PositionInfo memory info = positions[tokenId];
-        Pair memory pair = pairs[info.poolNum];
-        bytes32 poolId = keccak256(abi.encode(pair.token0, pair.token1));
-        uint128 liquidity = IEngine(engine)
-            .getPosition(poolId, info.owner, getAccId(msg.sender), info.tierId, info.tickLower, info.tickUpper)
-            .liquidity;
+            // check position is empty
+            PositionInfo memory info = positions[tokenId];
+            Pair memory pair = pairs[info.poolNum];
+            (, , uint128 liquidity) = IEngine(engine).getPosition(
+                keccak256(abi.encode(pair.token0, pair.token1)),
+                address(this),
+                getAccId(info.owner),
+                info.tierId,
+                info.tickLower,
+                info.tickUpper
+            );
+            require(liquidity == 0, "NOT_EMPTY");
 
-        require(liquidity == 0, "NOT_EMPTY");
-        delete positions[tokenId];
-        _burn(tokenId);
+            delete positions[tokenId];
+            _burn(tokenId);
+        }
     }
 
     /*===============================================================
      *                       VIEW FUNCTIONS
      *==============================================================*/
 
-    function getPosition(uint256 tokenId) external view returns (Positions.Position memory) {
-        // TODO:
+    function getPosition(uint256 tokenId)
+        external
+        view
+        returns (
+            address owner,
+            address token0,
+            address token1,
+            uint8 tierId,
+            int24 tickLower,
+            int24 tickUpper,
+            uint80 feeGrowthInside0Last,
+            uint80 feeGrowthInside1Last,
+            uint128 liquidity
+        )
+    {
+        PositionInfo memory info = positions[tokenId];
+        Pair memory pair = pairs[info.poolNum];
+        (owner, tierId, tickLower, tickUpper) = (info.owner, info.tierId, info.tickLower, info.tickUpper);
+        (token0, token1) = (pair.token0, pair.token1);
+        (feeGrowthInside0Last, feeGrowthInside1Last, liquidity) = IEngine(engine).getPosition(
+            keccak256(abi.encode(token0, token1)),
+            address(this),
+            getAccId(owner),
+            tierId,
+            tickLower,
+            tickUpper
+        );
     }
 
     /*===============================================================
      *            OVERRIDE FOR ERC721 and ERC721Extended
      *==============================================================*/
 
+    /// @dev override `_getOwner` in ERC721.sol
     function _getOwner(uint256 tokenId) internal view override returns (address owner) {
         owner = positions[tokenId].owner;
     }
 
+    /// @dev override `_setOwner` in ERC721.sol
     function _setOwner(uint256 tokenId, address owner) internal override {
         positions[tokenId].owner = owner;
     }
 
-    function _getOwnedTokenIndex(uint256 tokenId) internal view override returns (uint256 index) {
-        index = uint256(positions[tokenId]._ownedTokenIndex);
+    /// @dev override `_getOwnedTokenIndex` in ERC721Extended.sol
+    function _getOwnedTokenIndex(uint80 tokenId) internal view override returns (uint16 index) {
+        index = positions[tokenId]._ownedTokenIndex;
     }
 
-    function _setOwnedTokenIndex(uint256 tokenId, uint256 index) internal override {
-        require(index <= type(uint16).max);
-        positions[tokenId]._ownedTokenIndex = uint16(index);
+    /// @dev override `_getOwnedTokenIndex` in ERC721Extended.sol
+    function _setOwnedTokenIndex(uint80 tokenId, uint16 index) internal override {
+        positions[tokenId]._ownedTokenIndex = index;
     }
 }

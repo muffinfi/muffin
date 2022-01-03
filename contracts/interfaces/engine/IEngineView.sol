@@ -27,7 +27,14 @@ interface IEngineView {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    ) external view returns (Positions.Position memory);
+    )
+        external
+        view
+        returns (
+            uint80 feeGrowthInside0Last,
+            uint80 feeGrowthInside1Last,
+            uint128 liquidity
+        );
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256);
 

@@ -6,6 +6,9 @@ import "../../interfaces/common/IERC1271.sol";
 import "../../interfaces/common/IERC721Descriptor.sol";
 
 abstract contract ERC721Extended is ERC721 {
+    address public tokenDescriptor;
+    address public tokenDescriptorSetter;
+
     bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)"); // prettier-ignore
     bytes32 private immutable nameHash;
     mapping(uint256 => uint256) public nonces;
@@ -13,13 +16,29 @@ abstract contract ERC721Extended is ERC721 {
     uint80 internal minted;
     uint80 internal burned;
     uint80 internal nextTokenId;
-    mapping(address => mapping(uint256 => uint256)) internal _ownedTokens; // user => tokenId[]
-
-    address public tokenDescriptor;
-    address public tokenDescriptorSetter;
+    mapping(address => uint80[65535]) internal _ownedTokens; // user => tokenId[]
 
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
         nameHash = keccak256(bytes(name_));
+    }
+
+    /*=====================================================================
+     *                             TOKEN URI
+     *====================================================================*/
+
+    function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
+        require(_exists(tokenId), "token not exist");
+        return tokenDescriptor != address(0) ? IERC721Descriptor(tokenDescriptor).tokenURI(address(this), tokenId) : "";
+    }
+
+    function setTokenDescriptor(address descriptor) external {
+        require(msg.sender == tokenDescriptorSetter);
+        tokenDescriptor = descriptor;
+    }
+
+    function setTokenDescriptorSetter(address setter) external {
+        require(msg.sender == tokenDescriptorSetter);
+        tokenDescriptorSetter = setter;
     }
 
     /*=====================================================================
@@ -71,8 +90,9 @@ abstract contract ERC721Extended is ERC721 {
 
     /**
      * Adapted from OpenZeppelin 4.3.1's ERC721Enumerable.
-     * Removed the `allTokens` array and use counters to keep track of total supply.
-     * Also removed the `_ownedTokensIndex` mapping and added setter and getter functions for it.
+     * Removed `allTokens` array and added `minted` and `burned` to keep track of total supply.
+     * Removed `_ownedTokensIndex` mapping and added setter and getter functions for it.
+     * Changed `_ownedTokens` from a "mapping of mapping" to a "mapping of uint80 array" for gas optimization.
      */
 
     function totalSupply() public view virtual returns (uint256) {
@@ -90,32 +110,34 @@ abstract contract ERC721Extended is ERC721 {
         uint256 tokenId
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
+        assert(tokenId <= type(uint80).max);
 
         if (from == address(0)) {
             minted++;
         } else if (from != to) {
-            _removeTokenFromOwnerEnumeration(from, tokenId);
+            _removeTokenFromOwnerEnumeration(from, uint80(tokenId));
         }
 
         if (to == address(0)) {
             burned++;
         } else if (to != from) {
-            _addTokenToOwnerEnumeration(to, tokenId);
+            _addTokenToOwnerEnumeration(to, uint80(tokenId));
         }
     }
 
-    function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
+    function _addTokenToOwnerEnumeration(address to, uint80 tokenId) internal {
         uint256 length = ERC721.balanceOf(to);
+        require(length <= type(uint16).max, "MAX_TOKENS_PER_ADDRESS");
         _ownedTokens[to][length] = tokenId;
-        _setOwnedTokenIndex(tokenId, length);
+        _setOwnedTokenIndex(tokenId, uint16(length));
     }
 
-    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {
+    function _removeTokenFromOwnerEnumeration(address from, uint80 tokenId) internal {
         uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
-        uint256 tokenIndex = _getOwnedTokenIndex(tokenId);
+        uint16 tokenIndex = _getOwnedTokenIndex(tokenId);
 
         if (tokenIndex != lastTokenIndex) {
-            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
+            uint80 lastTokenId = _ownedTokens[from][lastTokenIndex];
             _ownedTokens[from][tokenIndex] = lastTokenId;
             _setOwnedTokenIndex(lastTokenId, tokenIndex);
         }
@@ -124,26 +146,7 @@ abstract contract ERC721Extended is ERC721 {
         delete _ownedTokens[from][lastTokenIndex];
     }
 
-    function _getOwnedTokenIndex(uint256 tokenId) internal view virtual returns (uint256 index);
+    function _getOwnedTokenIndex(uint80 tokenId) internal view virtual returns (uint16 index);
 
-    function _setOwnedTokenIndex(uint256 tokenId, uint256 index) internal virtual;
-
-    /*=====================================================================
-     *                             TOKEN URI
-     *====================================================================*/
-
-    function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
-        require(_exists(tokenId), "token not exist");
-        return tokenDescriptor != address(0) ? IERC721Descriptor(tokenDescriptor).tokenURI(address(this), tokenId) : "";
-    }
-
-    function setTokenDescriptor(address descriptor) external {
-        require(msg.sender == tokenDescriptorSetter);
-        tokenDescriptor = descriptor;
-    }
-
-    function setTokenDescriptorSetter(address setter) external {
-        require(msg.sender == tokenDescriptorSetter);
-        tokenDescriptorSetter = setter;
-    }
+    function _setOwnedTokenIndex(uint80 tokenId, uint16 index) internal virtual;
 }

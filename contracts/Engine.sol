@@ -170,7 +170,7 @@ contract Engine is IEngine {
 
     function mint(MintParams calldata p) external returns (uint256 amount0, uint256 amount1) {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
-        (int256 _amount0, int256 _amount1) = pool.updateLiquidity(
+        (amount0, amount1, , ) = pool.updateLiquidity(
             p.recipient,
             p.recipientAccId,
             p.tierId,
@@ -179,9 +179,6 @@ contract Engine is IEngine {
             p.liquidity.toInt128(),
             false
         );
-        assert(_amount0 >= 0 && _amount1 >= 0);
-        amount0 = uint256(_amount0);
-        amount1 = uint256(_amount1);
 
         if (p.senderAccId != 0) {
             bytes32 accHash = getAccHash(msg.sender, p.senderAccId);
@@ -196,13 +193,21 @@ contract Engine is IEngine {
             if (getBalance(p.token1) < balance1Before + amount1) revert NotEnoughToken();
         }
 
-        emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidity);
+        emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidity, amount0, amount1);
         pool.unlock();
     }
 
-    function burn(BurnParams calldata p) external returns (uint256 amount0, uint256 amount1) {
+    function burn(BurnParams calldata p)
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmount0,
+            uint256 feeAmount1
+        )
+    {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
-        (int256 _amount0, int256 _amount1) = pool.updateLiquidity(
+        (amount0, amount1, feeAmount0, feeAmount1) = pool.updateLiquidity(
             msg.sender,
             p.accId,
             p.tierId,
@@ -211,15 +216,12 @@ contract Engine is IEngine {
             -p.liquidity.toInt128(),
             p.collectAllFees
         );
-        assert(_amount0 <= 0 && _amount1 <= 0);
-        amount0 = uint256(-_amount0);
-        amount1 = uint256(-_amount1);
 
         bytes32 accHash = getAccHash(msg.sender, p.accId);
-        if (amount0 > 0) accounts[p.token0][accHash] += amount0;
-        if (amount1 > 0) accounts[p.token1][accHash] += amount1;
+        if (amount0 > 0) accounts[p.token0][accHash] += amount0 + feeAmount0;
+        if (amount1 > 0) accounts[p.token1][accHash] += amount1 + feeAmount1;
 
-        emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidity);
+        emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidity, amount0, amount1, feeAmount0, feeAmount1); // prettier-ignore
         pool.unlock();
     }
 
@@ -390,8 +392,17 @@ contract Engine is IEngine {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    ) external view returns (Positions.Position memory) {
-        return pools[poolId].positions.get(owner, accId, tierId, tickLower, tickUpper);
+    )
+        external
+        view
+        returns (
+            uint80 feeGrowthInside0Last,
+            uint80 feeGrowthInside1Last,
+            uint128 liquidity
+        )
+    {
+        Positions.Position memory p = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
+        return (p.feeGrowthInside0Last, p.feeGrowthInside1Last, p.liquidity);
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {

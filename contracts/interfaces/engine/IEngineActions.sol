@@ -51,7 +51,14 @@ interface IEngineActions {
         bool collectAllFees;
     }
 
-    function burn(BurnParams calldata params) external returns (uint256 amount0, uint256 amount1);
+    function burn(BurnParams calldata params)
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmount0,
+            uint256 feeAmount1
+        );
 
     function flash(
         address token0,

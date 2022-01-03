@@ -144,7 +144,7 @@ library PoolMath {
         uint128 sqrtPLower,
         uint128 sqrtPUpper,
         int128 liquidityDelta
-    ) internal pure returns (int256 amt0, int256 amt1) {
+    ) internal pure returns (uint256 amt0, uint256 amt1) {
         // we assume {sqrtP, sqrtPLower, sqrtPUpper} ≠ 0 and sqrtPLower < sqrtPUpper
         unchecked {
             // find the sqrt price at which liquidity is add/removed
@@ -154,12 +154,12 @@ library PoolMath {
             uint128 absL = uint128(liquidityDelta >= 0 ? liquidityDelta : -liquidityDelta);
             if (liquidityDelta >= 0) {
                 // round up
-                amt0 = calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL);
-                amt1 = calcAmt1FromSqrtP(sqrtPLower, sqrtP, absL);
+                amt0 = uint(calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL));
+                amt1 = uint(calcAmt1FromSqrtP(sqrtPLower, sqrtP, absL));
             } else {
                 // round down
-                amt0 = calcAmt0FromSqrtP(sqrtP, sqrtPUpper, absL);
-                amt1 = calcAmt1FromSqrtP(sqrtP, sqrtPLower, absL);
+                amt0 = uint(-calcAmt0FromSqrtP(sqrtP, sqrtPUpper, absL));
+                amt1 = uint(-calcAmt1FromSqrtP(sqrtP, sqrtPLower, absL));
             }
         }
     }
