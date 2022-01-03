@@ -8,18 +8,10 @@ import "../../libraries/utils/SafeTransferLib.sol";
 contract ManagerBase {
     address public immutable WETH9;
     address public immutable engine;
-    bool private unlocked = true;
 
     constructor(address _engine, address _WETH9) {
         engine = _engine;
         WETH9 = _WETH9;
-    }
-
-    modifier locked() {
-        require(unlocked);
-        unlocked = false;
-        _;
-        unlocked = true;
     }
 
     modifier fromEngine() {
