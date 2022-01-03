@@ -23,9 +23,6 @@ library Pools {
     error InvalidTick();
     error MaxLiquidityNetExceeded();
 
-    // TODO: pending to delete. transitional variable
-    bool internal constant TWAP_ENABLED = true;
-
     struct Pool {
         bool unlocked;
         uint8 tickSpacing;
@@ -97,7 +94,7 @@ library Pools {
     {
         lock(pool);
         require((tierId = uint8(pool.tiers.length)) > 0);
-        _updateTWAPAndSecsPerLiq(pool);
+        _updateTWAP(pool, pool.tiers);
         (amount0, amount1) = _addTier(pool, sqrtGamma, pool.tiers[0].sqrtPrice); // use 1st tier sqrt price as reference
     }
 
@@ -182,15 +179,7 @@ library Pools {
 
     uint256 private constant Q64 = 0x10000000000000000;
 
-    function _updateTWAPAndSecsPerLiq(Pool storage pool) internal {
-        Tiers.Tier[] memory tiers = pool.tiers;
-        _updateTWAPIfEnabled(pool, tiers);
-        _updateSecsPerLiq(pool, tiers);
-    }
-
-    function _updateTWAPIfEnabled(Pool storage pool, Tiers.Tier[] memory tiers) internal {
-        if (!TWAP_ENABLED) return;
-
+    function _updateTWAP(Pool storage pool, Tiers.Tier[] memory tiers) internal {
         uint32 lastUpdate = pool.tickLastUpdate;
         int56 tickCum = pool.tickCumulative;
         int24 ema20 = pool.tickEma20;
@@ -225,22 +214,6 @@ library Pools {
         pool.secondsPerLiquidityCumulative = secsPerLiqCum;
     }
 
-    function _updateSecsPerLiq(Pool storage pool, Tiers.Tier[] memory tiers) internal {
-        uint32 lastUpdate = pool.tickLastUpdate;
-        uint96 secsPerLiqCum = pool.secondsPerLiquidityCumulative;
-        uint32 timestamp = uint32(block.timestamp);
-        unchecked {
-            uint32 secs = timestamp - lastUpdate;
-            if (secs == 0) return;
-
-            uint256 sumL;
-            for (uint256 i; i < tiers.length; i++) sumL += tiers[i].liquidity;
-            secsPerLiqCum += uint96((uint256(secs) << Constants.SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
-        }
-        pool.tickLastUpdate = timestamp;
-        pool.secondsPerLiquidityCumulative = secsPerLiqCum;
-    }
-
     /*===============================================================
      *                            SWAP
      *==============================================================*/
@@ -252,7 +225,6 @@ library Pools {
     struct SwapCache {
         bool zeroForOne;
         bool exactIn;
-        bool crossed;
         uint8 protocolFee;
         uint256 protocolFeeAmt;
         uint256 priceBoundReached;
@@ -288,12 +260,11 @@ library Pools {
             if (tierChoices > 0x3F || tierChoices & ((1 << tiers.length) - 1) == 0) revert InvalidTierChoices();
         }
 
-        _updateTWAPIfEnabled(pool, tiers);
+        _updateTWAP(pool, tiers);
 
         SwapCache memory cache = SwapCache({
             zeroForOne: isToken0 == (amtDesired > 0),
             exactIn: amtDesired > 0,
-            crossed: false,
             protocolFee: pool.protocolFee,
             protocolFeeAmt: 0,
             priceBoundReached: 0,
@@ -376,14 +347,13 @@ library Pools {
         }
 
         // handle cross tick, which may update storage
-        if (tier.sqrtPrice == state.sqrtPTick) _crossTick(pool, cache, state, tiers, tier, tierId);
+        if (tier.sqrtPrice == state.sqrtPTick) _crossTick(pool, cache, state, tier, tierId);
     }
 
     function _crossTick(
         Pool storage pool,
         SwapCache memory cache,
         TierState memory state,
-        Tiers.Tier[] memory tiers,
         Tiers.Tier memory tier,
         uint256 tierId
     ) internal {
@@ -396,11 +366,6 @@ library Pools {
         }
         // clear cached tick price, so as to calculate a new one in next loop
         state.sqrtPTick = 0;
-
-        if (!cache.crossed) {
-            cache.crossed = true;
-            _updateSecsPerLiq(pool, tiers);
-        }
 
         unchecked {
             // flip the direction of tick's data (effect), then update tier's liquidity and next ticks (locally)
@@ -478,7 +443,7 @@ library Pools {
         )
     {
         lock(pool);
-        _updateTWAPAndSecsPerLiq(pool);
+        _updateTWAP(pool, pool.tiers);
         if (
             tickLower >= tickUpper ||
             (Constants.MIN_TICK > tickLower || tickLower >= Constants.MAX_TICK) ||
@@ -630,9 +595,8 @@ library Pools {
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
-        mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
-        Ticks.Tick storage upper = ticks[tickUpper];
-        Ticks.Tick storage lower = ticks[tickLower];
+        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+        Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
         Tiers.Tier storage tier = pool.tiers[tierId];
         int24 tickCurrent = tier.tick;
 
