@@ -208,8 +208,8 @@ contract Engine is IEngine {
         );
 
         bytes32 accHash = getAccHash(msg.sender, p.accId);
-        if (amount0 > 0) accounts[p.token0][accHash] += amount0 + feeAmount0;
-        if (amount1 > 0) accounts[p.token1][accHash] += amount1 + feeAmount1;
+        accounts[p.token0][accHash] += amount0 + feeAmount0;
+        accounts[p.token1][accHash] += amount1 + feeAmount1;
 
         emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidity, amount0, amount1, feeAmount0, feeAmount1); // prettier-ignore
         pool.unlock();
