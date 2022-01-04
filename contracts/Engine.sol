@@ -286,16 +286,17 @@ contract Engine is IEngine {
         )
     {
         (pool, poolId) = tokenIn < tokenOut ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
+        uint256 protocolFeeAmt;
         int256 amount0;
         int256 amount1;
-        uint256 protocolFeeAmt;
         {
-            bool isToken0 = (amountDesired > 0) == (tokenIn < tokenOut); // TODO: correct?
-            uint256 amtInDist;
+            uint256 amtInDistribution;
             uint256[] memory tierData;
-            (amount0, amount1, protocolFeeAmt, amtInDist, tierData) = pool.swap(isToken0, amountDesired, tierChoices);
+
+            bool isToken0 = (amountDesired > 0) == (tokenIn < tokenOut); // i.e. isToken0In == isExactIn
+            (amount0, amount1, protocolFeeAmt, amtInDistribution, tierData) = pool.swap(isToken0, amountDesired, tierChoices);
             if (!isToken0) (amount0, amount1) = (amount1, amount0);
-            emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDist, tierData);
+            emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDistribution, tierData);
         }
         unchecked {
             if (protocolFeeAmt != 0) protocolFeeAmts[tokenIn] += protocolFeeAmt;
