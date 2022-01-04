@@ -13,7 +13,7 @@ import "./libraries/Pools.sol";
 import "hardhat/console.sol";
 
 contract Engine is IEngine {
-    using Math for uint128;
+    using Math for uint96;
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
     using PathLib for bytes;
@@ -166,7 +166,7 @@ contract Engine is IEngine {
             p.tierId,
             p.tickLower,
             p.tickUpper,
-            p.liquidity.toInt128(),
+            p.liquidityD8.toInt96(),
             false
         );
 
@@ -183,7 +183,7 @@ contract Engine is IEngine {
             if (getBalance(p.token1) < balance1Before + amount1) revert NotEnoughToken();
         }
 
-        emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidity, amount0, amount1);
+        emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
         pool.unlock();
     }
 
@@ -203,7 +203,7 @@ contract Engine is IEngine {
             p.tierId,
             p.tickLower,
             p.tickUpper,
-            -p.liquidity.toInt128(),
+            -p.liquidityD8.toInt96(),
             p.collectAllFees
         );
 
@@ -211,7 +211,7 @@ contract Engine is IEngine {
         accounts[p.token0][accHash] += amount0 + feeAmount0;
         accounts[p.token1][accHash] += amount1 + feeAmount1;
 
-        emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidity, amount0, amount1, feeAmount0, feeAmount1); // prettier-ignore
+        emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1, feeAmount0, feeAmount1); // prettier-ignore
         pool.unlock();
     }
 
@@ -396,13 +396,13 @@ contract Engine is IEngine {
         external
         view
         returns (
+            uint96 liquidityD8,
             uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last,
-            uint128 liquidity
+            uint80 feeGrowthInside1Last
         )
     {
         Positions.Position memory pos = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
-        return (pos.feeGrowthInside0Last, pos.feeGrowthInside1Last, pos.liquidity);
+        return (pos.liquidityD8, pos.feeGrowthInside0Last, pos.feeGrowthInside1Last);
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {

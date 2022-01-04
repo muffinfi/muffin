@@ -23,7 +23,7 @@ interface IEngineEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint128 liquidity,
+        uint96 liquidityD8,
         uint256 amount0,
         uint256 amount1
     );
@@ -35,7 +35,7 @@ interface IEngineEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint128 liquidity,
+        uint96 liquidityD8,
         uint256 amount0,
         uint256 amount1,
         uint256 feeAmount0,

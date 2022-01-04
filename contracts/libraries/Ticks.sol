@@ -3,10 +3,12 @@ pragma solidity 0.8.10;
 
 library Ticks {
     struct Tick {
-        int128 liquidityNet;
-        uint24 positionCount;
+        uint96 liquidityLowerD8;
+        uint96 liquidityUpperD8;
         int24 nextBelow;
         int24 nextAbove;
+        // bool logFeeGrowth0;
+        // bool logFeeGrowth1;
         uint80 feeGrowthOutside0;
         uint80 feeGrowthOutside1;
         uint96 secondsPerLiquidityOutside;

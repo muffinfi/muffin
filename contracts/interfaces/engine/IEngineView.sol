@@ -31,9 +31,9 @@ interface IEngineView {
         external
         view
         returns (
+            uint96 liquidityD8,
             uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last,
-            uint128 liquidity
+            uint80 feeGrowthInside1Last
         );
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256);

@@ -13,8 +13,10 @@ import "./Positions.sol";
 import "hardhat/console.sol";
 
 library Pools {
+    using Math for uint96;
     using Math for uint128;
     using Tiers for Tiers.Tier;
+    using Ticks for Ticks.Tick;
     using TickMaps for TickMaps.TickMap;
     using Positions for Positions.Position;
 
@@ -71,7 +73,7 @@ library Pools {
     ) external returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
-        require(sqrtGamma == 99850 || sqrtGamma == 99975 || sqrtGamma == 99999); // FIXME:
+        require(sqrtGamma == 99850 || sqrtGamma == 99975); // TODO:
 
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;
@@ -107,7 +109,7 @@ library Pools {
         // initialize tier
         pool.tiers.push(
             Tiers.Tier({
-                liquidity: Constants.BASE_LIQUIDITY,
+                liquidity: uint128(Constants.BASE_LIQUIDITY_D8) << 8,
                 sqrtPrice: sqrtPrice,
                 sqrtGamma: sqrtGamma,
                 tick: TickMath.sqrtPToTick(sqrtPrice),
@@ -121,15 +123,15 @@ library Pools {
         // initialize min tick & max tick
         Ticks.Tick storage min = pool.ticks[tierId][Constants.MIN_TICK];
         Ticks.Tick storage max = pool.ticks[tierId][Constants.MAX_TICK];
-        (min.liquidityNet, min.positionCount, min.nextBelow, min.nextAbove) = (
-            int128(Constants.BASE_LIQUIDITY),
-            1,
+        (min.liquidityLowerD8, min.liquidityUpperD8, min.nextBelow, min.nextAbove) = (
+            Constants.BASE_LIQUIDITY_D8,
+            0,
             Constants.MIN_TICK,
             Constants.MAX_TICK
         );
-        (max.liquidityNet, max.positionCount, max.nextBelow, max.nextAbove) = (
-            -int128(Constants.BASE_LIQUIDITY),
-            1,
+        (max.liquidityLowerD8, max.liquidityUpperD8, max.nextBelow, max.nextAbove) = (
+            0,
+            Constants.BASE_LIQUIDITY_D8,
             Constants.MIN_TICK,
             Constants.MAX_TICK
         );
@@ -139,8 +141,8 @@ library Pools {
         pool.tickMaps[tierId].set(Constants.MAX_TICK);
 
         // calculate tokens to take for full-range base liquidity
-        amount0 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY) << 72, sqrtPrice);
-        amount1 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY) * sqrtPrice, 1 << 72);
+        amount0 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice);
+        amount1 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64);
     }
 
     /*===============================================================
@@ -364,16 +366,18 @@ library Pools {
         // clear cached tick price, so as to calculate a new one in next loop
         state.sqrtPTick = 0;
 
+        // flip the direction of tick's data (effect)
+        Ticks.Tick storage obj = pool.ticks[tierId][tickCross];
+        Ticks.flip(obj, tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
         unchecked {
-            // flip the direction of tick's data (effect), then update tier's liquidity and next ticks (locally)
-            Ticks.Tick storage obj = pool.ticks[tierId][tickCross];
-            Ticks.flip(obj, tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
+            // update tier's liquidity and next ticks (locally)
+            (uint128 liquidityLowerD8, uint128 liquidityUpperD8) = (obj.liquidityLowerD8, obj.liquidityUpperD8);
             if (cache.zeroForOne) {
-                tier.liquidity = tier.liquidity.addInt128(-obj.liquidityNet);
+                tier.liquidity = tier.liquidity + (liquidityUpperD8 << 8) - (liquidityLowerD8 << 8); // TODO: need test cases
                 tier.nextTickBelow = obj.nextBelow;
                 tier.nextTickAbove = tickCross;
             } else {
-                tier.liquidity = tier.liquidity.addInt128(obj.liquidityNet);
+                tier.liquidity = tier.liquidity + (liquidityLowerD8 << 8) - (liquidityUpperD8 << 8);
                 tier.nextTickBelow = tickCross;
                 tier.nextTickAbove = obj.nextAbove;
             }
@@ -428,7 +432,7 @@ library Pools {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        int128 liquidityDelta,
+        int96 liquidityDeltaD8,
         bool collectAllFees
     )
         external
@@ -445,7 +449,7 @@ library Pools {
             tickLower >= tickUpper ||
             (Constants.MIN_TICK > tickLower || tickLower >= Constants.MAX_TICK) ||
             (Constants.MIN_TICK >= tickUpper || tickUpper > Constants.MAX_TICK) ||
-            (liquidityDelta > 0 &&
+            (liquidityDeltaD8 > 0 &&
                 (tickLower % int24(uint24(pool.tickSpacing)) != 0 || tickUpper % int24(uint24(pool.tickSpacing)) != 0))
         ) revert InvalidTick();
 
@@ -454,19 +458,15 @@ library Pools {
             // update current liquidity if in-range
             Tiers.Tier storage tier = pool.tiers[tierId];
             if (tickLower <= tier.tick && tier.tick < tickUpper) {
-                tier.liquidity = tier.liquidity.addInt128(liquidityDelta);
+                tier.liquidity = tier.liquidity.addInt128(int128(liquidityDeltaD8) << 8);
             }
         }
 
         // --------------------- UPDATE TICKS -----------------------
         {
-            uint128 liquidity = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper).liquidity;
-            bool positionFlipped = liquidity == 0 ? liquidityDelta > 0 : liquidity.addInt128(liquidityDelta) == 0;
-            // "flipped" means the position changes between empty <=> nonempty
-
             bool initialized;
-            initialized = _updateTick(pool, tierId, tickLower, liquidityDelta, true, positionFlipped);
-            initialized = _updateTick(pool, tierId, tickUpper, liquidityDelta, false, positionFlipped) || initialized;
+            initialized = _updateTick(pool, tierId, tickLower, liquidityDeltaD8, true);
+            initialized = _updateTick(pool, tierId, tickUpper, liquidityDeltaD8, false) || initialized;
             if (initialized) {
                 Tiers.Tier storage tier = pool.tiers[tierId];
                 tier.updateNextTick(tickLower);
@@ -478,11 +478,11 @@ library Pools {
         {
             (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = _feeGrowthInside(pool, tierId, tickLower, tickUpper);
             Positions.Position storage pos = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
-            (feeAmtOut0, feeAmtOut1) = pos.update(liquidityDelta, feeGrowthInside0, feeGrowthInside1, collectAllFees);
+            (feeAmtOut0, feeAmtOut1) = pos.update(liquidityDeltaD8, feeGrowthInside0, feeGrowthInside1, collectAllFees);
         }
 
         // --------------------- CLEAN UP TICKS ---------------------
-        if (liquidityDelta < 0) {
+        if (liquidityDeltaD8 < 0) {
             bool deleted;
             deleted = _deleteEmptyTick(pool, tierId, tickLower);
             deleted = _deleteEmptyTick(pool, tierId, tickUpper) || deleted;
@@ -498,12 +498,12 @@ library Pools {
 
         // -------------------- TOKEN AMOUNTS -----------------------
         // calculate input and output amount for the liquidity change
-        if (liquidityDelta != 0)
+        if (liquidityDeltaD8 != 0)
             (amount0, amount1) = PoolMath.calcAmtsForLiquidity(
                 pool.tiers[tierId].sqrtPrice,
                 TickMath.tickToSqrtP(tickLower),
                 TickMath.tickToSqrtP(tickUpper),
-                liquidityDelta
+                liquidityDeltaD8
             );
     }
 
@@ -515,16 +515,15 @@ library Pools {
         Pool storage pool,
         uint256 tierId,
         int24 tick,
-        int128 liquidityDelta,
-        bool isLower,
-        bool positionFlipped
+        int96 liquidityDeltaD8,
+        bool isLower
     ) internal returns (bool initialized) {
         mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
         Ticks.Tick storage obj = ticks[tick];
 
-        if (obj.positionCount == 0) {
+        if (obj.liquidityLowerD8 == 0 && obj.liquidityUpperD8 == 0) {
             // initialize tick if adding liquidity to empty tick
-            if (liquidityDelta > 0) {
+            if (liquidityDeltaD8 > 0) {
                 TickMaps.TickMap storage tickMap = pool.tickMaps[tierId];
                 int24 below = tickMap.nextBelow(tick);
                 int24 above = ticks[below].nextAbove;
@@ -532,8 +531,8 @@ library Pools {
                 obj.nextAbove = above;
                 ticks[below].nextAbove = tick;
                 ticks[above].nextBelow = tick;
-                tickMap.set(tick);
 
+                tickMap.set(tick);
                 initialized = true;
             }
 
@@ -546,20 +545,12 @@ library Pools {
             }
         }
 
-        // increment/decrement active position count if the position is "flipped"
-        if (positionFlipped) {
-            assert(liquidityDelta != 0);
-            if (liquidityDelta > 0) {
-                obj.positionCount++;
-            } else {
-                obj.positionCount--;
-            }
-        }
-
         // update liquidity
-        obj.liquidityNet += isLower ? liquidityDelta : -liquidityDelta;
-        if (isLower && liquidityDelta > 0 && obj.liquidityNet > Constants.MAX_LIQUIDITY_NET)
-            revert MaxLiquidityNetExceeded();
+        if (isLower) {
+            obj.liquidityLowerD8 = obj.liquidityLowerD8.addInt96(liquidityDeltaD8);
+        } else {
+            obj.liquidityUpperD8 = obj.liquidityUpperD8.addInt96(liquidityDeltaD8);
+        }
     }
 
     function _deleteEmptyTick(
@@ -570,14 +561,14 @@ library Pools {
         mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
         Ticks.Tick storage obj = ticks[tick];
 
-        if (obj.positionCount == 0) {
+        if (obj.liquidityLowerD8 == 0 && obj.liquidityUpperD8 == 0) {
             int24 below = obj.nextBelow;
             int24 above = obj.nextAbove;
             ticks[below].nextAbove = above;
             ticks[above].nextBelow = below;
 
-            delete ticks[tick];
             pool.tickMaps[tierId].unset(tick);
+            delete ticks[tick];
             deleted = true;
         }
     }

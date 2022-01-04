@@ -11,6 +11,15 @@ library UnsafeMath {
 }
 
 library Math {
+    /// @dev Compute z = x + y, where z must be non-negative and fit in a 96-bit unsigned integer
+    function addInt96(uint96 x, int96 y) internal pure returns (uint96 z) {
+        unchecked {
+            int256 s = int256(uint256(x)) + int256(y);
+            assert(s >= 0 && s <= int256(uint256(type(uint96).max)));
+            z = uint96(uint256(s));
+        }
+    }
+
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 128-bit unsigned integer
     function addInt128(uint128 x, int128 y) internal pure returns (uint128 z) {
         unchecked {
@@ -35,15 +44,14 @@ library Math {
 
     // ----- cast -----
 
-    function abs256(int256 x) internal pure returns (uint256 z) {
-        unchecked {
-            z = x < 0 ? uint256(-x) : uint256(x);
-        }
+    function toUint128(uint256 x) internal pure returns (uint128 z) {
+        assert(x <= type(uint128).max);
+        z = uint128(x);
     }
 
-    function toUint128(uint256 y) internal pure returns (uint128 z) {
-        assert(y <= type(uint128).max);
-        z = uint128(y);
+    function toUint96(uint256 x) internal pure returns (uint96 z) {
+        assert(x <= type(uint96).max);
+        z = uint96(x);
     }
 
     function toInt256(uint256 x) internal pure returns (int256 z) {
@@ -51,9 +59,9 @@ library Math {
         z = int256(x);
     }
 
-    function toInt128(uint128 x) internal pure returns (int128 z) {
-        assert(x <= uint128(type(int128).max));
-        z = int128(x);
+    function toInt96(uint96 x) internal pure returns (int96 z) {
+        assert(x <= uint96(type(int96).max));
+        z = int96(x);
     }
 
     // ----- checked arithmetic -----

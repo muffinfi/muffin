@@ -143,7 +143,7 @@ library PoolMath {
         uint128 sqrtP,
         uint128 sqrtPLower,
         uint128 sqrtPUpper,
-        int128 liquidityDelta
+        int96 liquidityDeltaD8
     ) internal pure returns (uint256 amt0, uint256 amt1) {
         // we assume {sqrtP, sqrtPLower, sqrtPUpper} ≠ 0 and sqrtPLower < sqrtPUpper
         unchecked {
@@ -151,8 +151,8 @@ library PoolMath {
             sqrtP = (sqrtP < sqrtPLower) ? sqrtPLower : (sqrtP > sqrtPUpper) ? sqrtPUpper : sqrtP;
 
             // calc amt{0,1} for the change of liquidity
-            uint128 absL = uint128(liquidityDelta >= 0 ? liquidityDelta : -liquidityDelta);
-            if (liquidityDelta >= 0) {
+            uint128 absL = uint128(uint96(liquidityDeltaD8 >= 0 ? liquidityDeltaD8 : -liquidityDeltaD8) << 8);
+            if (liquidityDeltaD8 >= 0) {
                 // round up
                 amt0 = uint(calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL));
                 amt1 = uint(calcAmt1FromSqrtP(sqrtPLower, sqrtP, absL));
@@ -172,22 +172,22 @@ library PoolMath {
         uint128 sqrtPUpper,
         uint256 amt0,
         uint256 amt1
-    ) internal pure returns (uint128 liquidity) {
+    ) internal pure returns (uint96 liquidityD8) {
         // we assume {sqrtP, sqrtPLower, sqrtPUpper} ≠ 0 and sqrtPLower < sqrtPUpper
         unchecked {
+            uint liquidity;
             if (sqrtP <= sqrtPLower) {
                 // L = Δx (√P0 √P1) / (√P0 - √P1)
-                liquidity = FullMath
-                    .mulDiv(amt0, uint(sqrtPLower) * sqrtPUpper, (sqrtPUpper - sqrtPLower) * Q72)
-                    .toUint128();
+                liquidity = FullMath.mulDiv(amt0, uint(sqrtPLower) * sqrtPUpper, (sqrtPUpper - sqrtPLower) * Q72);
             } else if (sqrtP >= sqrtPUpper) {
                 // L = Δy / (√P0 - √P1)
-                liquidity = FullMath.mulDiv(amt1, Q72, sqrtPUpper - sqrtPLower).toUint128();
+                liquidity = FullMath.mulDiv(amt1, Q72, sqrtPUpper - sqrtPLower);
             } else {
                 uint liquidity0 = FullMath.mulDiv(amt0, uint(sqrtP) * sqrtPUpper, (sqrtPUpper - sqrtP) * Q72);
                 uint liquidity1 = FullMath.mulDiv(amt1, Q72, sqrtP - sqrtPLower);
-                liquidity = (liquidity0 < liquidity1 ? liquidity0 : liquidity1).toUint128();
+                liquidity = (liquidity0 < liquidity1 ? liquidity0 : liquidity1);
             }
+            liquidityD8 = (liquidity >> 8).toUint96();
         }
     }
 }

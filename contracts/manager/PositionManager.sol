@@ -10,6 +10,8 @@ import "./base/ManagerBase.sol";
 import "./base/ERC721Extended.sol";
 
 abstract contract PositionManager is ManagerBase, ERC721Extended {
+    using Math for uint128;
+
     struct Pair {
         address token0;
         address token1;
@@ -76,8 +78,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     ) external {
         (uint8 tickSpacing, ) = IEngine(engine).getPoolBasics(keccak256(abi.encode(token0, token1)));
         if (tickSpacing == 0) {
-            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY) << 72, sqrtPrice));
-            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY) * sqrtPrice, 1 << 72));
+            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
+            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
             IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccId(msg.sender));
         }
         getPoolNum(token0, token1);
@@ -105,7 +107,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         external
         returns (
             uint256 tokenId,
-            uint128 liquidity,
+            uint96 liquidityD8,
             uint256 amount0,
             uint256 amount1
         )
@@ -122,7 +124,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             _ownedTokenIndex: 0
         });
 
-        (liquidity, amount0, amount1) = _addLiquidity(
+        (liquidityD8, amount0, amount1) = _addLiquidity(
             params.token0,
             params.token1,
             params.tierId,
@@ -149,14 +151,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         external
         checkApproved(params.tokenId)
         returns (
-            uint128 liquidity,
+            uint96 liquidityD8,
             uint256 amount0,
             uint256 amount1
         )
     {
         PositionInfo memory info = positions[params.tokenId];
         Pair memory pair = pairs[info.poolNum];
-        (liquidity, amount0, amount1) = _addLiquidity(
+        (liquidityD8, amount0, amount1) = _addLiquidity(
             pair.token0,
             pair.token1,
             info.tierId,
@@ -183,12 +185,12 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     )
         public
         returns (
-            uint128 liquidity,
+            uint96 liquidityD8,
             uint256 amount0,
             uint256 amount1
         )
     {
-        liquidity = PoolMath.calcLiquidityForAmts(
+        liquidityD8 = PoolMath.calcLiquidityForAmts(
             IEngine(engine).getTier(keccak256(abi.encode(token0, token1)), tierId).sqrtPrice,
             TickMath.tickToSqrtP(tickLower),
             TickMath.tickToSqrtP(tickUpper),
@@ -202,7 +204,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
                 tierId: tierId,
                 tickLower: tickLower,
                 tickUpper: tickUpper,
-                liquidity: liquidity,
+                liquidityD8: liquidityD8,
                 recipient: address(this),
                 recipientAccId: getAccId(recipient),
                 senderAccId: useAccount ? getAccId(msg.sender) : 0,
@@ -217,7 +219,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     struct RemoveLiquidityParams {
         uint256 tokenId;
-        uint128 liquidity;
+        uint96 liquidityD8;
         uint256 amount0Min;
         uint256 amount1Min;
         address withdrawTo;
@@ -243,7 +245,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
                 tierId: info.tierId,
                 tickLower: info.tickLower,
                 tickUpper: info.tickUpper,
-                liquidity: params.liquidity,
+                liquidityD8: params.liquidityD8,
                 accId: getAccId(info.owner),
                 collectAllFees: params.collectAllFees
             })
@@ -297,16 +299,16 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             uint8 tierId,
             int24 tickLower,
             int24 tickUpper,
+            uint96 liquidityD8,
             uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last,
-            uint128 liquidity
+            uint80 feeGrowthInside1Last
         )
     {
         PositionInfo memory info = positions[tokenId];
         Pair memory pair = pairs[info.poolNum];
         (owner, tierId, tickLower, tickUpper) = (info.owner, info.tierId, info.tickLower, info.tickUpper);
         (token0, token1) = (pair.token0, pair.token1);
-        (feeGrowthInside0Last, feeGrowthInside1Last, liquidity) = IEngine(engine).getPosition(
+        (liquidityD8, feeGrowthInside0Last, feeGrowthInside1Last) = IEngine(engine).getPosition(
             keccak256(abi.encode(token0, token1)),
             address(this),
             getAccId(owner),

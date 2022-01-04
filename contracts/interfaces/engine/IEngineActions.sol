@@ -31,7 +31,7 @@ interface IEngineActions {
         uint8 tierId;
         int24 tickLower;
         int24 tickUpper;
-        uint128 liquidity;
+        uint96 liquidityD8;
         address recipient;
         uint256 recipientAccId;
         uint256 senderAccId;
@@ -46,7 +46,7 @@ interface IEngineActions {
         uint8 tierId;
         int24 tickLower;
         int24 tickUpper;
-        uint128 liquidity;
+        uint96 liquidityD8;
         uint256 accId;
         bool collectAllFees;
     }

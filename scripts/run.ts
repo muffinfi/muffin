@@ -66,12 +66,12 @@ async function main() {
     data: [],
   };
   // await logTxGas(caller.mint(engine.address, mintArgs), 'add liq to tier #0');
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('522_259'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 79980, tickUpper: 80430, liquidity: wad('522_259'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 1, tickLower: 73590, tickUpper: 84600, liquidity: wad('444_518'), ...mintArgs }), 'add liq to tier #1'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 2, tickLower: 73590, tickUpper: 84600, liquidity: wad('744_518'), ...mintArgs }), 'add liq to tier #2'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 3, tickLower: 73590, tickUpper: 84600, liquidity: wad('84_192'), ...mintArgs }), 'add liq to tier #3'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 4, tickLower: 73590, tickUpper: 84600, liquidity: wad('200'), ...mintArgs }), 'add liq to tier #4'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 79980, tickUpper: 80430, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 1, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('444_518').div(2**8), ...mintArgs }), 'add liq to tier #1'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 2, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('744_518').div(2**8), ...mintArgs }), 'add liq to tier #2'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 3, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('84_192').div(2**8), ...mintArgs }), 'add liq to tier #3'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 4, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('200').div(2**8), ...mintArgs }), 'add liq to tier #4'); // prettier-ignore
 
   // ===== swap =====
   const wait = async () => {
@@ -127,9 +127,9 @@ async function main() {
     accId: 1,
     collectAllFees: true,
   };
-  await logTxGas(caller.burn(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('522_259'), ...burnArgs }), 'burn all liq from tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('1_000_000'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidity: wad('1_000_000'), ...mintArgs, recipientAccId: 2 }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.burn(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...burnArgs }), 'burn all liq from tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs, recipientAccId: 2 }), 'add liq to tier #0'); // prettier-ignore
   // // ===== remove + collect and re-add liq =====
   // await logTxGas(manager.removeLiquidityAndCollect({ tokenId: 0, liquidity: wad('522_259'), amount0Min: 0, amount1Min: 0, recipient: caller.address, collectTokens: true, collectReward: true, }), 'remove liq from tier #0 + collect'); // prettier-ignore
   // await logTxGas(manager.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728'), ...mintArgs, }), 'add liq to tier #0'); // prettier-ignore
