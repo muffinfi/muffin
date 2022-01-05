@@ -2,7 +2,6 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'hardhat-contract-sizer';
-import 'hardhat-gas-reporter';
 import 'hardhat-storage-layout';
 import { HardhatUserConfig, task } from 'hardhat/config';
 import env from './env';
@@ -20,15 +19,15 @@ task('compile-size-contracts', 'Compile and measure contract size', async (_args
 const basicCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 99999 },
+    optimizer: { enabled: true, runs: 9999 },
     metadata: { bytecodeHash: 'none' },
   },
 };
 
-const poolCompiler = {
+const engineCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 9999 },
+    optimizer: { enabled: true, runs: 5000 },
     metadata: { bytecodeHash: 'none' },
   },
 };
@@ -58,15 +57,8 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [basicCompiler],
     overrides: {
-      'contracts/Engine.sol': poolCompiler,
-      // 'contracts/PoolFactory.sol': poolCompiler,
+      'contracts/Engine.sol': engineCompiler,
     },
-  },
-  gasReporter: {
-    enabled: process.env.ENABLE_GAS_REPORTER === '1' ? true : false,
-    coinmarketcap: env.coinmarketcapKey,
-    currency: 'USD',
-    gasPrice: 150, // gwei
   },
 };
 
