@@ -212,7 +212,7 @@ library Pools {
             secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
 
             // calculate tick ema
-            (, uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs); // TODO: remove d80
+            (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
             ema20 = int24(((sumLTick * int256(Q64 - d20)) / int256(sumL) + ema20 * int256(d20)) >> 64);
             ema40 = int24(((sumLTick * int256(Q64 - d40)) / int256(sumL) + ema40 * int256(d40)) >> 64);
         }
