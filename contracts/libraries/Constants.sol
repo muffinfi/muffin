@@ -17,6 +17,4 @@ library Constants {
 
     /// @dev Base liquidity of a tier, scaled down 2^8. User pays it when adding a new tier.
     uint96 internal constant BASE_LIQUIDITY_D8 = 100;
-    /// @dev Maxmium number of tiers per pool
-    uint256 internal constant MAX_TIERS = 6;
 }

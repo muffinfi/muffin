@@ -7,7 +7,6 @@ import "./Math.sol";
 import "../Tiers.sol";
 
 // TODO: gas optim
-// - test fixed-sized array
 // - test stop using checked arithmetic in math.sol
 // - no fullmath in ceildiv?
 
@@ -15,6 +14,7 @@ library SwapMath {
     using Math for uint256;
     using Math for int256;
 
+    uint256 internal constant MAX_TIERS = 6;
     int256 private constant REJECTED = type(int256).max;
     int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
@@ -25,12 +25,10 @@ library SwapMath {
         int256 amount,
         Tiers.Tier[] memory tiers,
         uint256 tierChoices
-    ) internal pure returns (int256[] memory amts) {
+    ) internal pure returns (int256[MAX_TIERS] memory amts) {
         assert(amount > 0);
-
-        amts = new int256[](tiers.length);
-        uint256[] memory lsg = new uint256[](tiers.length); // array of liquidity divided by sqrt gamma (UQ128)
-        uint256[] memory res = new uint256[](tiers.length); // array of token reserve divided by gamma (UQ200)
+        uint256[MAX_TIERS] memory lsg; // array of liquidity divided by sqrt gamma (UQ128)
+        uint256[MAX_TIERS] memory res; // array of token reserve divided by gamma (UQ200)
         uint256 num; //    numerator of sqrt lambda (sum of UQ128)
         uint256 denom; //  denominator of sqrt lambda (sum of UQ200 + amount)
 
@@ -82,12 +80,10 @@ library SwapMath {
         int256 amount,
         Tiers.Tier[] memory tiers,
         uint256 tierChoices
-    ) internal pure returns (int256[] memory amts) {
+    ) internal pure returns (int256[MAX_TIERS] memory amts) {
         assert(amount < 0);
-
-        amts = new int256[](tiers.length);
-        uint256[] memory lsg = new uint256[](tiers.length); // array of liquidity divided by sqrt fee (UQ128)
-        uint256[] memory res = new uint256[](tiers.length); // array of token reserve (UQ200)
+        uint256[MAX_TIERS] memory lsg; // array of liquidity divided by sqrt fee (UQ128)
+        uint256[MAX_TIERS] memory res; // array of token reserve (UQ200)
         uint256 num; //   numerator of sqrt lambda (sum of UQ128)
         int256 denom; //  denominator of sqrt lambda (sum of UQ200 - amount)
 

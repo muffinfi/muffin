@@ -51,6 +51,7 @@ library Pools {
         mapping(bytes32 => Positions.Position) positions;
     }
 
+    uint256 internal constant MAX_TIERS = 6;
     uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
     uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
 
@@ -115,7 +116,7 @@ library Pools {
         uint128 sqrtPrice
     ) internal returns (uint256 amount0, uint256 amount1) {
         uint256 tierId = pool.tiers.length;
-        require(tierId < Constants.MAX_TIERS);
+        require(tierId < MAX_TIERS);
         require(sqrtGamma <= 100000);
 
         // initialize tier
@@ -238,7 +239,7 @@ library Pools {
         uint256 protocolFeeAmt;
         uint256 priceBoundReached;
         TickMath.Cache tmCache;
-        int256[] amounts;
+        int256[MAX_TIERS] amounts;
     }
 
     struct TierState {
@@ -273,7 +274,7 @@ library Pools {
     {
         lock(pool);
         Tiers.Tier[] memory tiers = pool.tiers;
-        TierState[] memory states = new TierState[](tiers.length);
+        TierState[MAX_TIERS] memory states;
         unchecked {
             if (amtDesired == 0 || amtDesired == REJECTED) revert InvalidAmount();
             if (tierChoices > 0x3F || tierChoices & ((1 << tiers.length) - 1) == 0) revert InvalidTierChoices();
@@ -288,7 +289,7 @@ library Pools {
             protocolFeeAmt: 0,
             priceBoundReached: 0,
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
-            amounts: new int256[](0)
+            amounts: [int256(0), 0, 0, 0, 0, 0] // TODO: any better ways?
         });
 
         while (true) {
@@ -400,7 +401,7 @@ library Pools {
     /// @dev Apply the post-swap data changes from memory to storage, also prepare data for event logging
     function _updateTiers(
         Pool storage pool,
-        TierState[] memory states,
+        TierState[MAX_TIERS] memory states,
         Tiers.Tier[] memory tiers,
         uint256 amtIn
     ) internal returns (uint256 amtInDistribution, uint256[] memory tierData) {
