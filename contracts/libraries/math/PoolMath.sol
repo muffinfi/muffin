@@ -151,7 +151,7 @@ library PoolMath {
             sqrtP = (sqrtP < sqrtPLower) ? sqrtPLower : (sqrtP > sqrtPUpper) ? sqrtPUpper : sqrtP;
 
             // calc amt{0,1} for the change of liquidity
-            uint128 absL = uint128(uint96(liquidityDeltaD8 >= 0 ? liquidityDeltaD8 : -liquidityDeltaD8) << 8);
+            uint128 absL = uint128(uint96(liquidityDeltaD8 >= 0 ? liquidityDeltaD8 : -liquidityDeltaD8)) << 8;
             if (liquidityDeltaD8 >= 0) {
                 // round up
                 amt0 = uint(calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL));
