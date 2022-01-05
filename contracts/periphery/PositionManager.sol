@@ -25,7 +25,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     uint24 internal nextPoolNum = 1;
     mapping(bytes32 => uint24) internal poolNums;
-    mapping(uint24 => Pair) internal pairs;
+    mapping(uint24 => Pair) public pairs;
     mapping(uint256 => PositionInfo) public positions;
 
     constructor() ERC721Extended("Deliswap Position", "DELI-POS") {}
@@ -102,6 +102,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     function mint(MintParams calldata params)
         external
+        payable
         returns (
             uint256 tokenId,
             uint96 liquidityD8,
@@ -146,6 +147,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     function addLiquidity(AddLiquidityParams calldata params)
         external
+        payable
         checkApproved(params.tokenId)
         returns (
             uint96 liquidityD8,

@@ -9,14 +9,14 @@ abstract contract ERC721Extended is ERC721 {
     address public tokenDescriptor;
     address public tokenDescriptorSetter;
 
-    bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)"); // prettier-ignore
+    bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)");
     bytes32 private immutable nameHash;
     mapping(uint256 => uint256) public nonces;
 
     uint80 internal minted;
     uint80 internal burned;
     uint80 internal nextTokenId;
-    mapping(address => uint80[65535]) internal _ownedTokens; // user => tokenId[]
+    mapping(address => uint80[65535]) internal ownedTokens; // user address => tokenId[]
 
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
         nameHash = keccak256(bytes(name_));
@@ -92,7 +92,7 @@ abstract contract ERC721Extended is ERC721 {
      * Adapted from OpenZeppelin 4.3.1's ERC721Enumerable.
      * Removed `allTokens` array and added `minted` and `burned` to keep track of total supply.
      * Removed `_ownedTokensIndex` mapping and added setter and getter functions for it.
-     * Changed `_ownedTokens` from a "mapping of mapping" to a "mapping of uint80 array" for gas optimization.
+     * Changed `ownedTokens` from a "mapping of mapping" to a "mapping of uint80 array" for gas optimization.
      */
 
     function totalSupply() public view virtual returns (uint256) {
@@ -101,7 +101,7 @@ abstract contract ERC721Extended is ERC721 {
 
     function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual returns (uint256 tokenId) {
         require(index < ERC721.balanceOf(owner), "Index out of bound");
-        tokenId = _ownedTokens[owner][index];
+        tokenId = ownedTokens[owner][index];
     }
 
     function _beforeTokenTransfer(
@@ -128,7 +128,7 @@ abstract contract ERC721Extended is ERC721 {
     function _addTokenToOwnerEnumeration(address to, uint80 tokenId) internal {
         uint256 length = ERC721.balanceOf(to);
         require(length <= type(uint16).max, "MAX_TOKENS_PER_ADDRESS");
-        _ownedTokens[to][length] = tokenId;
+        ownedTokens[to][length] = tokenId;
         _setOwnedTokenIndex(tokenId, uint16(length));
     }
 
@@ -137,13 +137,13 @@ abstract contract ERC721Extended is ERC721 {
         uint16 tokenIndex = _getOwnedTokenIndex(tokenId);
 
         if (tokenIndex != lastTokenIndex) {
-            uint80 lastTokenId = _ownedTokens[from][lastTokenIndex];
-            _ownedTokens[from][tokenIndex] = lastTokenId;
+            uint80 lastTokenId = ownedTokens[from][lastTokenIndex];
+            ownedTokens[from][tokenIndex] = lastTokenId;
             _setOwnedTokenIndex(lastTokenId, tokenIndex);
         }
 
         _setOwnedTokenIndex(tokenId, 0);
-        delete _ownedTokens[from][lastTokenIndex];
+        delete ownedTokens[from][lastTokenIndex];
     }
 
     function _getOwnedTokenIndex(uint80 tokenId) internal view virtual returns (uint16 index);
