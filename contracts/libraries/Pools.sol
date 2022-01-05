@@ -23,19 +23,28 @@ library Pools {
     error InvalidAmount();
     error InvalidTierChoices();
     error InvalidTick();
-    error MaxLiquidityNetExceeded();
 
+    /// @param unlocked     Reentrancy lock
+    /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
+    /// @param protocolFee  Protocol fee with base 255 (e.g. protocolFee = 51 for 20% protocol fee)
+    /// @param tickLastUpdate Timestamp of last tickCumulative update
+    /// @param tickCumulative Tick * seconds elapsed
+    /// @param tickEma20    Tick 20-min EMA
+    /// @param tickEma40    Tick 40-min EMA
+    /// @param secondsPerLiquidityCumulative Accumulated seconds per unit of liquidity (UQ8.88)
+    /// @param tiers        Array of tiers
+    /// @param tickMaps     Bitmap for each tier to store which ticks are initializated (tierId => TickMap)
+    /// @param ticks        Mapping of tick states for each tier (tierId => tick => Tick)
+    /// @param positions    Mapping of position states (keccak256(encodePacked(owner, accId, tierId, tickLower, tickUpper)) => Position)
     struct Pool {
         bool unlocked;
         uint8 tickSpacing;
         uint8 protocolFee;
-        // ---
         uint32 tickLastUpdate;
         int56 tickCumulative;
         int24 tickEma20;
         int24 tickEma40;
         uint96 secondsPerLiquidityCumulative;
-        // ---
         Tiers.Tier[] tiers;
         mapping(uint256 => TickMaps.TickMap) tickMaps;
         mapping(uint256 => mapping(int24 => Ticks.Tick)) ticks;
@@ -219,8 +228,8 @@ library Pools {
      *==============================================================*/
 
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
-    int256 private constant REJECTED = type(int256).max;
-    int256 private constant AMOUNT_TOLERANCE = 100;
+    int256 private constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
+    int256 private constant AMOUNT_TOLERANCE = 100; // tolerance between the desired and actual swap amounts
 
     struct SwapCache {
         bool zeroForOne;
@@ -237,6 +246,16 @@ library Pools {
         uint256 amountIn;
     }
 
+    /// @notice                 Perform a swap in the pool
+    /// @param pool             Pool storage pointer
+    /// @param isToken0         True if amtDesired refers to token0
+    /// @param amtDesired       Desired swap amount (positive: exact input, negative: exact output)
+    /// @param tierChoices      Bitmap to allow which tiers to swap
+    /// @return amountA         Pool's tokenA balance change (the token which amtDesired refers to)
+    /// @return amountB         Pool's tokenB balance change (the opposite token of tokenA)
+    /// @return protocolFeeAmt  Amount of input token as protocol fee
+    /// @return amtInDistribution Percentages of input amount routed to each tier (for logging)
+    /// @return tierData        Array of tier's liquidity and sqrt price after the swap (for logging)
     function swap(
         Pool storage pool,
         bool isToken0,
@@ -273,16 +292,19 @@ library Pools {
         });
 
         while (true) {
+            // calculate the swap amount for each tier
             cache.amounts = amtDesired > 0
                 ? SwapMath.calcTierAmtsIn(isToken0, amtDesired - amountA, tiers, tierChoices)
                 : SwapMath.calcTierAmtsOut(isToken0, amtDesired - amountA, tiers, tierChoices);
 
+            // compute the swap for each tier
             for (uint256 i; i < tiers.length; i++) {
                 (int256 amtAStep, int256 amtBStep) = _swapStep(pool, isToken0, cache, states[i], tiers[i], i);
                 amountA += amtAStep;
                 amountB += amtBStep;
             }
 
+            // check if we meet the stopping criteria
             int256 amtRemaining = amtDesired - amountA;
             unchecked {
                 if (
@@ -327,7 +349,7 @@ library Pools {
             );
             if (amtAStep == REJECTED) return (0, 0);
 
-            // cache input amount for later event logging
+            // cache input amount for later event logging (locally)
             state.amountIn += uint256(cache.exactIn ? amtAStep : amtBStep);
 
             // update protocol fee amt (locally)
@@ -344,11 +366,11 @@ library Pools {
             }
         }
 
-        // handle cross tick, which may update storage
+        // handle cross tick, which updates a tick state
         if (tier.sqrtPrice == state.sqrtPTick) {
             int24 tickCross = cache.zeroForOne ? tier.nextTickBelow : tier.nextTickAbove;
 
-            // skip crossing tick if reached the end of the supported price range
+            // skip crossing tick if reaches the end of the supported price range
             if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
                 cache.priceBoundReached |= 1 << tierId;
             } else {
@@ -375,8 +397,7 @@ library Pools {
         }
     }
 
-    /// @return amtInDistribution It stores the percentage of input amount routed to each tier (for logging)
-    /// @return tierData It stores each tier's new sqrt price and liquidity (for logging)
+    /// @dev Apply the post-swap data changes from memory to storage, also prepare data for event logging
     function _updateTiers(
         Pool storage pool,
         TierState[] memory states,
@@ -414,7 +435,15 @@ library Pools {
      *                      UPDATE LIQUIDITY
      *==============================================================*/
 
-    /// @dev External
+    /// @notice                 Update a position's liquidity
+    /// @dev                    External function. called by DELEGATECALL
+    /// @param owner            Address of the position owner
+    /// @param accId            Account id of the position owner
+    /// @param tierId           Tier index of the position
+    /// @param tickLower        Lower tick boundary of the position
+    /// @param tickUpper        Upper tick boundary of the position
+    /// @param liquidityDeltaD8 Amount of liquidity change, divided by 2^8
+    /// @param collectAllFees   True to collect all remaining accrued fees of the position
     function updateLiquidity(
         Pool storage pool,
         address owner,
@@ -443,7 +472,7 @@ library Pools {
                 (tickLower % int24(uint24(pool.tickSpacing)) != 0 || tickUpper % int24(uint24(pool.tickSpacing)) != 0))
         ) revert InvalidTick();
 
-        // ------------------- UPDATE LIQUIDITY ---------------------
+        // -------------------- UPDATE LIQUIDITY --------------------
         {
             // update current liquidity if in-range
             Tiers.Tier storage tier = pool.tiers[tierId];
@@ -471,7 +500,7 @@ library Pools {
             (feeAmtOut0, feeAmtOut1) = pos.update(liquidityDeltaD8, feeGrowthInside0, feeGrowthInside1, collectAllFees);
         }
 
-        // --------------------- CLEAN UP TICKS ---------------------
+        // -------------------- CLEAN UP TICKS ----------------------
         if (liquidityDeltaD8 < 0) {
             bool deleted;
             deleted = _deleteEmptyTick(pool, tierId, tickLower);

@@ -48,7 +48,7 @@ interface IEngineActions {
     /// @param tierId           Position's tier index of the
     /// @param tickLower        Position's lower tick boundary
     /// @param tickUpper        Position's upper tick boundary
-    /// @param liquidityD8      Amount of liquidity to add, divided by 2^8
+    /// @param liquidityD8      Amount of liquidity to mint, divided by 2^8
     /// @param recipient        Recipient's address
     /// @param recipientAccId   Recipient's account id
     /// @param senderAccId      Sender's account id
@@ -73,12 +73,12 @@ interface IEngineActions {
     function mint(MintParams calldata params) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice                 Parameters for the burn function
-    /// @param token0           Address of token0 of the pair
-    /// @param token1           Address of token1 of the pair
+    /// @param token0           Address of token0 of the pool
+    /// @param token1           Address of token1 of the pool
     /// @param tierId           Tier index of the position
     /// @param tickLower        Lower tick boundary of the position
     /// @param tickUpper        Upper tick boundary of the position
-    /// @param liquidityD8      Amount of liquidity to add, divided by 2^8
+    /// @param liquidityD8      Amount of liquidity to burn, divided by 2^8
     /// @param accId            Position owner's account id
     /// @param collectAllFees   True to collect all accrued fees of the position
     /// @param data             Arbitrary data that is passed to callback function
