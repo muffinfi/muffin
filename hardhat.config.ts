@@ -4,7 +4,6 @@ import '@typechain/hardhat';
 import 'hardhat-contract-sizer';
 import 'hardhat-storage-layout';
 import { HardhatUserConfig, task } from 'hardhat/config';
-import env from './env';
 
 task('layout', 'Print contract storage layout', async (_args, hre) => {
   await hre.run('compile');
@@ -40,18 +39,6 @@ const config: HardhatUserConfig = {
       accounts: { accountsBalance: '1000000000000000000000000000000000000000000000' }, // 1e45
       initialBaseFeePerGas: 0,
       gasPrice: 0,
-    },
-    localhost: {
-      url: 'http://127.0.0.1:8545',
-      chainId: 31337,
-    },
-    rinkeby: {
-      url: env.rinkeby.url,
-      accounts: { mnemonic: env.rinkeby.mnemonic },
-    },
-    mainnet: {
-      url: env.mainnet.url,
-      accounts: { mnemonic: env.mainnet.mnemonic },
     },
   },
   solidity: {
