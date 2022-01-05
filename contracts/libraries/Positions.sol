@@ -11,6 +11,8 @@ library Positions {
         uint80 feeGrowthInside1Last; // UQ16.64
     }
 
+    uint256 private constant FEE_GROWTH_RESOLUTION = 64;
+
     /**
      * @param positions The mapping of positions
      * @param owner     The position owner's address
@@ -60,8 +62,8 @@ library Positions {
             uint80 feeGrowthDelta1 = feeGrowthInside1 - self.feeGrowthInside1Last;
 
             if (collectAllFees) {
-                feeAmtOut0 = (uint256(liquidityD8) * feeGrowthDelta0) / (Constants.FEE_GROWTH_PRECISION >> 8);
-                feeAmtOut1 = (uint256(liquidityD8) * feeGrowthDelta1) / (Constants.FEE_GROWTH_PRECISION >> 8);
+                feeAmtOut0 = (uint256(liquidityD8) * feeGrowthDelta0) >> (FEE_GROWTH_RESOLUTION - 8);
+                feeAmtOut1 = (uint256(liquidityD8) * feeGrowthDelta1) >> (FEE_GROWTH_RESOLUTION - 8);
                 self.liquidityD8 = liquidityD8New;
                 self.feeGrowthInside0Last = feeGrowthInside0;
                 self.feeGrowthInside1Last = feeGrowthInside1;
@@ -74,8 +76,8 @@ library Positions {
                 self.feeGrowthInside1Last = feeGrowthInside1;
                 //
             } else if (liquidityDeltaD8 < 0) {
-                feeAmtOut0 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta0) / (Constants.FEE_GROWTH_PRECISION >> 8);
-                feeAmtOut1 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta1) / (Constants.FEE_GROWTH_PRECISION >> 8);
+                feeAmtOut0 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta0) >> (FEE_GROWTH_RESOLUTION - 8);
+                feeAmtOut1 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta1) >> (FEE_GROWTH_RESOLUTION - 8);
                 self.liquidityD8 = liquidityD8New;
             }
         }

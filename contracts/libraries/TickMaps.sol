@@ -3,8 +3,6 @@ pragma solidity 0.8.10;
 
 import "./Constants.sol";
 
-/// @notice TickMap stores which ticks are initialized.
-/// @author Deliswap
 library TickMaps {
     struct TickMap {
         uint256 blockmap; //                    stores which blocks are initialized
@@ -12,30 +10,34 @@ library TickMaps {
         mapping(uint256 => uint256) words; //   stores which ticks are initialized
     }
 
-    /// @dev Convert tick into an unsigned integer. Assume tick >= Constants.MIN_TICK
-    function _compress(int24 tick) internal pure returns (uint256 compressed) {
+    /// @dev Compress and convert tick into an unsigned integer, then compute the indices of the block and word that the
+    /// compressed tick uses. Assume tick >= Constants.MIN_TICK
+    function _indices(int24 tick)
+        internal
+        pure
+        returns (
+            uint256 blockIdx,
+            uint256 wordIdx,
+            uint256 compressed
+        )
+    {
         unchecked {
             compressed = uint256(int256((tick - Constants.MIN_TICK) / Constants.MIN_TICK_SPACING));
+            blockIdx = compressed >> 16;
+            wordIdx = compressed >> 8;
+            assert(blockIdx < 256);
         }
     }
 
     /// @dev Convert the unsigned integer back to a tick
     function _decompress(uint256 compressed) internal pure returns (int24 tick) {
         unchecked {
-            tick = int24(int256(compressed)) * Constants.MIN_TICK_SPACING + Constants.MIN_TICK;
+            tick = int24(int256(compressed) * Constants.MIN_TICK_SPACING + Constants.MIN_TICK);
         }
     }
 
-    /// @dev Return the indices of the block and word that the compressed tick uses
-    function _indices(uint256 compressed) internal pure returns (uint256 blockIdx, uint256 wordIdx) {
-        blockIdx = compressed >> 16;
-        wordIdx = compressed >> 8;
-        assert(blockIdx < 256);
-    }
-
     function set(TickMap storage self, int24 tick) internal {
-        uint256 compressed = _compress(tick);
-        (uint256 blockIdx, uint256 wordIdx) = _indices(compressed);
+        (uint256 blockIdx, uint256 wordIdx, uint256 compressed) = _indices(tick);
 
         self.words[wordIdx] |= 1 << (compressed & 0xFF);
         self.blocks[blockIdx] |= 1 << (wordIdx & 0xFF);
@@ -43,8 +45,7 @@ library TickMaps {
     }
 
     function unset(TickMap storage self, int24 tick) internal {
-        uint256 compressed = _compress(tick);
-        (uint256 blockIdx, uint256 wordIdx) = _indices(compressed);
+        (uint256 blockIdx, uint256 wordIdx, uint256 compressed) = _indices(tick);
 
         self.words[wordIdx] &= ~(1 << (compressed & 0xFF));
         if (self.words[wordIdx] == 0) {
@@ -68,8 +69,7 @@ library TickMaps {
     //                  msb(masked) = 5
     function nextBelow(TickMap storage self, int24 tick) internal view returns (int24 tickBelow) {
         unchecked {
-            uint256 compressed = _compress(tick);
-            (uint256 blockIdx, uint256 wordIdx) = _indices(compressed);
+            (uint256 blockIdx, uint256 wordIdx, uint256 compressed) = _indices(tick);
 
             uint256 word = self.words[wordIdx] & ((1 << (compressed & 0xFF)) - 1);
             if (word == 0) {

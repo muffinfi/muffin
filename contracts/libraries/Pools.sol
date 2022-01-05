@@ -42,6 +42,9 @@ library Pools {
         mapping(bytes32 => Positions.Position) positions;
     }
 
+    uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
+    uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
+
     function lock(Pool storage pool) internal {
         require(pool.unlocked);
         pool.unlocked = false;
@@ -78,7 +81,7 @@ library Pools {
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;
 
-        int24 tick = TickMath.sqrtPToTick(sqrtPrice);
+        int24 tick = TickMath.sqrtPriceToTick(sqrtPrice);
         (pool.tickLastUpdate, pool.tickEma20, pool.tickEma40) = (uint32(block.timestamp), tick, tick);
         (amount0, amount1) = _addTier(pool, sqrtGamma, sqrtPrice);
     }
@@ -112,7 +115,7 @@ library Pools {
                 liquidity: uint128(Constants.BASE_LIQUIDITY_D8) << 8,
                 sqrtPrice: sqrtPrice,
                 sqrtGamma: sqrtGamma,
-                tick: TickMath.sqrtPToTick(sqrtPrice),
+                tick: TickMath.sqrtPriceToTick(sqrtPrice),
                 nextTickBelow: Constants.MIN_TICK,
                 nextTickAbove: Constants.MAX_TICK,
                 feeGrowthGlobal0: 0,
@@ -121,16 +124,14 @@ library Pools {
         );
 
         // initialize min tick & max tick
-        Ticks.Tick storage min = pool.ticks[tierId][Constants.MIN_TICK];
-        Ticks.Tick storage max = pool.ticks[tierId][Constants.MAX_TICK];
-        (min.liquidityLowerD8, min.liquidityUpperD8, min.nextBelow, min.nextAbove) = (
+        Ticks.Tick storage lower = pool.ticks[tierId][Constants.MIN_TICK];
+        Ticks.Tick storage upper = pool.ticks[tierId][Constants.MAX_TICK];
+        (lower.liquidityLowerD8, lower.nextBelow, lower.nextAbove) = (
             Constants.BASE_LIQUIDITY_D8,
-            0,
             Constants.MIN_TICK,
             Constants.MAX_TICK
         );
-        (max.liquidityLowerD8, max.liquidityUpperD8, max.nextBelow, max.nextAbove) = (
-            0,
+        (upper.liquidityUpperD8, upper.nextBelow, upper.nextAbove) = (
             Constants.BASE_LIQUIDITY_D8,
             Constants.MIN_TICK,
             Constants.MAX_TICK
@@ -198,7 +199,7 @@ library Pools {
                 sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
             }
             tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
-            secsPerLiqCum += uint96((uint256(secs) << Constants.SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+            secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
 
             // calculate tick ema
             (, uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs); // TODO: remove d80
@@ -277,7 +278,7 @@ library Pools {
                 : SwapMath.calcTierAmtsOut(isToken0, amtDesired - amountA, tiers, tierChoices);
 
             for (uint256 i; i < tiers.length; i++) {
-                (int256 amtAStep, int256 amtBStep) = _swapStep(pool, isToken0, cache, states, tiers, i);
+                (int256 amtAStep, int256 amtBStep) = _swapStep(pool, isToken0, cache, states[i], tiers[i], i);
                 amountA += amtAStep;
                 amountB += amtBStep;
             }
@@ -299,36 +300,34 @@ library Pools {
         Pool storage pool,
         bool isToken0,
         SwapCache memory cache,
-        TierState[] memory states,
-        Tiers.Tier[] memory tiers,
+        TierState memory state,
+        Tiers.Tier memory tier,
         uint256 tierId
     ) internal returns (int256 amtAStep, int256 amtBStep) {
         if (cache.amounts[tierId] == REJECTED) return (0, 0);
 
-        TierState memory state = states[tierId];
-        Tiers.Tier memory tier = tiers[tierId];
-
         // calculate sqrt price of the next tick
         if (state.sqrtPTick == 0)
-            state.sqrtPTick = TickMath.tickToSqrtPMemoized(
+            state.sqrtPTick = TickMath.tickToSqrtPriceMemoized(
                 cache.tmCache,
                 cache.zeroForOne ? tier.nextTickBelow : tier.nextTickAbove
             );
 
-        // calculate input & output amts, new sqrt price, and fee amt for this swap step
-        uint256 feeAmtStep;
-        (amtAStep, amtBStep, tier.sqrtPrice, feeAmtStep) = SwapMath.computeStep(
-            isToken0,
-            cache.exactIn,
-            cache.amounts[tierId],
-            tier.sqrtPrice,
-            state.sqrtPTick,
-            tier.liquidity,
-            tier.sqrtGamma
-        );
-        if (amtAStep == REJECTED) return (0, 0);
-
         unchecked {
+            // calculate input & output amts, new sqrt price, and fee amt for this swap step
+            uint256 feeAmtStep;
+            (amtAStep, amtBStep, tier.sqrtPrice, feeAmtStep) = SwapMath.computeStep(
+                isToken0,
+                cache.exactIn,
+                cache.amounts[tierId],
+                tier.sqrtPrice,
+                state.sqrtPTick,
+                tier.liquidity,
+                tier.sqrtGamma
+            );
+            if (amtAStep == REJECTED) return (0, 0);
+
+            // cache input amount for later event logging
             state.amountIn += uint256(cache.exactIn ? amtAStep : amtBStep);
 
             // update protocol fee amt (locally)
@@ -337,7 +336,7 @@ library Pools {
             feeAmtStep -= protocolFeeAmt;
 
             // update fee growth (locally) (realistically assume feeAmtStep < 2**192)
-            uint80 feeGrowth = uint80((feeAmtStep << Constants.FEE_GROWTH_RESOLUTION) / tier.liquidity);
+            uint80 feeGrowth = uint80((feeAmtStep << FEE_GROWTH_RESOLUTION) / tier.liquidity);
             if (cache.zeroForOne) {
                 tier.feeGrowthGlobal0 += feeGrowth;
             } else {
@@ -346,40 +345,32 @@ library Pools {
         }
 
         // handle cross tick, which may update storage
-        if (tier.sqrtPrice == state.sqrtPTick) _crossTick(pool, cache, state, tier, tierId);
-    }
+        if (tier.sqrtPrice == state.sqrtPTick) {
+            int24 tickCross = cache.zeroForOne ? tier.nextTickBelow : tier.nextTickAbove;
 
-    function _crossTick(
-        Pool storage pool,
-        SwapCache memory cache,
-        TierState memory state,
-        Tiers.Tier memory tier,
-        uint256 tierId
-    ) internal {
-        int24 tickCross = cache.zeroForOne ? tier.nextTickBelow : tier.nextTickAbove;
-
-        // skip crossing tick if reached the end of the supported price range
-        if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
-            cache.priceBoundReached |= 1 << tierId;
-            return;
-        }
-        // clear cached tick price, so as to calculate a new one in next loop
-        state.sqrtPTick = 0;
-
-        // flip the direction of tick's data (effect)
-        Ticks.Tick storage obj = pool.ticks[tierId][tickCross];
-        Ticks.flip(obj, tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
-        unchecked {
-            // update tier's liquidity and next ticks (locally)
-            (uint128 liquidityLowerD8, uint128 liquidityUpperD8) = (obj.liquidityLowerD8, obj.liquidityUpperD8);
-            if (cache.zeroForOne) {
-                tier.liquidity = tier.liquidity + (liquidityUpperD8 << 8) - (liquidityLowerD8 << 8); // TODO: need test cases
-                tier.nextTickBelow = obj.nextBelow;
-                tier.nextTickAbove = tickCross;
+            // skip crossing tick if reached the end of the supported price range
+            if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
+                cache.priceBoundReached |= 1 << tierId;
             } else {
-                tier.liquidity = tier.liquidity + (liquidityLowerD8 << 8) - (liquidityUpperD8 << 8);
-                tier.nextTickBelow = tickCross;
-                tier.nextTickAbove = obj.nextAbove;
+                // clear cached tick price, so as to calculate a new one in next loop
+                state.sqrtPTick = 0;
+
+                // flip the direction of tick's data (effect)
+                Ticks.Tick storage crossed = pool.ticks[tierId][tickCross];
+                crossed.flip(tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
+                unchecked {
+                    // update tier's liquidity and next ticks (locally)
+                    (uint128 liqLowerD8, uint128 liqUpperD8) = (crossed.liquidityLowerD8, crossed.liquidityUpperD8);
+                    if (cache.zeroForOne) {
+                        tier.liquidity = tier.liquidity + (liqUpperD8 << 8) - (liqLowerD8 << 8); // TODO: need test cases
+                        tier.nextTickBelow = crossed.nextBelow;
+                        tier.nextTickAbove = tickCross;
+                    } else {
+                        tier.liquidity = tier.liquidity + (liqLowerD8 << 8) - (liqUpperD8 << 8);
+                        tier.nextTickBelow = tickCross;
+                        tier.nextTickAbove = crossed.nextAbove;
+                    }
+                }
             }
         }
     }
@@ -393,7 +384,6 @@ library Pools {
         uint256 amtIn
     ) internal returns (uint256 amtInDistribution, uint256[] memory tierData) {
         tierData = new uint256[](tiers.length);
-
         bool noOverflow = amtIn < (1 << 215); // 256 - 41 bits
         unchecked {
             for (uint8 i; i < tiers.length; i++) {
@@ -405,7 +395,7 @@ library Pools {
                     // if tier's price is equal to tick's price (let say the tick is T), the tier is expected to be in
                     // the upper tick space [T, T+1]. Only if the tier's next upper crossing tick is T, the tier is in
                     // the lower tick space [T-1, T].
-                    tier.tick = TickMath.sqrtPToTick(tier.sqrtPrice);
+                    tier.tick = TickMath.sqrtPriceToTick(tier.sqrtPrice);
                     if (tier.tick == tier.nextTickAbove) tier.tick--;
 
                     pool.tiers[i] = tier;
@@ -501,8 +491,8 @@ library Pools {
         if (liquidityDeltaD8 != 0)
             (amount0, amount1) = PoolMath.calcAmtsForLiquidity(
                 pool.tiers[tierId].sqrtPrice,
-                TickMath.tickToSqrtP(tickLower),
-                TickMath.tickToSqrtP(tickUpper),
+                TickMath.tickToSqrtPrice(tickLower),
+                TickMath.tickToSqrtPrice(tickUpper),
                 liquidityDeltaD8
             );
     }
@@ -643,7 +633,7 @@ library Pools {
                 if (secs != 0) {
                     uint256 sumL;
                     for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
-                    secsPerLiqCum += uint96((uint256(secs) << Constants.SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+                    secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
                 }
                 secsPerLiquidityInside =
                     secsPerLiqCum -

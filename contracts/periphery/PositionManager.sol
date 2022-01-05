@@ -4,14 +4,11 @@ pragma solidity 0.8.10;
 import "../interfaces/engine/IEngine.sol";
 import "../libraries/math/PoolMath.sol";
 import "../libraries/math/TickMath.sol";
-import "../libraries/math/Math.sol";
 import "../libraries/Constants.sol";
 import "./base/ManagerBase.sol";
 import "./base/ERC721Extended.sol";
 
 abstract contract PositionManager is ManagerBase, ERC721Extended {
-    using Math for uint128;
-
     struct Pair {
         address token0;
         address token1;
@@ -192,8 +189,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     {
         liquidityD8 = PoolMath.calcLiquidityForAmts(
             IEngine(engine).getTier(keccak256(abi.encode(token0, token1)), tierId).sqrtPrice,
-            TickMath.tickToSqrtP(tickLower),
-            TickMath.tickToSqrtP(tickUpper),
+            TickMath.tickToSqrtPrice(tickLower),
+            TickMath.tickToSqrtPrice(tickUpper),
             amount0Desired,
             amount1Desired
         );

@@ -13,16 +13,15 @@ library TickMath {
     /**
      * @dev Find sqrtP = u^tick, where u = sqrt(1.0001)
      *
-     * Let   b_i = the i-th bit of x and b_i ∈ {0, 1},
-     * Then    x = (b0 * 2^0) + (b1 * 2^1) + (b2 * 2^2) + ...
-     * Hence,  r = u^x
-     *           = u^(b0 * 2^0) * u^(b1 * 2^1) * u^(b2 * 2^2) * ...
-     *           = k0^b0 * k1^b1 * k2^b2 * ... (where k_i = u^(2^i))
-     *
+     * Let b_i = the i-th bit of x and b_i ∈ {0, 1}
+     * Then  x = (b0 * 2^0) + (b1 * 2^1) + (b2 * 2^2) + ...
+     * Thus, r = u^x
+     *         = u^(b0 * 2^0) * u^(b1 * 2^1) * u^(b2 * 2^2) * ...
+     *         = k0^b0 * k1^b1 * k2^b2 * ... (where k_i = u^(2^i))
      * We pre-compute k_i since u is a known constant. In practice, we use u = 1/sqrt(1.0001) to
      * prevent overflow during the computation, then inverse the result at the end.
      */
-    function tickToSqrtP(int24 tick) internal pure returns (uint128 sqrtP) {
+    function tickToSqrtPrice(int24 tick) internal pure returns (uint128 sqrtP) {
         unchecked {
             require(MIN_TICK <= tick && tick <= MAX_TICK);
             uint256 x = uint256(uint24(tick < 0 ? -tick : tick)); // abs(tick)
@@ -59,7 +58,7 @@ library TickMath {
     }
 
     /// @dev Find tick = floor(log_u(sqrtP)), where u = sqrt(1.0001)
-    function sqrtPToTick(uint128 sqrtP) internal pure returns (int24 tick) {
+    function sqrtPriceToTick(uint128 sqrtP) internal pure returns (int24 tick) {
         unchecked {
             require(MIN_SQRT_P <= sqrtP && sqrtP <= MAX_SQRT_P);
             uint256 x = uint256(sqrtP);
@@ -117,7 +116,7 @@ library TickMath {
                 r < -162097929153559009270803518120019400513814528 ? (r - 243593344879128563154481485709313) >> 128 :
                 r >> 128
             );
-            tick = (tickUpper == tickLower || sqrtP >= tickToSqrtP(tickUpper)) ? tickUpper : tickLower;
+            tick = (tickUpper == tickLower || sqrtP >= tickToSqrtPrice(tickUpper)) ? tickUpper : tickLower;
         }
     }
 
@@ -127,10 +126,10 @@ library TickMath {
     }
 
     /// @dev memoize last tick-to-sqrtP conversion
-    function tickToSqrtPMemoized(Cache memory cache, int24 tick) internal pure returns (uint128 sqrtP) {
+    function tickToSqrtPriceMemoized(Cache memory cache, int24 tick) internal pure returns (uint128 sqrtP) {
         if (tick == cache.tick) sqrtP = cache.sqrtP;
         else {
-            sqrtP = tickToSqrtP(tick);
+            sqrtP = tickToSqrtPrice(tick);
             cache.sqrtP = sqrtP;
             cache.tick = tick;
         }

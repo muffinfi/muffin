@@ -5,7 +5,7 @@ import "../../interfaces/common/IWETH.sol";
 import "../../interfaces/engine/IEngine.sol";
 import "../../libraries/utils/SafeTransferLib.sol";
 
-contract ManagerBase {
+abstract contract ManagerBase {
     address public immutable WETH9;
     address public immutable engine;
 

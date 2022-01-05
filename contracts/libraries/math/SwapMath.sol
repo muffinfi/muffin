@@ -6,13 +6,18 @@ import "./PoolMath.sol";
 import "./Math.sol";
 import "../Tiers.sol";
 
+// TODO: gas optim
+// - test fixed-sized array
+// - test stop using checked arithmetic in math.sol
+// - no fullmath in ceildiv?
+
 library SwapMath {
     using Math for uint256;
     using Math for int256;
 
     int256 private constant REJECTED = type(int256).max;
+    int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
-    int256 private constant MAX_UINT_DIV_1E10 = 0x6df37f675ef6eadf5ab9a2072d44268d97df837e6748956e5c6c2117;
 
     /// @dev calculate the optimized input amount for each tier using lagragian multiplier.
     function calcTierAmtsIn(
@@ -31,13 +36,12 @@ library SwapMath {
 
         unchecked {
             for (uint256 i; i < tiers.length; i++) {
-                // reject unselectd tiers
+                // reject unselected tiers
                 if (tierChoices & (1 << i) == 0) {
                     amts[i] = REJECTED;
                     continue;
                 }
-
-                // calculate num and denom of sqrt lamdba (lagrange multiplier)
+                // calculate numerator and denominator of sqrt lamdba (lagrange multiplier)
                 Tiers.Tier memory t = tiers[i];
                 uint256 liquidity = uint256(t.liquidity);
                 uint24 sqrtGamma = t.sqrtGamma;
@@ -52,11 +56,11 @@ library SwapMath {
         unchecked {
             // calculate input amts, then reject the tiers with negative input amts.
             // repeat until all input amts are non-negative
-            bool neverOverflow = (denom * num) / denom == num && denom * num <= uint256(type(int256).max);
+            bool wontOverflow = ((denom * num) / denom == num) && (denom * num <= uint256(type(int256).max));
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
                     if (
-                        (amts[i] = neverOverflow
+                        (amts[i] = wontOverflow
                             ? int256((denom * lsg[i]) / num).sub(int256(res[i]))
                             : FullMath.mulDiv(denom, lsg[i], num).toInt256().sub(int256(res[i]))) < 0
                     ) {
@@ -89,13 +93,12 @@ library SwapMath {
 
         unchecked {
             for (uint256 i; i < tiers.length; i++) {
-                // reject unselectd tiers
+                // reject unselected tiers
                 if (tierChoices & (1 << i) == 0) {
                     amts[i] = REJECTED;
                     continue;
                 }
-
-                // calculate num and denom of sqrt lamdba (lagrange multiplier)
+                // calculate numerator and denominator of sqrt lamdba (lagrange multiplier)
                 Tiers.Tier memory t = tiers[i];
                 uint256 liquidity = uint256(t.liquidity);
                 num += (lsg[i] = (liquidity * 1e5) / t.sqrtGamma);

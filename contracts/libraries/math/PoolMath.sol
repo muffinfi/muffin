@@ -165,7 +165,6 @@ library PoolMath {
     }
 
     /// @dev Calculate the max liquidity received if adding given token amounts to the tier.
-    /// @dev Used in position manager, not used in pool contract.
     function calcLiquidityForAmts(
         uint128 sqrtP,
         uint128 sqrtPLower,

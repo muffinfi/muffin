@@ -48,26 +48,23 @@ contract Engine is IEngine {
         _;
     }
 
-    /*===============================================================
-     *                            UTILS
-     *==============================================================*/
-
     function getBalance(address token) internal view returns (uint256) {
         (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         if (!success || data.length < 32) revert FailedBalanceOf();
         return abi.decode(data, (uint256));
     }
 
+    /*===============================================================
+     *                           ACCOUNT
+     *==============================================================*/
+
+    /// @dev Hash [owner, accId] as the key for the `accounts` mapping
     function getAccHash(address owner, uint256 accId) internal pure returns (bytes32) {
         require(accId != 0);
         return keccak256(abi.encode(owner, accId));
     }
 
-    /*===============================================================
-     *                           ACCOUNT
-     *==============================================================*/
-
-    /// @dev No reentrancy lock needed, since the contract collects tokens before adding into account
+    /// @notice Deposit tokens into recipient's account
     function deposit(
         address recipient,
         uint256 recipientAccId,
@@ -83,7 +80,7 @@ contract Engine is IEngine {
         emit Deposit(recipient, recipientAccId, token, amount);
     }
 
-    /// @dev No reentrancy lock needed, since the contract updates account before sending out tokens
+    /// @notice Withdraw tokens from sender's account to recipient
     function withdraw(
         address recipient,
         uint256 senderAccId,
@@ -99,7 +96,6 @@ contract Engine is IEngine {
      *                        POOL SETTINGS
      *==============================================================*/
 
-    // TODO: add callback but reentrancy problem???
     function createPool(
         address token0,
         address token1,
@@ -169,7 +165,6 @@ contract Engine is IEngine {
             p.liquidityD8.toInt96(),
             false
         );
-
         if (p.senderAccId != 0) {
             bytes32 accHash = getAccHash(msg.sender, p.senderAccId);
             (accounts[p.token0][accHash], amount0) = Math.subUntilZero(accounts[p.token0][accHash], amount0);
@@ -182,7 +177,6 @@ contract Engine is IEngine {
             if (getBalance(p.token0) < balance0Before + amount0) revert NotEnoughToken();
             if (getBalance(p.token1) < balance1Before + amount1) revert NotEnoughToken();
         }
-
         emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
         pool.unlock();
     }
@@ -206,12 +200,22 @@ contract Engine is IEngine {
             -p.liquidityD8.toInt96(),
             p.collectAllFees
         );
-
         bytes32 accHash = getAccHash(msg.sender, p.accId);
         accounts[p.token0][accHash] += amount0 + feeAmount0;
         accounts[p.token1][accHash] += amount1 + feeAmount1;
-
-        emit Burn(poolId, msg.sender, p.accId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1, feeAmount0, feeAmount1); // prettier-ignore
+        emit Burn(
+            poolId,
+            msg.sender,
+            p.accId,
+            p.tierId,
+            p.tickLower,
+            p.tickUpper,
+            p.liquidityD8,
+            amount0,
+            amount1,
+            feeAmount0,
+            feeAmount1
+        );
         pool.unlock();
     }
 
@@ -235,7 +239,7 @@ contract Engine is IEngine {
         pool.unlock();
     }
 
-    function swapHop(SwapHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut) {
+    function swapMultiHop(SwapMultiHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut) {
         bytes memory path = p.path;
         if (path.invalid()) revert InvalidSwapPath();
 
@@ -401,7 +405,7 @@ contract Engine is IEngine {
             uint80 feeGrowthInside1Last
         )
     {
-        Positions.Position memory pos = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position storage pos = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
         return (pos.liquidityD8, pos.feeGrowthInside0Last, pos.feeGrowthInside1Last);
     }
 

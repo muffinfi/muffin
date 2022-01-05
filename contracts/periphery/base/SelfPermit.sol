@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
-contract SelfPermit {
+abstract contract SelfPermit {
     /// @notice Permits this contract to spend a given token from `msg.sender`
     /// @dev The `owner` is always msg.sender and the `spender` is always address(this).
     /// @param token The address of the token spent

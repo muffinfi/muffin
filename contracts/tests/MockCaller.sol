@@ -111,8 +111,8 @@ contract MockCaller is IEngineCallbacks {
         );
     }
 
-    function swapHop(address engine, IEngine.SwapHopParams memory params) external {
+    function swapHop(address engine, IEngine.SwapMultiHopParams memory params) external {
         params.data = abi.encode(msg.sender);
-        IEngine(engine).swapHop(params);
+        IEngine(engine).swapMultiHop(params);
     }
 }

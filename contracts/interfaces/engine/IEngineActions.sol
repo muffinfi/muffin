@@ -71,7 +71,7 @@ interface IEngineActions {
         bytes calldata data
     ) external returns (uint256 amountIn, uint256 amountOut);
 
-    struct SwapHopParams {
+    struct SwapMultiHopParams {
         bytes path;
         int256 amountDesired;
         address recipient;
@@ -80,5 +80,5 @@ interface IEngineActions {
         bytes data;
     }
 
-    function swapHop(SwapHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut);
+    function swapMultiHop(SwapMultiHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut);
 }

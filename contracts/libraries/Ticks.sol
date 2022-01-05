@@ -7,8 +7,6 @@ library Ticks {
         uint96 liquidityUpperD8;
         int24 nextBelow;
         int24 nextAbove;
-        // bool logFeeGrowth0;
-        // bool logFeeGrowth1;
         uint80 feeGrowthOutside0;
         uint80 feeGrowthOutside1;
         uint96 secondsPerLiquidityOutside;
