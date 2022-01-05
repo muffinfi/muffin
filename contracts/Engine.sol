@@ -22,7 +22,7 @@ contract Engine is IEngine {
     uint8 internal defaultTickSpacing = 200;
     uint8 internal defaultProtocolFee = 0;
 
-    /// @dev Mapping of pools (pool id => Pool)
+    /// @dev Mapping of pools (keccak256(token0, token1) => Pool)
     mapping(bytes32 => Pools.Pool) internal pools;
     /// @dev Token balance in an user's account (token => keccak256(account owner, account id) => token balance)
     mapping(address => mapping(bytes32 => uint256)) public accounts;
@@ -33,6 +33,7 @@ contract Engine is IEngine {
         address token0;
         address token1;
     }
+    /// @dev Mapping of poolId to the pool's underlying tokens. (for data lookup only. no use in the contracts)
     mapping(bytes32 => Tokens) public tokens;
 
     error InvalidTokenOrder();
