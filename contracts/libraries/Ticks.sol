@@ -7,9 +7,9 @@ library Ticks {
         uint96 liquidityUpperD8;
         int24 nextBelow;
         int24 nextAbove;
-        uint80 feeGrowthOutside0;
-        uint80 feeGrowthOutside1;
-        uint96 secondsPerLiquidityOutside;
+        uint80 feeGrowthOutside0; // UQ16.64
+        uint80 feeGrowthOutside1; // UQ16.64
+        uint96 secondsPerLiquidityOutside; // UQ8.88
     }
 
     /// @dev Flip the direction of "outside". Called when the tick is being crossed.
