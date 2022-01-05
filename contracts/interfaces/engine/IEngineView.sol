@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 import "../../libraries/Tiers.sol";
 import "../../libraries/Ticks.sol";
-import "../../libraries/Positions.sol";
 
 interface IEngineView {
     function getPoolBasics(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee);
@@ -14,11 +13,7 @@ interface IEngineView {
 
     function getTiersCount(bytes32 poolId) external view returns (uint256);
 
-    function getTick(
-        bytes32 poolId,
-        uint8 tierId,
-        int24 tick
-    ) external view returns (Ticks.Tick memory);
+    function getTick(bytes32 poolId, uint8 tierId, int24 tick) external view returns (Ticks.Tick memory);
 
     function getPosition(
         bytes32 poolId,
@@ -35,20 +30,6 @@ interface IEngineView {
             uint80 feeGrowthInside0Last,
             uint80 feeGrowthInside1Last
         );
-
-    function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256);
-
-    function getTickMapBlock(
-        bytes32 poolId,
-        uint8 tierId,
-        uint256 blockIdx
-    ) external view returns (uint256);
-
-    function getTickMapWord(
-        bytes32 poolId,
-        uint8 tierId,
-        uint256 wordIdx
-    ) external view returns (uint256);
 
     function getTWAP(bytes32 poolId)
         external
@@ -74,4 +55,10 @@ interface IEngineView {
         int24 tickLower,
         int24 tickUpper
     ) external view returns (uint96 secondsPerLiquidityInside);
+
+    function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256);
+
+    function getTickMapBlock(bytes32 poolId, uint8 tierId, uint256 blockIdx) external view returns (uint256);
+
+    function getTickMapWord(bytes32 poolId, uint8 tierId, uint256 wordIdx) external view returns (uint256);
 }

@@ -22,8 +22,11 @@ contract Engine is IEngine {
     uint8 internal defaultTickSpacing = 200;
     uint8 internal defaultProtocolFee = 0;
 
+    /// @dev Mapping of pools (pool id => Pool)
     mapping(bytes32 => Pools.Pool) internal pools;
+    /// @dev Token balance in an user's account (token => keccak256(account owner, account id) => token balance)
     mapping(address => mapping(bytes32 => uint256)) public accounts;
+    /// @dev Protocol accrued fees (token => fee amount)
     mapping(address => uint256) public protocolFeeAmts;
 
     struct Tokens {
@@ -36,8 +39,6 @@ contract Engine is IEngine {
     error InvalidSwapPath();
     error FailedBalanceOf();
     error NotEnoughToken();
-
-    event GovernanceUpdated(address governance);
 
     constructor() {
         governance = msg.sender;
@@ -64,7 +65,7 @@ contract Engine is IEngine {
         return keccak256(abi.encode(owner, accId));
     }
 
-    /// @notice Deposit tokens into recipient's account
+    /// @inheritdoc IEngineActions
     function deposit(
         address recipient,
         uint256 recipientAccId,
@@ -80,7 +81,7 @@ contract Engine is IEngine {
         emit Deposit(recipient, recipientAccId, token, amount);
     }
 
-    /// @notice Withdraw tokens from sender's account to recipient
+    /// @inheritdoc IEngineActions
     function withdraw(
         address recipient,
         uint256 senderAccId,
@@ -96,6 +97,7 @@ contract Engine is IEngine {
      *                        POOL SETTINGS
      *==============================================================*/
 
+    /// @inheritdoc IEngineActions
     function createPool(
         address token0,
         address token1,
@@ -116,6 +118,7 @@ contract Engine is IEngine {
         tokens[poolId] = Tokens(token0, token1);
     }
 
+    /// @inheritdoc IEngineSettings
     function addTier(
         address token0,
         address token1,
@@ -131,6 +134,7 @@ contract Engine is IEngine {
         pool.unlock();
     }
 
+    /// @inheritdoc IEngineSettings
     function setSqrtGamma(
         bytes32 poolId,
         uint8 tierId,
@@ -140,11 +144,13 @@ contract Engine is IEngine {
         emit UpdateTier(poolId, tierId, sqrtGamma);
     }
 
+    /// @inheritdoc IEngineSettings
     function setTickSpacing(bytes32 poolId, uint8 tickSpacing) external onlyGovernance {
         pools[poolId].setTickSpacing(tickSpacing);
         emit UpdateTickSpacing(poolId, tickSpacing);
     }
 
+    /// @inheritdoc IEngineSettings
     function setProtocolFee(bytes32 poolId, uint8 protocolFee) external onlyGovernance {
         pools[poolId].setProtocolFee(protocolFee);
         emit UpdateProtocolFee(poolId, protocolFee);
@@ -154,6 +160,7 @@ contract Engine is IEngine {
      *                          POSITIONS
      *==============================================================*/
 
+    /// @inheritdoc IEngineActions
     function mint(MintParams calldata p) external returns (uint256 amount0, uint256 amount1) {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
         (amount0, amount1, , ) = pool.updateLiquidity(
@@ -181,6 +188,7 @@ contract Engine is IEngine {
         pool.unlock();
     }
 
+    /// @inheritdoc IEngineActions
     function burn(BurnParams calldata p)
         external
         returns (
@@ -223,6 +231,7 @@ contract Engine is IEngine {
      *                            SWAP
      *==============================================================*/
 
+    /// @inheritdoc IEngineActions
     function swap(
         address tokenIn,
         address tokenOut,
@@ -239,6 +248,7 @@ contract Engine is IEngine {
         pool.unlock();
     }
 
+    /// @inheritdoc IEngineActions
     function swapMultiHop(SwapMultiHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut) {
         bytes memory path = p.path;
         if (path.invalid()) revert InvalidSwapPath();
@@ -258,7 +268,7 @@ contract Engine is IEngine {
                     amtNext = int256(amtOut);
                 } else {
                     if (i == 0) amountOut = amtOut;
-                    amtNext = -int256(amtIn);
+                    amtNext = -int256(amtIn); // FIXME: add tolerance for exact output swap
                 }
             }
             if (exactIn) {
@@ -340,6 +350,7 @@ contract Engine is IEngine {
      *                          GOVERNANCE
      *==============================================================*/
 
+    /// @inheritdoc IEngineSettings
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
         uint256 amount = protocolFeeAmts[token] - 1;
         protocolFeeAmts[token] = 1;
@@ -347,11 +358,13 @@ contract Engine is IEngine {
         emit CollectProtocol(recipient, token, amount);
     }
 
+    /// @inheritdoc IEngineSettings
     function setGovernance(address _governance) external onlyGovernance {
         governance = _governance;
         emit GovernanceUpdated(_governance);
     }
 
+    /// @inheritdoc IEngineSettings
     function setDefaults(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
