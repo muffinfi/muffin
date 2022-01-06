@@ -162,7 +162,7 @@ library Pools {
 
     function setSqrtGamma(
         Pool storage pool,
-        uint256 tierId,
+        uint8 tierId,
         uint24 sqrtGamma
     ) internal {
         require(pool.unlocked);
@@ -533,7 +533,7 @@ library Pools {
 
     function _updateTick(
         Pool storage pool,
-        uint256 tierId,
+        uint8 tierId,
         int24 tick,
         int96 liquidityDeltaD8,
         bool isLower
@@ -575,7 +575,7 @@ library Pools {
 
     function _deleteEmptyTick(
         Pool storage pool,
-        uint256 tierId,
+        uint8 tierId,
         int24 tick
     ) internal returns (bool deleted) {
         mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
