@@ -21,9 +21,9 @@ library SwapMath {
 
     /// @dev calculate the optimized input amount for each tier using lagragian multiplier.
     function calcTierAmtsIn(
+        Tiers.Tier[] memory tiers,
         bool isToken0,
         int256 amount,
-        Tiers.Tier[] memory tiers,
         uint256 tierChoices
     ) internal pure returns (int256[MAX_TIERS] memory amts) {
         assert(amount > 0);
@@ -76,9 +76,9 @@ library SwapMath {
 
     /// @dev calculate the optimized output amount for each tier using lagragian multiplier.
     function calcTierAmtsOut(
+        Tiers.Tier[] memory tiers,
         bool isToken0,
         int256 amount,
-        Tiers.Tier[] memory tiers,
         uint256 tierChoices
     ) internal pure returns (int256[MAX_TIERS] memory amts) {
         assert(amount < 0);

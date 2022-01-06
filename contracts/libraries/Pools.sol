@@ -295,8 +295,8 @@ library Pools {
         while (true) {
             // calculate the swap amount for each tier
             cache.amounts = amtDesired > 0
-                ? SwapMath.calcTierAmtsIn(isToken0, amtDesired - amountA, tiers, tierChoices)
-                : SwapMath.calcTierAmtsOut(isToken0, amtDesired - amountA, tiers, tierChoices);
+                ? SwapMath.calcTierAmtsIn(tiers, isToken0, amtDesired - amountA, tierChoices)
+                : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired - amountA, tierChoices);
 
             // compute the swap for each tier
             for (uint256 i; i < tiers.length; i++) {

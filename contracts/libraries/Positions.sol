@@ -28,7 +28,7 @@ library Positions {
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (Position storage position) {
-        require(accId != 0); // TODO: rely check here?
+        require(accId != 0);
         position = positions[keccak256(abi.encodePacked(owner, accId, tierId, tickLower, tickUpper))];
     }
 
