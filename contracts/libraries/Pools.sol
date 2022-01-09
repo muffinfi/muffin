@@ -9,6 +9,7 @@ import "./Tiers.sol";
 import "./Ticks.sol";
 import "./TickMaps.sol";
 import "./Positions.sol";
+import "./Settlement.sol";
 
 library Pools {
     using Math for uint96;
@@ -21,6 +22,10 @@ library Pools {
     error InvalidAmount();
     error InvalidTierChoices();
     error InvalidTick();
+    error InvalidTickRangeForLimitOrder();
+    error ZeroLiquidityForLimitOrder();
+    error AlreadySettled();
+    error NotSettled();
 
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
@@ -396,6 +401,73 @@ library Pools {
                     tier.nextTickAbove = cross.nextAbove;
                 }
             }
+
+            // handle liquidity removal (limit order settlement), which updates tick states and possibly tickmap
+            if (cache.zeroForOne ? cross.needSettle0 : cross.needSettle1) {
+                Settlement.Info storage settlement;
+                int24 tickStart; // i.e. the starting tick of the limit order
+                Ticks.Tick storage start;
+                unchecked {
+                    if (cache.zeroForOne) {
+                        settlement = cross.settlement0;
+                        tickStart = tickCross + int24(uint24(settlement.tickSpacing));
+                    } else {
+                        settlement = cross.settlement1;
+                        tickStart = tickCross - int24(uint24(settlement.tickSpacing));
+                    }
+                    start = pool.ticks[tierId][tickStart];
+
+                    // remove liquidity on ticks (effect)
+                    if (cache.zeroForOne) {
+                        start.liquidityUpperD8 -= settlement.liquidityD8;
+                        cross.liquidityLowerD8 -= settlement.liquidityD8;
+                        cross.needSettle0 = false;
+                    } else {
+                        start.liquidityLowerD8 -= settlement.liquidityD8;
+                        cross.liquidityUpperD8 -= settlement.liquidityD8;
+                        cross.needSettle1 = false;
+                    }
+
+                    // snapshot data inside the tick range (effect)
+                    settlement.snapshots[settlement.snapshotId] = Settlement.Snapshot(
+                        cross.feeGrowthOutside0 - start.feeGrowthOutside0,
+                        cross.feeGrowthOutside1 - start.feeGrowthOutside1,
+                        cross.secondsPerLiquidityOutside - start.secondsPerLiquidityOutside
+                    );
+                }
+
+                // reset settlement data (effect)
+                settlement.snapshotId++;
+                settlement.tickSpacing = 0; // it'll be set when the next limit order is added
+                settlement.liquidityD8 = 0;
+
+                // after removing liquidity, delete any empty ticks
+                mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
+                TickMaps.TickMap storage tickMap = pool.tickMaps[tierId];
+
+                // delete the starting tick if empty (effect)
+                if (start.liquidityLowerD8 == 0 && start.liquidityUpperD8 == 0) {
+                    int24 below = start.nextBelow;
+                    int24 above = start.nextAbove;
+                    ticks[below].nextAbove = above;
+                    ticks[above].nextBelow = below;
+                    delete ticks[tickStart];
+                    tickMap.unset(tickStart);
+                }
+
+                // delete the ending tick if empty (effect), and update tier's next ticks (locally)
+                if (cross.liquidityLowerD8 == 0 && cross.liquidityUpperD8 == 0) {
+                    int24 below = cross.nextBelow;
+                    int24 above = cross.nextAbove;
+                    ticks[below].nextAbove = above;
+                    ticks[above].nextBelow = below;
+                    delete ticks[tickCross];
+                    tickMap.unset(tickCross);
+
+                    tier.nextTickBelow = below;
+                    tier.nextTickAbove = above;
+                }
+            }
         }
     }
 
@@ -440,6 +512,14 @@ library Pools {
      *                      UPDATE LIQUIDITY
      *==============================================================*/
 
+    function _checkTickInputs(int24 tickLower, int24 tickUpper) internal pure {
+        if (
+            (tickLower >= tickUpper) ||
+            (Constants.MIN_TICK > tickLower || tickLower >= Constants.MAX_TICK) ||
+            (Constants.MIN_TICK >= tickUpper || tickUpper > Constants.MAX_TICK)
+        ) revert InvalidTick();
+    }
+
     /// @notice                 Update a position's liquidity
     /// @dev                    External function. called by DELEGATECALL
     /// @param owner            Address of the position owner
@@ -469,12 +549,10 @@ library Pools {
     {
         lock(pool);
         _updateTWAP(pool, pool.tiers);
+        _checkTickInputs(tickLower, tickUpper);
         if (
-            tickLower >= tickUpper ||
-            (Constants.MIN_TICK > tickLower || tickLower >= Constants.MAX_TICK) ||
-            (Constants.MIN_TICK >= tickUpper || tickUpper > Constants.MAX_TICK) ||
-            (liquidityDeltaD8 > 0 &&
-                (tickLower % int24(uint24(pool.tickSpacing)) != 0 || tickUpper % int24(uint24(pool.tickSpacing)) != 0))
+            liquidityDeltaD8 > 0 &&
+            (tickLower % int24(uint24(pool.tickSpacing)) != 0 || tickUpper % int24(uint24(pool.tickSpacing)) != 0)
         ) revert InvalidTick();
 
         // -------------------- UPDATE LIQUIDITY --------------------
@@ -499,9 +577,9 @@ library Pools {
         }
 
         // -------------------- UPDATE POSITION ---------------------
+
         {
-            (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = _feeGrowthInside(pool, tierId, tickLower, tickUpper);
-            Positions.Position storage pos = Positions.get(
+            Positions.Position storage position = Positions.get(
                 pool.positions,
                 owner,
                 positionRefId,
@@ -509,7 +587,34 @@ library Pools {
                 tickLower,
                 tickUpper
             );
-            (feeAmtOut0, feeAmtOut1) = pos.update(liquidityDeltaD8, feeGrowthInside0, feeGrowthInside1, collectAllFees);
+            {
+                // update position liquidity and accrue fees
+                (uint80 feeGrowth0, uint80 feeGrowth1) = _feeGrowthInside(pool, tierId, tickLower, tickUpper);
+                (feeAmtOut0, feeAmtOut1) = position.update(liquidityDeltaD8, feeGrowth0, feeGrowth1, collectAllFees);
+            }
+
+            // update settlement if position is an unsettled limit order
+            if (position.positionType != Positions.NORMAL) {
+                Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
+                Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+                uint8 tickSpacing = pool.tickSpacing;
+                uint32 snapshotId = Settlement.update(
+                    lower,
+                    upper,
+                    position.positionType,
+                    liquidityDeltaD8,
+                    tickSpacing
+                );
+
+                // cannot update if already settled
+                if (position.settlementSnapshotId != snapshotId) revert AlreadySettled();
+
+                // reset position to normal type if it is emptied
+                if (position.liquidityD8 == 0) {
+                    position.positionType = Positions.NORMAL;
+                    position.settlementSnapshotId = 0;
+                }
+            }
         }
 
         // -------------------- CLEAN UP TICKS ----------------------
@@ -597,9 +702,8 @@ library Pools {
             int24 above = obj.nextAbove;
             ticks[below].nextAbove = above;
             ticks[above].nextBelow = below;
-
-            pool.tickMaps[tierId].unset(tick);
             delete ticks[tick];
+            pool.tickMaps[tierId].unset(tick);
             deleted = true;
         }
     }
@@ -637,6 +741,120 @@ library Pools {
     }
 
     /*===============================================================
+     *                          LIMIT ORDER
+     *==============================================================*/
+
+    function setPositionType(
+        Pool storage pool,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint8 positionType
+    ) external {
+        require(pool.unlocked);
+        require(positionType <= Positions.TOKEN1_LIMIT);
+        _checkTickInputs(tickLower, tickUpper);
+
+        Positions.Position storage position = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
+        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+        uint8 tickSpacing = pool.tickSpacing;
+
+        // unset position to normal type
+        if (position.positionType != Positions.NORMAL) {
+            (uint32 snapshotId, ) = Settlement.update(
+                lower,
+                upper,
+                position.positionType,
+                position.liquidityD8,
+                false,
+                tickSpacing
+            );
+            // cannot update if already settled
+            if (position.settlementSnapshotId != snapshotId) revert AlreadySettled();
+            // unset to normal
+            position.positionType = Positions.NORMAL;
+            position.settlementSnapshotId = 0;
+        }
+
+        // set position to limit order
+        if (positionType != Positions.NORMAL) {
+            if (position.liquidityD8 == 0) revert ZeroLiquidityForLimitOrder();
+            (uint32 snapshotId, uint8 settlementTickSpacing) = Settlement.update(
+                lower,
+                upper,
+                positionType,
+                position.liquidityD8,
+                true,
+                tickSpacing
+            );
+            // ensure position has a correct tick range for limit order
+            if (uint24(tickUpper - tickLower) != settlementTickSpacing) revert InvalidTickRangeForLimitOrder();
+            // set to new position type
+            position.positionType = positionType;
+            position.settlementSnapshotId = snapshotId;
+        }
+    }
+
+    function collectSettled(
+        Pool storage pool,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint96 liquidityD8,
+        bool collectAllFees
+    )
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmtOut0,
+            uint256 feeAmtOut1
+        )
+    {
+        lock(pool);
+        _checkTickInputs(tickLower, tickUpper);
+
+        Positions.Position storage position = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        {
+            Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
+            Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
+                position,
+                lower,
+                upper
+            );
+            if (!settled) revert NotSettled();
+            (feeAmtOut0, feeAmtOut1) = position.update(
+                -liquidityD8.toInt96(),
+                snapshot.feeGrowthInside0,
+                snapshot.feeGrowthInside1,
+                collectAllFees
+            );
+        }
+
+        // calculate output amounts
+        uint128 sqrtPriceLower = TickMath.tickToSqrtPrice(tickLower);
+        uint128 sqrtPriceUpper = TickMath.tickToSqrtPrice(tickUpper);
+        (amount0, amount1) = PoolMath.calcAmtsForLiquidity(
+            position.positionType == Positions.TOKEN0_LIMIT ? sqrtPriceLower : sqrtPriceUpper,
+            sqrtPriceLower,
+            sqrtPriceUpper,
+            -liquidityD8.toInt96()
+        );
+
+        // reset position to normal type if it is emptied
+        if (position.liquidityD8 == 0) {
+            position.positionType = Positions.NORMAL;
+            position.settlementSnapshotId = 0;
+        }
+    }
+
+    /*===============================================================
      *                        VIEW FUNCTIONS
      *==============================================================*/
 
@@ -654,18 +872,61 @@ library Pools {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
+    ) external view returns (uint96 secondsPerLiquidityInside) {
+        return _secondsPerLiquidityInside(pool, tierId, tickLower, tickUpper);
+    }
+
+    function getPositionFeeGrowthInside(
+        Pool storage pool,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
+        (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
+            Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper),
+            pool.ticks[tierId][tickLower],
+            pool.ticks[tierId][tickUpper]
+        );
+        if (settled) return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside0);
+        return _feeGrowthInside(pool, tierId, tickLower, tickUpper);
+    }
+
+    function getPositionSecondsPerLiquidityInside(
+        Pool storage pool,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
     ) external view returns (uint96 secsPerLiquidityInside) {
-        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
+        (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
+            Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper),
+            pool.ticks[tierId][tickLower],
+            pool.ticks[tierId][tickUpper]
+        );
+        if (settled) return snapshot.secondsPerLiquidityInside;
+        return _secondsPerLiquidityInside(pool, tierId, tickLower, tickUpper);
+    }
+
+    function _secondsPerLiquidityInside(
+        Pool storage pool,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal view returns (uint96 secondsPerLiquidityInside) {
         Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
+        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
         Tiers.Tier storage tier = pool.tiers[tierId];
         int24 tickCurrent = tier.tick;
         unchecked {
             if (tickCurrent < tickLower) {
                 // current price below range
-                secsPerLiquidityInside = lower.secondsPerLiquidityOutside - upper.secondsPerLiquidityOutside;
+                secondsPerLiquidityInside = lower.secondsPerLiquidityOutside - upper.secondsPerLiquidityOutside;
             } else if (tickCurrent >= tickUpper) {
                 // current price above range
-                secsPerLiquidityInside = upper.secondsPerLiquidityOutside - lower.secondsPerLiquidityOutside;
+                secondsPerLiquidityInside = upper.secondsPerLiquidityOutside - lower.secondsPerLiquidityOutside;
             } else {
                 // current price in range
                 // calculate latest secondsPerLiquidityCumulative
@@ -676,7 +937,7 @@ library Pools {
                     for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
                     secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
                 }
-                secsPerLiquidityInside =
+                secondsPerLiquidityInside =
                     secsPerLiqCum -
                     upper.secondsPerLiquidityOutside -
                     lower.secondsPerLiquidityOutside;

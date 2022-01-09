@@ -9,6 +9,7 @@ import "./libraries/utils/PathLib.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Positions.sol";
 import "./libraries/Pools.sol";
+import "./libraries/Settlement.sol";
 
 contract Engine is IEngine {
     using Math for uint96;
@@ -249,6 +250,60 @@ contract Engine is IEngine {
         pool.unlock();
     }
 
+    /// @inheritdoc IEngineActions
+    function collectSettled(BurnParams calldata params)
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmount0,
+            uint256 feeAmount1
+        )
+    {
+        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(params.token0, params.token1);
+        (amount0, amount1, feeAmount0, feeAmount1) = pool.collectSettled(
+            msg.sender,
+            params.accId,
+            params.tierId,
+            params.tickLower,
+            params.tickUpper,
+            params.liquidityD8,
+            params.collectAllFees
+        );
+        bytes32 accHash = getAccHash(msg.sender, params.accId);
+        accounts[params.token0][accHash] += amount0 + feeAmount0;
+        accounts[params.token1][accHash] += amount1 + feeAmount1;
+        emit CollectSettled(
+            poolId,
+            msg.sender,
+            params.accId,
+            params.tierId,
+            params.tickLower,
+            params.tickUpper,
+            params.liquidityD8,
+            amount0,
+            amount1,
+            feeAmount0,
+            feeAmount1
+        );
+        pool.unlock();
+    }
+
+    /// @inheritdoc IEngineActions
+    function setPositionType(
+        address token0,
+        address token1,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 accId,
+        uint8 positionType
+    ) external {
+        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
+        pool.setPositionType(msg.sender, accId, tierId, tickLower, tickUpper, positionType);
+        emit SetPositionType(poolId, msg.sender, accId, tierId, tickLower, tickUpper, positionType);
+    }
+
     /*===============================================================
      *                            SWAP
      *==============================================================*/
@@ -435,8 +490,33 @@ contract Engine is IEngine {
         bytes32 poolId,
         uint8 tierId,
         int24 tick
-    ) external view returns (Ticks.Tick memory) {
-        return pools[poolId].ticks[tierId][tick];
+    )
+        external
+        view
+        returns (
+            uint96 liquidityLowerD8,
+            uint96 liquidityUpperD8,
+            int24 nextBelow,
+            int24 nextAbove,
+            bool needSettle0,
+            bool needSettle1,
+            uint80 feeGrowthOutside0,
+            uint80 feeGrowthOutside1,
+            uint96 secondsPerLiquidityOutside
+        )
+    {
+        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
+        return (
+            obj.liquidityLowerD8,
+            obj.liquidityUpperD8,
+            obj.nextBelow,
+            obj.nextAbove,
+            obj.needSettle0,
+            obj.needSettle1,
+            obj.feeGrowthOutside0,
+            obj.feeGrowthOutside1,
+            obj.secondsPerLiquidityOutside
+        );
     }
 
     function getPosition(
@@ -517,5 +597,67 @@ contract Engine is IEngine {
         int24 tickUpper
     ) external view returns (uint96 secondsPerLiquidityInside) {
         return pools[poolId].getSecondsPerLiquidityInside(tierId, tickLower, tickUpper);
+    }
+
+    function getPositionFeeGrowthInside(
+        bytes32 poolId,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
+        return pools[poolId].getPositionFeeGrowthInside(owner, accId, tierId, tickLower, tickUpper);
+    }
+
+    function getPositionSecondsPerLiquidityInside(
+        bytes32 poolId,
+        address owner,
+        uint256 accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (uint96 secondsPerLiquidityInside) {
+        return pools[poolId].getPositionSecondsPerLiquidityInside(owner, accId, tierId, tickLower, tickUpper);
+    }
+
+    function getSettlement(
+        bytes32 poolId,
+        uint8 tierId,
+        int24 tick,
+        bool isToken0LimitOrder
+    )
+        external
+        view
+        returns (
+            uint96 liquidityD8,
+            uint24 tickSpacing,
+            uint32 snapshotId
+        )
+    {
+        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
+        Settlement.Info storage settlement = isToken0LimitOrder ? obj.settlement0 : obj.settlement1;
+        return (settlement.liquidityD8, settlement.tickSpacing, settlement.snapshotId);
+    }
+
+    function getSettlementSnapshot(
+        bytes32 poolId,
+        uint8 tierId,
+        int24 tick,
+        bool isToken0LimitOrder,
+        uint32 snapshotId
+    )
+        external
+        view
+        returns (
+            uint80 feeGrowthInside0,
+            uint80 feeGrowthInside1,
+            uint96 secondsPerLiquidityInside
+        )
+    {
+        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
+        Settlement.Info storage settlement = isToken0LimitOrder ? obj.settlement0 : obj.settlement1;
+        Settlement.Snapshot storage snapshot = settlement.snapshots[snapshotId];
+        return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside1, snapshot.secondsPerLiquidityInside);
     }
 }

@@ -1,24 +1,34 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
+import "./Settlement.sol";
+
 library Ticks {
     /**
      * @param liquidityLowerD8  Liquidity from positions with a lower tick boundary at this tick
      * @param liquidityUpperD8  Liquidity from positions with a upper tick boundary at this tick
      * @param nextBelow         Next initialized tick below this tick
      * @param nextAbove         Next initialized tick above this tick
+     * @param needSettle0       Whether to settle token0 limit order
+     * @param needSettle1       Whether to settle token1 limit order
      * @param feeGrowthOutside0 Fee0 growth per unit liquidity from this tick outwards (UQ16.64)
      * @param feeGrowthOutside1 Fee1 growth per unit liquidity from this tick outwards (UQ16.64)
      * @param secondsPerLiquidityOutside Seconds per unit liquidity from this tick outwards (UQ8.80)
+     * @param settlement0       Info for settling token0 limit order
+     * @param settlement1       Info for settling token1 limit order
      */
     struct Tick {
         uint96 liquidityLowerD8;
         uint96 liquidityUpperD8;
         int24 nextBelow;
         int24 nextAbove;
-        uint80 feeGrowthOutside0; // UQ16.64
-        uint80 feeGrowthOutside1; // UQ16.64
-        uint96 secondsPerLiquidityOutside; // UQ8.88
+        bool needSettle0;
+        bool needSettle1;
+        uint80 feeGrowthOutside0;
+        uint80 feeGrowthOutside1;
+        uint96 secondsPerLiquidityOutside;
+        Settlement.Info settlement0;
+        Settlement.Info settlement1;
     }
 
     /// @dev Flip the direction of "outside". Called when the tick is being crossed.

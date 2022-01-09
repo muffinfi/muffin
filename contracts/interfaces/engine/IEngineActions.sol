@@ -111,6 +111,39 @@ interface IEngineActions {
             uint256 feeAmount1
         );
 
+    /// @notice                 Collect underlyings from a settled position
+    /// @param params           BurnParams struct
+    /// @return amount0         Amount of token0 sent to the position owner account
+    /// @return amount1         Amount of token1 sent to the position owner account
+    /// @return feeAmount0      Amount of token0 fee sent to the position owner account
+    /// @return feeAmount1      Amount of token1 fee sent to the position owner account
+    function collectSettled(BurnParams calldata params)
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeAmount0,
+            uint256 feeAmount1
+        );
+
+    /// @notice                 Set a position's type, e.g. set to limit order
+    /// @param token0           Address of token0 of the pool
+    /// @param token1           Address of token1 of the pool
+    /// @param tierId           Tier index of the position
+    /// @param tickLower        Lower tick boundary of the position
+    /// @param tickUpper        Upper tick boundary of the position
+    /// @param accId            Position owner's account id
+    /// @param positionType     Position type (0: normal position, 1: token0 limit order, 2: token1 limit order)
+    function setPositionType(
+        address token0,
+        address token1,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 accId,
+        uint8 positionType
+    ) external;
+
     /// @notice                 Swap one token for another
     /// @param tokenIn          Input token address
     /// @param tokenOut         Output token address

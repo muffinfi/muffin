@@ -58,6 +58,32 @@ interface IEngineEvents {
         uint256 feeAmount1
     );
 
+    /// @dev Emitted when a settled position's liquidity is collected
+    event CollectSettled(
+        bytes32 indexed poolId,
+        address indexed owner,
+        uint256 indexed accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint96 liquidityD8,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 feeAmount0,
+        uint256 feeAmount1
+    );
+
+    /// @dev Emitted when a position's type is updated
+    event SetPositionType(
+        bytes32 indexed poolId,
+        address indexed owner,
+        uint256 indexed accId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint8 positionType
+    );
+
     /// @dev Emitted for any swap happened in any pool
     /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value takes 42 bits (Q1.41)
     /// @param tierData Array of tier's liquidity (0-127th bits) and sqrt price (128-255th bits) after the swap

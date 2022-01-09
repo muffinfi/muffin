@@ -9,7 +9,14 @@ library Positions {
         uint96 liquidityD8;
         uint80 feeGrowthInside0Last; // UQ16.64
         uint80 feeGrowthInside1Last; // UQ16.64
+        uint8 positionType;
+        uint32 settlementSnapshotId;
     }
+
+    // Position types:
+    uint8 internal constant NORMAL = 0;
+    uint8 internal constant TOKEN0_LIMIT = 1;
+    uint8 internal constant TOKEN1_LIMIT = 2;
 
     /**
      * @param positions Mapping of positions
