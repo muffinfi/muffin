@@ -374,25 +374,26 @@ library Pools {
             // skip crossing tick if reaches the end of the supported price range
             if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
                 cache.priceBoundReached |= 1 << tierId;
-            } else {
-                // clear cached tick price, so as to calculate a new one in next loop
-                state.sqrtPTick = 0;
+                return (amtAStep, amtBStep);
+            }
 
-                // flip the direction of tick's data (effect)
-                Ticks.Tick storage crossed = pool.ticks[tierId][tickCross];
-                crossed.flip(tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
-                unchecked {
-                    // update tier's liquidity and next ticks (locally)
-                    (uint128 liqLowerD8, uint128 liqUpperD8) = (crossed.liquidityLowerD8, crossed.liquidityUpperD8);
-                    if (cache.zeroForOne) {
-                        tier.liquidity = tier.liquidity + (liqUpperD8 << 8) - (liqLowerD8 << 8); // TODO: need test cases
-                        tier.nextTickBelow = crossed.nextBelow;
-                        tier.nextTickAbove = tickCross;
-                    } else {
-                        tier.liquidity = tier.liquidity + (liqLowerD8 << 8) - (liqUpperD8 << 8);
-                        tier.nextTickBelow = tickCross;
-                        tier.nextTickAbove = crossed.nextAbove;
-                    }
+            // clear cached tick price, so as to calculate a new one in next loop
+            state.sqrtPTick = 0;
+
+            // flip the direction of tick's data (effect)
+            Ticks.Tick storage cross = pool.ticks[tierId][tickCross];
+            cross.flip(tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
+            unchecked {
+                // update tier's liquidity and next ticks (locally)
+                (uint128 liqLowerD8, uint128 liqUpperD8) = (cross.liquidityLowerD8, cross.liquidityUpperD8);
+                if (cache.zeroForOne) {
+                    tier.liquidity = tier.liquidity + (liqUpperD8 << 8) - (liqLowerD8 << 8); // TODO: need test cases
+                    tier.nextTickBelow = cross.nextBelow;
+                    tier.nextTickAbove = tickCross;
+                } else {
+                    tier.liquidity = tier.liquidity + (liqLowerD8 << 8) - (liqUpperD8 << 8);
+                    tier.nextTickBelow = tickCross;
+                    tier.nextTickAbove = cross.nextAbove;
                 }
             }
         }

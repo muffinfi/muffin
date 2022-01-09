@@ -81,7 +81,6 @@ interface IEngineActions {
     /// @param liquidityD8      Amount of liquidity to burn, divided by 2^8
     /// @param accId            Position owner's account id
     /// @param collectAllFees   True to collect all accrued fees of the position
-    /// @param data             Arbitrary data that is passed to callback function
     struct BurnParams {
         address token0;
         address token1;
