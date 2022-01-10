@@ -6,10 +6,6 @@ import "./PoolMath.sol";
 import "./Math.sol";
 import "../Tiers.sol";
 
-// TODO: gas optim
-// - test stop using checked arithmetic in math.sol
-// - no fullmath in ceildiv?
-
 library SwapMath {
     using Math for uint256;
     using Math for int256;
@@ -108,7 +104,7 @@ library SwapMath {
             // repeat until all output amts are non-positive
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
-                    if ((amts[i] = _ceilMulDiv(denom, lsg[i], num).sub(int256(res[i]))) > 0) {
+                    if ((amts[i] = _ceilMulDiv(denom, lsg[i], num).sub(int256(res[i]))) > 0) { // TODO: gas optim?
                         amts[i] = REJECTED;
                         num -= lsg[i];
                         denom -= int256(res[i]);

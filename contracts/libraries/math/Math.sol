@@ -34,7 +34,6 @@ library Math {
     }
 
     /// @dev Compute z = max(x - y, 0) and r = x - z
-    /// TODO: need test cases
     function subUntilZero(uint256 x, uint256 y) internal pure returns (uint256 z, uint256 r) {
         unchecked {
             if (x >= y) z = x - y;
