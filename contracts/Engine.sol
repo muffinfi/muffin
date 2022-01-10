@@ -10,8 +10,6 @@ import "./libraries/math/Math.sol";
 import "./libraries/Positions.sol";
 import "./libraries/Pools.sol";
 
-import "hardhat/console.sol";
-
 contract Engine is IEngine {
     using Math for uint96;
     using Pools for Pools.Pool;

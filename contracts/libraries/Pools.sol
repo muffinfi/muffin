@@ -10,8 +10,6 @@ import "./Ticks.sol";
 import "./TickMaps.sol";
 import "./Positions.sol";
 
-import "hardhat/console.sol";
-
 library Pools {
     using Math for uint96;
     using Math for uint128;
