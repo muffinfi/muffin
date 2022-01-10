@@ -243,6 +243,7 @@ library Pools {
     struct TierState {
         uint128 sqrtPTick;
         uint256 amountIn;
+        bool crossed;
     }
 
     /// @notice                 Perform a swap in the pool
@@ -287,7 +288,7 @@ library Pools {
             protocolFeeAmt: 0,
             priceBoundReached: 0,
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
-            amounts: [int256(0), 0, 0, 0, 0, 0] // TODO: any better ways?
+            amounts: [int256(0), 0, 0, 0, 0, 0]
         });
 
         while (true) {
@@ -377,6 +378,7 @@ library Pools {
 
             // clear cached tick price, so as to calculate a new one in next loop
             state.sqrtPTick = 0;
+            state.crossed = true;
 
             // flip the direction of tick's data (effect)
             Ticks.Tick storage cross = pool.ticks[tierId][tickCross];
@@ -385,7 +387,7 @@ library Pools {
                 // update tier's liquidity and next ticks (locally)
                 (uint128 liqLowerD8, uint128 liqUpperD8) = (cross.liquidityLowerD8, cross.liquidityUpperD8);
                 if (cache.zeroForOne) {
-                    tier.liquidity = tier.liquidity + (liqUpperD8 << 8) - (liqLowerD8 << 8); // TODO: need test cases
+                    tier.liquidity = tier.liquidity + (liqUpperD8 << 8) - (liqLowerD8 << 8);
                     tier.nextTickBelow = cross.nextBelow;
                     tier.nextTickAbove = tickCross;
                 } else {
@@ -409,8 +411,9 @@ library Pools {
         unchecked {
             for (uint8 i; i < tiers.length; i++) {
                 TierState memory state = states[i];
-                // FIXME: can we prove sqrtPrice will never move if amountIn == 0?
-                if (state.amountIn > 0) {
+                // we can safely assume tier data is unchanged when there's zero input amount and no crossing tick,
+                // since we would have rejected the tier if such case happened.
+                if (state.amountIn > 0 || state.crossed) {
                     Tiers.Tier memory tier = tiers[i];
                     // calculate current tick:
                     // if tier's price is equal to tick's price (let say the tick is T), the tier is expected to be in
