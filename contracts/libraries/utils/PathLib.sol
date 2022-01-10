@@ -59,45 +59,4 @@ library PathLib {
             value := mload(add(add(data, 1), offset))
         }
     }
-
-    /**
-    /// @dev The byte position of first token address in the path data
-    uint256 private constant TOKEN_A_ADDR_POS = 0;
-    /// @dev The byte position of tier choices in the path data
-    uint256 private constant TIER_CHOICES_POS = 20;
-    /// @dev The byte position of second token address in the path data
-    uint256 private constant TOKEN_B_ADDR_POS = 21;
-
-    /// @dev The number of bytes of (token address + tier choices)
-    uint256 private constant TOKEN_TIER_CHOICES_SIZE = 21;
-    /// @dev The minimum length of the path data that contains 2 or more pools
-    uint256 private constant NEXT_HOP_MIN_LENGTH = 62;
-
-    /// @dev Decode the i-th pool in the path
-    /// @dev Assume path.length <= PATH_MAX_BYTES, so the arithmetic below won't overflow
-    function decodePool(bytes memory path, uint256 index)
-        internal
-        pure
-        returns (
-            address tokenA,
-            address tokenB,
-            uint256 tierChoices
-        )
-    {
-        unchecked {
-            uint256 offset = TOKEN_TIER_CHOICES_SIZE * index;
-            tokenA = _readAddressAt(path, TOKEN_A_ADDR_POS + offset);
-            tierChoices = _readUint8At(path, TIER_CHOICES_POS + offset);
-            tokenB = _readAddressAt(path, TOKEN_B_ADDR_POS + offset);
-        }
-    }
-
-    /// @dev Returns true iff the path contains two or more pools
-    /// @dev Assume path.length <= PATH_MAX_BYTES, so the arithmetic below won't overflow
-    function hasNextHop(bytes memory path, uint256 index) internal pure returns (bool) {
-        unchecked {
-            return path.length >= NEXT_HOP_MIN_LENGTH + (TOKEN_TIER_CHOICES_SIZE * index);
-        }
-    }
-     */
 }
