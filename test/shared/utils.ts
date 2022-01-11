@@ -76,7 +76,7 @@ export const deploy = async (factoryOrName: ContractFactory | string, ...args: a
 };
 
 //////////////////////////////////////////////////////////////////////////
-//                            TEST HELPERS
+//                           COMMON HELPERS
 //////////////////////////////////////////////////////////////////////////
 
 export const getLatestBlockTimestamp = async () => {
@@ -103,4 +103,15 @@ export const getEvent = async (tx: ContractTransaction, contract: Contract, even
     }
   }
   throw new Error(`Cannot find ${eventName} event`);
+};
+
+export const getEvents = async (tx: ContractTransaction, contract: Contract) => {
+  const parsedEvents = [];
+  for (const evt of (await tx.wait()).events || []) {
+    if (evt.address == contract.address) {
+      const parsed = contract.interface.parseLog({ topics: evt.topics, data: evt.data });
+      parsedEvents.push(parsed);
+    }
+  }
+  return parsedEvents;
 };
