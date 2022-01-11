@@ -79,8 +79,8 @@ library Pools {
         Pool storage pool,
         uint24 sqrtGamma,
         uint128 sqrtPrice,
-        uint8 tickSpacing,
-        uint8 protocolFee
+        uint8 tickSpacing, // assume checked
+        uint8 protocolFee // assume checked
     ) external returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
@@ -171,7 +171,6 @@ library Pools {
 
     function setProtocolFee(Pool storage pool, uint8 protocolFee) internal {
         require(pool.unlocked);
-        require(protocolFee <= 10000);
         pool.protocolFee = protocolFee;
     }
 
