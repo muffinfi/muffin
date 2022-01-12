@@ -12,14 +12,93 @@ interface IMockERC20 {
 }
 
 contract MockCaller is IEngineCallbacks {
+    IEngine public immutable engine;
+
+    constructor(address _engine) {
+        engine = IEngine(_engine);
+    }
+
+    struct CallbackData {
+        bytes32 action;
+        address recipient;
+        uint256 accId;
+        address token;
+        uint256 amount;
+    }
+
     function depositCallback(
         address token,
         uint256 amount,
-        bytes calldata data
+        bytes calldata _data
     ) external {
-        if (amount > 0) IMockERC20(token).mintTo(msg.sender, amount);
-        data; // shhh
+        CallbackData memory data = abi.decode(_data, (CallbackData));
+        if (data.action == keccak256("")) {
+            IMockERC20(token).mintTo(msg.sender, amount);
+        } else if (data.action == keccak256("NO_TOKEN_IN")) {
+            // do nothing
+        } else if (data.action == keccak256("REENTRANCY_ATTACK")) {
+            deposit(data.recipient, data.accId, data.token, data.amount, "");
+        } else {
+            revert("no action");
+        }
     }
+
+    function deposit(
+        address recipient,
+        uint256 accId,
+        address token,
+        uint256 amount,
+        string memory action
+    ) public {
+        CallbackData memory data = CallbackData(keccak256(bytes(action)), recipient, accId, token, amount);
+        IEngine(engine).deposit(recipient, accId, token, amount, abi.encode(data));
+    }
+
+    function createPool(
+        address token0,
+        address token1,
+        uint24 sqrtGamma,
+        uint128 sqrtPrice,
+        uint256 accountId
+    ) external {
+        IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, accountId);
+    }
+
+    function mint(IEngine.MintParams calldata params) external {
+        IEngine(engine).mint(params);
+    }
+
+    function burn(IEngine.BurnParams calldata params) external {
+        IEngine(engine).burn(params);
+    }
+
+    function swap(
+        address tokenIn,
+        address tokenOut,
+        uint256 tierChoices,
+        int256 amountDesired,
+        address recipient,
+        uint256 recipientAccId,
+        uint256 senderAccId
+    ) external {
+        IEngine(engine).swap(
+            tokenIn,
+            tokenOut,
+            tierChoices,
+            amountDesired,
+            recipient,
+            recipientAccId,
+            senderAccId,
+            abi.encode(msg.sender)
+        );
+    }
+
+    function swapHop(IEngine.SwapMultiHopParams memory params) external {
+        params.data = abi.encode(msg.sender);
+        IEngine(engine).swapMultiHop(params);
+    }
+
+    // ----- callbacks -----
 
     function mintCallback(
         address token0,
@@ -51,68 +130,14 @@ contract MockCaller is IEngineCallbacks {
         uint256 feeAmt1,
         bytes calldata data
     ) external {
-        (address token0, address token1, uint amt0, uint amt1) = abi.decode(data, (address, address, uint, uint));
+        (address token0, address token1, uint256 amt0, uint256 amt1) = abi.decode(
+            data,
+            (address, address, uint256, uint256)
+        );
         if (feeAmt0 > 0) IMockERC20(token0).mintTo(msg.sender, uint256(feeAmt0));
         if (feeAmt1 > 0) IMockERC20(token1).mintTo(msg.sender, uint256(feeAmt1));
         if (amt0 > 0) IMockERC20(token0).transfer(msg.sender, amt0);
         if (amt1 > 0) IMockERC20(token1).transfer(msg.sender, amt1);
         data; // shhh
-    }
-
-    // -----
-    function createPool(
-        address engine,
-        address token0,
-        address token1,
-        uint24 sqrtGamma,
-        uint128 sqrtPrice,
-        uint256 accountId
-    ) external {
-        IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, accountId);
-    }
-
-    function deposit(
-        address engine,
-        address recipient,
-        uint256 accId,
-        address token,
-        uint256 amount
-    ) external {
-        IEngine(engine).deposit(recipient, accId, token, amount, new bytes(0));
-    }
-
-    function mint(address engine, IEngine.MintParams calldata params) external {
-        IEngine(engine).mint(params);
-    }
-
-    function burn(address engine, IEngine.BurnParams calldata params) external {
-        IEngine(engine).burn(params);
-    }
-
-    function swap(
-        address engine,
-        address tokenIn,
-        address tokenOut,
-        uint256 tierChoices,
-        int256 amountDesired,
-        address recipient,
-        uint256 recipientAccId,
-        uint256 senderAccId
-    ) external {
-        IEngine(engine).swap(
-            tokenIn,
-            tokenOut,
-            tierChoices,
-            amountDesired,
-            recipient,
-            recipientAccId,
-            senderAccId,
-            abi.encode(msg.sender)
-        );
-    }
-
-    function swapHop(address engine, IEngine.SwapMultiHopParams memory params) external {
-        params.data = abi.encode(msg.sender);
-        IEngine(engine).swapMultiHop(params);
     }
 }

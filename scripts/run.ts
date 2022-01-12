@@ -16,7 +16,6 @@ async function main() {
   const [me] = await ethers.getSigners();
 
   // ===== deploy tokens =====
-  const weth = await deployQuiet('WETH9');
   const tokenA = (await deployQuiet('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
   const tokenB = (await deployQuiet('MockERC20', 'BBB Token', 'BBB')) as MockERC20;
   const tokens = [tokenA, tokenB].sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1));
@@ -27,7 +26,7 @@ async function main() {
   const Engine = await ethers.getContractFactory('Engine', { libraries: { Pools: poolLib.address } });
 
   const engine = (await deployQuiet(Engine)) as Engine;
-  const caller = (await deployQuiet('MockCaller')) as MockCaller;
+  const caller = (await deployQuiet('MockCaller', engine.address)) as MockCaller;
 
   // ===== token approval =====
   for (const token of [token0, token1]) {
@@ -37,20 +36,20 @@ async function main() {
   }
 
   // ===== deposit tokens =====
-  const accountId = 1;
-  await logTxGas(caller.deposit(engine.address, caller.address, accountId, token0.address, wad('100_000_000_000')), 'deposit token0'); // prettier-ignore
-  await logTxGas(caller.deposit(engine.address, caller.address, accountId, token1.address, wad('100_000_000_000')), 'deposit token1'); // prettier-ignore
-  await logTxGas(caller.deposit(engine.address, me.address, accountId, token0.address, wad('100_000_000_000')), 'deposit token0 to me'); // prettier-ignore
-  await logTxGas(caller.deposit(engine.address, me.address, accountId, token1.address, wad('100_000_000_000')), 'deposit token1 to me'); // prettier-ignore
+  const accId = 1;
+  await logTxGas(caller.deposit(caller.address, accId, token0.address, wad('100_000_000_000'), ''), 'deposit token0'); // prettier-ignore
+  await logTxGas(caller.deposit(caller.address, accId, token1.address, wad('100_000_000_000'), ''), 'deposit token1'); // prettier-ignore
+  await logTxGas(caller.deposit(me.address, accId, token0.address, wad('100_000_000_000'), ''), 'deposit token0 to me'); // prettier-ignore
+  await logTxGas(caller.deposit(me.address, accId, token1.address, wad('100_000_000_000'), ''), 'deposit token1 to me'); // prettier-ignore
 
   // ===== create pool and add tiers =====
   const price = 3100.0;
   const sqrtP = bn(Math.floor(price ** 0.5 * 100_000_000)).shl(72).div(100_000_000); // prettier-ignore
-  await logTxGas(caller.createPool(engine.address, token0.address, token1.address, 99850, sqrtP, accountId), 'create pool');
-  await engine.addTier(token0.address, token1.address, 99750, accountId); // add tier 50 bps
-  await engine.addTier(token0.address, token1.address, 99925, accountId); // add tier 15 bps
-  await engine.addTier(token0.address, token1.address, 99975, accountId); // add tier  5 bps
-  await engine.addTier(token0.address, token1.address, 99990, accountId); // add tier  2 bps
+  await logTxGas(caller.createPool(token0.address, token1.address, 99850, sqrtP, accId), 'create pool');
+  await engine.addTier(token0.address, token1.address, 99750, accId); // add tier 50 bps
+  await engine.addTier(token0.address, token1.address, 99925, accId); // add tier 15 bps
+  await engine.addTier(token0.address, token1.address, 99975, accId); // add tier  5 bps
+  await engine.addTier(token0.address, token1.address, 99990, accId); // add tier  2 bps
 
   const poolId = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address])); // prettier-ignore
   await engine.setProtocolFee(poolId, Math.floor(0.15 * 255));
@@ -66,12 +65,12 @@ async function main() {
     data: [],
   };
   // await logTxGas(caller.mint(engine.address, mintArgs), 'add liq to tier #0');
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 79980, tickUpper: 80430, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 1, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('444_518').div(2**8), ...mintArgs }), 'add liq to tier #1'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 2, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('744_518').div(2**8), ...mintArgs }), 'add liq to tier #2'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 3, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('84_192').div(2**8), ...mintArgs }), 'add liq to tier #3'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 4, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('200').div(2**8), ...mintArgs }), 'add liq to tier #4'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 0, tickLower: 79980, tickUpper: 80430, liquidityD8: wad('522_259').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 1, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('444_518').div(2**8), ...mintArgs }), 'add liq to tier #1'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 2, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('744_518').div(2**8), ...mintArgs }), 'add liq to tier #2'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 3, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('84_192').div(2**8), ...mintArgs }), 'add liq to tier #3'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 4, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('200').div(2**8), ...mintArgs }), 'add liq to tier #4'); // prettier-ignore
 
   // ===== swap =====
   const wait = async () => {
@@ -99,7 +98,7 @@ async function main() {
     const tokenOut = isToken0In ? token1.address : token0.address;
 
     await wait();
-    await logTxGas(caller.swap(engine.address, tokenIn, tokenOut, 0b111111, amountDesired, caller.address, 0, 0), notes);
+    await logTxGas(caller.swap(tokenIn, tokenOut, 0b111111, amountDesired, caller.address, 0, 0), notes);
     // await logTxGas(
     //   caller.swapHop(engine.address, {
     //     path: toPath([tokenIn, tokenOut]),
@@ -127,9 +126,9 @@ async function main() {
     accId: 1,
     collectAllFees: true,
   };
-  await logTxGas(caller.burn(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...burnArgs }), 'burn all liq from tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(caller.mint(engine.address, { tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs, recipientAccId: 2 }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.burn({ tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('522_259').div(2**8), ...burnArgs }), 'burn all liq from tier #0'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(caller.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, liquidityD8: wad('1_000_000').div(2**8), ...mintArgs, recipientAccId: 2 }), 'add liq to tier #0'); // prettier-ignore
   // // ===== remove + collect and re-add liq =====
   // await logTxGas(manager.removeLiquidityAndCollect({ tokenId: 0, liquidity: wad('522_259'), amount0Min: 0, amount1Min: 0, recipient: caller.address, collectTokens: true, collectReward: true, }), 'remove liq from tier #0 + collect'); // prettier-ignore
   // await logTxGas(manager.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728'), ...mintArgs, }), 'add liq to tier #0'); // prettier-ignore
