@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { BigNumberish } from 'ethers';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getEvent, getLatestBlockTimestamp, setNextBlockTimestamp } from '../shared/utils';
 
 describe('pool remove liquidity', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
@@ -115,7 +115,7 @@ describe('pool remove liquidity', () => {
 });
 
 const testRemoveLiquidity = async (
-  pool: PoolsTest,
+  pool: MockPool,
   tickLower: number,
   tickUpper: number,
   liquidityToBurnD8: BigNumberish,

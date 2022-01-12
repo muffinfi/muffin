@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { BASE_LIQUIDITY, BASE_LIQUIDITY_D8, MAX_TICK, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getLatestBlockTimestamp, setNextBlockTimestamp } from '../shared/utils';
 
 describe('pool add tier', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
@@ -44,8 +44,7 @@ describe('pool add tier', () => {
     await promise;
 
     // check required token input amounts
-    await expect(promise).to.emit(pool, 'ReturnUint256').withArgs('amount0', expectedAmt0In);
-    await expect(promise).to.emit(pool, 'ReturnUint256').withArgs('amount1', expectedAmt1In);
+    await expect(promise).to.emit(pool, 'AddTierReturns').withArgs(expectedAmt0In, expectedAmt1In);
 
     // check tiers length
     expect(await pool.getTierCount()).eq(tierId + 1);

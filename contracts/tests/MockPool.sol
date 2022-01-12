@@ -3,16 +3,19 @@ pragma solidity 0.8.10;
 
 import "../libraries/Pools.sol";
 
-contract PoolsTest {
+contract MockPool {
     using Pools for Pools.Pool;
 
     Pools.Pool public pool;
     uint256 public reserve0;
     uint256 public reserve1;
 
-    event ReturnUint256(string name, uint256 data);
-    event ReturnInt256(string name, uint256 data);
+    event InitializeReturns(uint256 amount0, uint256 amount1);
+
+    event AddTierReturns(uint256 amount0, uint256 amount1);
+
     event UpdateLiquidityReturns(uint256 amount0, uint256 amount1, uint256 feeAmtOut0, uint256 feeAmtOut1);
+
     event SwapReturns(
         int256 amount0,
         int256 amount1,
@@ -33,16 +36,14 @@ contract PoolsTest {
         uint8 protocolFee
     ) external unlock {
         (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, tickSpacing, protocolFee);
-        emit ReturnUint256("amount0", amount0);
-        emit ReturnUint256("amount1", amount1);
+        emit InitializeReturns(amount0, amount1);
         reserve0 += amount0;
         reserve1 += amount1;
     }
 
     function addTier(uint24 sqrtGamma) external unlock {
         (uint256 amount0, uint256 amount1, ) = pool.addTier(sqrtGamma);
-        emit ReturnUint256("amount0", amount0);
-        emit ReturnUint256("amount1", amount1);
+        emit AddTierReturns(amount0, amount1);
         reserve0 += amount0;
         reserve1 += amount1;
     }

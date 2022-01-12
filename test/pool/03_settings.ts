@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn } from '../shared/utils';
 
 describe('pool settings', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));

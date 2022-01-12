@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { BASE_LIQUIDITY, BASE_LIQUIDITY_D8, MAX_SQRT_P, MAX_TICK, MIN_SQRT_P, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getLatestBlockTimestamp, setNextBlockTimestamp } from '../shared/utils';
@@ -9,7 +9,7 @@ const ONE_X72 = bn(1).shl(72);
 const SQRT_GAMMA = 99850;
 
 describe('pool initialize', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
@@ -43,8 +43,7 @@ describe('pool initialize', () => {
     await promise;
 
     // check required token input amounts
-    await expect(promise).to.emit(pool, 'ReturnUint256').withArgs('amount0', expectedAmt0In);
-    await expect(promise).to.emit(pool, 'ReturnUint256').withArgs('amount1', expectedAmt1In);
+    await expect(promise).to.emit(pool, 'InitializeReturns').withArgs(expectedAmt0In, expectedAmt1In);
 
     // check twap last update
     expect((await pool.pool()).tickLastUpdate).eq(timestamp);

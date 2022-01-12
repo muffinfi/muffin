@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { BigNumber, BigNumberish } from 'ethers';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getEvent, getLatestBlockTimestamp, setNextBlockTimestamp } from '../shared/utils';
 
 describe('pool add liquidity', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
@@ -65,7 +65,7 @@ describe('pool add liquidity', () => {
 });
 
 const testAddLiquidity = async (
-  pool: PoolsTest,
+  pool: MockPool,
   liquidityDeltaD8: BigNumber,
   tickLower: number,
   tickUpper: number,

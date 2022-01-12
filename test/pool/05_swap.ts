@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, BigNumberish, constants } from 'ethers';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { MAX_SQRT_P, MAX_TICK, MIN_SQRT_P, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { Awaited, bn, getEvent, getLatestBlockTimestamp, setNextBlockTimestamp, sliceBits, wad } from '../shared/utils';
@@ -10,7 +10,7 @@ const Q72 = bn(1).shl(72);
 const MaxInt96 = bn(1).shl(95).sub(1);
 
 describe('pool swap', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
@@ -442,7 +442,7 @@ describe('pool swap', () => {
 });
 
 const test = async (
-  pool: PoolsTest,
+  pool: MockPool,
   isToken0: boolean,
   amtDesired: number,
   expectedAmtOutcome: BigNumberish,
@@ -595,13 +595,13 @@ const test = async (
 
 ///////////////
 
-type Tier = Awaited<ReturnType<PoolsTest['functions']['getTier']>>[0];
-type Tick = Awaited<ReturnType<PoolsTest['functions']['getTick']>>;
+type Tier = Awaited<ReturnType<MockPool['functions']['getTier']>>[0];
+type Tick = Awaited<ReturnType<MockPool['functions']['getTick']>>;
 
 /**
  * Get ticks from start tick to end tick
  */
-const getTicks = async (pool: PoolsTest, tierId: number, startTick: number, endTick: number) => {
+const getTicks = async (pool: MockPool, tierId: number, startTick: number, endTick: number) => {
   const ticks = [];
   const priceDown = endTick < startTick;
   let nextTick = startTick;
@@ -626,7 +626,7 @@ const getTicks = async (pool: PoolsTest, tierId: number, startTick: number, endT
  * "ticks" here is the return value.
  */
 const getPreviousTickToEndTick = async (
-  pool: PoolsTest,
+  pool: MockPool,
   token0In: boolean,
   tierId: number,
   tierBefore: Tier,
@@ -651,7 +651,7 @@ const getPreviousTickToEndTick = async (
  * the liquidity inside each tick, to calculate the total fee amount just accrued.
  */
 const getFeeAmtFromTickStates = async (
-  pool: PoolsTest,
+  pool: MockPool,
   token0In: boolean,
   tierId: number,
   before: Tick[],

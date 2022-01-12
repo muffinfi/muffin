@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
-import { Engine, MockCaller, MockERC20, Pools, PoolsTest } from '../../typechain';
+import { Engine, MockCaller, MockERC20, Pools, MockPool } from '../../typechain';
 import { deploy, wad } from './utils';
 
 export const poolTestFixture = async () => {
   const poolLib = (await deploy('Pools')) as Pools;
-  const PoolsTest = await ethers.getContractFactory('PoolsTest', { libraries: { Pools: poolLib.address } });
-  const pool = (await deploy(PoolsTest)) as PoolsTest;
+  const MockPool = await ethers.getContractFactory('MockPool', { libraries: { Pools: poolLib.address } });
+  const pool = (await deploy(MockPool)) as MockPool;
   return { pool };
 };
 

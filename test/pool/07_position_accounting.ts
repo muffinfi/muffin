@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { BigNumberish } from 'ethers';
 import { waffle } from 'hardhat';
-import { PoolsTest } from '../../typechain';
+import { MockPool } from '../../typechain';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getEvent } from '../shared/utils';
 
 describe('position accounting', () => {
-  let pool: PoolsTest;
+  let pool: MockPool;
 
   beforeEach(async () => {
     ({ pool } = await waffle.loadFixture(poolTestFixture));
