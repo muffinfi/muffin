@@ -425,9 +425,11 @@ library Pools {
 
                     // prepare data for logging
                     tierData[i] = (uint256(tier.sqrtPrice) << 128) | tier.liquidity;
-                    amtInDistribution |=
-                        (noOverflow ? (state.amountIn << 41) / amtIn : state.amountIn / ((amtIn >> 41) + 1)) <<
-                        (uint256(i) * 42);
+                    if (amtIn > 0) {
+                        amtInDistribution |=
+                            (noOverflow ? (state.amountIn << 41) / amtIn : state.amountIn / ((amtIn >> 41) + 1)) <<
+                            (uint256(i) * 42);
+                    }
                 }
             }
         }
