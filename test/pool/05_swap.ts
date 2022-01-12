@@ -26,8 +26,8 @@ describe('pool swap', () => {
 
   const updateLiquidity = async (
     tierId: number,
-    tickLower: BigNumberish,
-    tickUpper: BigNumberish,
+    tickLower: number,
+    tickUpper: number,
     liquidityDeltaD8: BigNumberish,
   ) => {
     return await pool.updateLiquidity(pool.address, 1, tierId, tickLower, tickUpper, liquidityDeltaD8, false);
@@ -109,36 +109,79 @@ describe('pool swap', () => {
   });
 
   describe('test very small swap', () => {
-    beforeEach(async () => {
-      await initialize(99850, Q72);
+    const run = async (isToken: boolean, amountDesired: number, expectedAmounts: [BigNumberish, BigNumberish]) => {
+      const tx = await pool.swap(isToken, amountDesired, 0b111111);
+      const event = await getEvent(tx, pool, 'SwapReturns');
+      expect(event.amount0).eq(expectedAmounts[0]);
+      expect(event.amount1).eq(expectedAmounts[1]);
+    };
+
+    context('token0 exact input', () => {
+      beforeEach(async () => {
+        await initialize(99850, Q72);
+      });
+
+      it('zero amount0 in; reverted', async () => {
+        await expect(pool.swap(true, 0, 0x3f)).to.be.revertedWith('InvalidAmount()');
+      });
+
+      it('small amount0 in; being treated as zero', async () => {
+        await run(true, 1, [0, 0]);
+      });
+
+      it('small amount0 in; zero output', async () => {
+        await run(true, 2, [2, 0]);
+      });
+
+      it('small amount0 in; has output', async () => {
+        await run(true, 3, [3, -1]);
+      });
     });
 
-    it('small amount0 in', async () => {
-      const tx = await pool.swap(true, 3, 0b111111);
-      const event = await getEvent(tx, pool, 'SwapReturns');
-      expect(event.amount0).eq(3);
-      expect(event.amount1).eq(-1);
+    context('token1 exact input', () => {
+      beforeEach(async () => {
+        await initialize(99850, Q72);
+      });
+
+      it('zero amount0 in; reverted', async () => {
+        await expect(pool.swap(false, 0, 0x3f)).to.be.revertedWith('InvalidAmount()');
+      });
+
+      it('small amount0 in; being treated as zero', async () => {
+        await run(false, 1, [0, 0]);
+      });
+
+      it('small amount0 in; zero output', async () => {
+        await run(false, 2, [0, 2]);
+      });
+
+      it('small amount0 in; has output', async () => {
+        await run(false, 3, [-1, 3]);
+      });
     });
 
-    it('small amount1 in', async () => {
-      const tx = await pool.swap(false, 3, 0b111111);
-      const event = await getEvent(tx, pool, 'SwapReturns');
-      expect(event.amount1).eq(3);
-      expect(event.amount0).eq(-1);
+    context('token0 exact output', () => {
+      it('small amount0 out', async () => {
+        await initialize(99850, bn(1).shl(17)); // token0 very low price
+        await run(true, -1, [-1, 2]);
+      });
+
+      it('small amount0 out; treated as zero output + large input', async () => {
+        await initialize(99850, bn(1).shl(120)); // token0 very high price
+        await run(true, -1, [0, '1842932629887344048441']);
+      });
     });
 
-    it('small amount0 out', async () => {
-      const tx = await pool.swap(true, -1, 0b111111);
-      const event = await getEvent(tx, pool, 'SwapReturns');
-      expect(event.amount0).eq(-1);
-      expect(event.amount1).eq(3);
-    });
+    context('token1 exact output', () => {
+      it('small amount1 out', async () => {
+        await initialize(99850, bn(1).shl(120)); // token0 very high price
+        await run(false, -1, [2, -1]);
+      });
 
-    it('small amount1 out', async () => {
-      const tx = await pool.swap(false, -1, 0b111111);
-      const event = await getEvent(tx, pool, 'SwapReturns');
-      expect(event.amount0).eq(3);
-      expect(event.amount1).eq(-1);
+      it('small amount1 out; treated as zero output + large input', async () => {
+        await initialize(99850, bn(1).shl(17)); // token0 very low price
+        await run(false, -1, ['925025761032894370399', 0]);
+      });
     });
   });
 
@@ -217,16 +260,10 @@ describe('pool swap', () => {
     });
   });
 
-  it('zero swap amount', async () => {
-    await initialize(99850, Q72);
-    await expect(pool.swap(true, 0, 0x3f)).to.be.reverted;
-    await expect(pool.swap(false, 0, 0x3f)).to.be.reverted;
-  });
-
   it('empty tier choices', async () => {
     await initialize(99850, Q72);
-    await expect(pool.swap(true, 100, 0b000000)).to.be.reverted;
-    await expect(pool.swap(true, 100, 0b111110)).to.be.reverted;
+    await expect(pool.swap(true, 100, 0b000000)).to.be.revertedWith('InvalidTierChoices');
+    await expect(pool.swap(true, 100, 0b111110)).to.be.revertedWith('InvalidTierChoices');
     await pool.swap(true, 100, 0b000001);
   });
 
@@ -625,13 +662,7 @@ const getTicks = async (pool: MockPool, tierId: number, startTick: number, endTi
  *
  * "ticks" here is the return value.
  */
-const getPreviousTickToEndTick = async (
-  pool: MockPool,
-  token0In: boolean,
-  tierId: number,
-  tierBefore: Tier,
-  endTick: number,
-) => {
+const getPreviousTickToEndTick = async (pool: MockPool, token0In: boolean, tierId: number, tierBefore: Tier, endTick: number) => {
   const nextTick = token0In ? tierBefore.nextTickBelow : tierBefore.nextTickAbove;
   const nextTickObj = await pool.getTick(tierId, nextTick);
   const prevTick = token0In ? nextTickObj.nextAbove : nextTickObj.nextBelow;

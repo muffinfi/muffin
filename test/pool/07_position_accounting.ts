@@ -15,11 +15,11 @@ describe('position accounting', () => {
     expect((await pool.getTier(0)).tick).eq(0);
   });
 
-  const updateLiquidity = async (tickLower: BigNumberish, tickUpper: BigNumberish, liquidityDeltaD8: BigNumberish) => {
+  const updateLiquidity = async (tickLower: number, tickUpper: number, liquidityDeltaD8: BigNumberish) => {
     return await pool.updateLiquidity(pool.address, 1, 0, tickLower, tickUpper, liquidityDeltaD8, false);
   };
 
-  const getPositionFees = async (tickLower: BigNumberish, tickUpper: BigNumberish) => {
+  const getPositionFees = async (tickLower: number, tickUpper: number) => {
     return await pool.getPositionFees(pool.address, 1, 0, tickLower, tickUpper);
   };
 

@@ -242,6 +242,14 @@ contract MockPool {
             );
     }
 
+    function tickToSqrtPrice(int24 tick) external pure returns (uint128 sqrtPrice) {
+        return TickMath.tickToSqrtPrice(tick);
+    }
+
+    function sqrtPriceToTick(uint128 sqrtPrice) external pure returns (int24 tick) {
+        return TickMath.sqrtPriceToTick(sqrtPrice);
+    }
+
     function abs(int256 x) internal pure returns (uint256 z) {
         unchecked {
             z = x < 0 ? uint256(-x) : uint256(x);

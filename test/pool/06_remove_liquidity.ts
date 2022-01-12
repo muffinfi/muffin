@@ -15,16 +15,11 @@ describe('pool remove liquidity', () => {
     expect((await pool.getTier(0)).tick).eq(0);
   });
 
-  const mint = async (tickLower: BigNumberish, tickUpper: BigNumberish, liquidityD8ToMint: BigNumberish) => {
+  const mint = async (tickLower: number, tickUpper: number, liquidityD8ToMint: BigNumberish) => {
     return await pool.updateLiquidity(pool.address, 1, 0, tickLower, tickUpper, liquidityD8ToMint, false);
   };
 
-  const burn = async (
-    tickLower: BigNumberish,
-    tickUpper: BigNumberish,
-    liquidityD8ToBurn: BigNumberish,
-    collectAllFees: boolean,
-  ) => {
+  const burn = async (tickLower: number, tickUpper: number, liquidityD8ToBurn: BigNumberish, collectAllFees: boolean) => {
     return await pool.updateLiquidity(pool.address, 1, 0, tickLower, tickUpper, -liquidityD8ToBurn, collectAllFees);
   };
 

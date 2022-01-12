@@ -17,8 +17,8 @@ describe('pool add liquidity', () => {
   });
 
   const updateLiquidity = async (
-    tickLower: BigNumberish,
-    tickUpper: BigNumberish,
+    tickLower: number,
+    tickUpper: number,
     liquidityDeltaD8: BigNumberish,
     collectAllFees: boolean,
   ) => {
