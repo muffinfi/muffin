@@ -13,8 +13,6 @@ describe('pool add tier', () => {
     await pool.initialize(99850, bn(1).shl(72), 1, 25);
   });
 
-  it('cannot be called by non-governance'); // TODO: in engine
-
   it('invalid sqrt gamma', async () => {
     await expect(pool.addTier(100001)).to.be.reverted;
   });

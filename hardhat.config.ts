@@ -26,8 +26,15 @@ const basicCompiler = {
 const engineCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 5000 },
+    optimizer: { enabled: true, runs: 8000 },
     metadata: { bytecodeHash: 'none' },
+  },
+};
+
+const testCompiler = {
+  version: '0.8.10',
+  settings: {
+    optimizer: { enabled: true, runs: 0 },
   },
 };
 
@@ -45,6 +52,7 @@ const config: HardhatUserConfig = {
     compilers: [basicCompiler],
     overrides: {
       'contracts/Engine.sol': engineCompiler,
+      'contracts/tests/MockEngine.sol': testCompiler,
     },
   },
 };

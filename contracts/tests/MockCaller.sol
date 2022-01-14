@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "../interfaces/engine/IEngine.sol";
 import "../interfaces/IEngineCallbacks.sol";
+import "hardhat/console.sol";
 
 // prettier-ignore
 interface IMockERC20 {
@@ -18,7 +19,7 @@ contract MockCaller is IEngineCallbacks {
         engine = IEngine(_engine);
     }
 
-    struct CallbackData {
+    struct DepositData {
         bytes32 action;
         address recipient;
         uint256 accId;
@@ -31,7 +32,7 @@ contract MockCaller is IEngineCallbacks {
         uint256 amount,
         bytes calldata _data
     ) external {
-        CallbackData memory data = abi.decode(_data, (CallbackData));
+        DepositData memory data = abi.decode(_data, (DepositData));
         if (data.action == keccak256("")) {
             IMockERC20(token).mintTo(msg.sender, amount);
         } else if (data.action == keccak256("NO_TOKEN_IN")) {
@@ -39,7 +40,7 @@ contract MockCaller is IEngineCallbacks {
         } else if (data.action == keccak256("REENTRANCY_ATTACK")) {
             deposit(data.recipient, data.accId, data.token, data.amount, "");
         } else {
-            revert("no action");
+            revert("unknown action");
         }
     }
 
@@ -50,21 +51,35 @@ contract MockCaller is IEngineCallbacks {
         uint256 amount,
         string memory action
     ) public {
-        CallbackData memory data = CallbackData(keccak256(bytes(action)), recipient, accId, token, amount);
+        DepositData memory data = DepositData(keccak256(bytes(action)), recipient, accId, token, amount);
         IEngine(engine).deposit(recipient, accId, token, amount, abi.encode(data));
     }
 
-    function createPool(
+    // -----
+
+    function mintCallback(
         address token0,
         address token1,
-        uint24 sqrtGamma,
-        uint128 sqrtPrice,
-        uint256 accountId
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
     ) external {
-        IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, accountId);
+        IEngine.MintParams memory params = abi.decode(data, (IEngineActions.MintParams));
+        bytes32 action = bytes32(params.data);
+        if (params.data.length == 0 || action == keccak256("")) {
+            if (amount0 > 0) IMockERC20(token0).mintTo(msg.sender, amount0);
+            if (amount1 > 0) IMockERC20(token1).mintTo(msg.sender, amount1);
+        } else if (action == keccak256("NO_TOKEN0_IN")) {
+            if (amount1 > 0) IMockERC20(token1).mintTo(msg.sender, amount1);
+        } else if (action == keccak256("NO_TOKEN1_IN")) {
+            if (amount0 > 0) IMockERC20(token0).mintTo(msg.sender, amount0);
+        } else {
+            revert("unknown action");
+        }
     }
 
-    function mint(IEngine.MintParams calldata params) external {
+    function mint(IEngine.MintParams memory params) external {
+        params.data = abi.encode(params);
         IEngine(engine).mint(params);
     }
 
@@ -99,18 +114,6 @@ contract MockCaller is IEngineCallbacks {
     }
 
     // ----- callbacks -----
-
-    function mintCallback(
-        address token0,
-        address token1,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external {
-        if (amount0 > 0) IMockERC20(token0).mintTo(msg.sender, amount0);
-        if (amount1 > 0) IMockERC20(token1).mintTo(msg.sender, amount1);
-        data; // shhh
-    }
 
     function swapCallback(
         address tokenIn,

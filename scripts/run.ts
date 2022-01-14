@@ -45,7 +45,7 @@ async function main() {
   // ===== create pool and add tiers =====
   const price = 3100.0;
   const sqrtP = bn(Math.floor(price ** 0.5 * 100_000_000)).shl(72).div(100_000_000); // prettier-ignore
-  await logTxGas(caller.createPool(token0.address, token1.address, 99850, sqrtP, accId), 'create pool');
+  await logTxGas(engine.createPool(token0.address, token1.address, 99850, sqrtP, accId), 'create pool');
   await engine.addTier(token0.address, token1.address, 99750, accId); // add tier 50 bps
   await engine.addTier(token0.address, token1.address, 99925, accId); // add tier 15 bps
   await engine.addTier(token0.address, token1.address, 99975, accId); // add tier  5 bps
