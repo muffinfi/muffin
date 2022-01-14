@@ -16,6 +16,16 @@ contract Engine is IEngine {
     using Pools for mapping(bytes32 => Pools.Pool);
     using PathLib for bytes;
 
+    struct TokenData {
+        uint8 locked;
+        uint248 protocolFeeAmt;
+    }
+
+    struct Pair {
+        address token0;
+        address token1;
+    }
+
     address public governance;
     uint8 internal defaultTickSpacing = 200;
     uint8 internal defaultProtocolFee = 0;
@@ -24,15 +34,10 @@ contract Engine is IEngine {
     mapping(bytes32 => Pools.Pool) internal pools;
     /// @dev Token balance in an user's account (token => keccak256(account owner, account id) => token balance)
     mapping(address => mapping(bytes32 => uint256)) public accounts;
-    /// @dev Protocol accrued fees (token => fee amount)
-    mapping(address => uint256) public protocolFeeAmts;
-
-    struct Tokens {
-        address token0;
-        address token1;
-    }
-    /// @dev Mapping of poolId to the pool's underlying tokens. (for data lookup only. no use in the contracts)
-    mapping(bytes32 => Tokens) public tokens;
+    /// @dev Reentrancy lock for tokens and protocol accrued fees (token => TokenData)
+    mapping(address => TokenData) public tokens;
+    /// @dev Mapping of poolId to the pool's underlying tokens (for data lookup only)
+    mapping(bytes32 => Pair) public underlyings;
 
     error InvalidTokenOrder();
     error InvalidSwapPath();
@@ -48,10 +53,24 @@ contract Engine is IEngine {
         _;
     }
 
+    /// @dev Get token balance of this contract
     function getBalance(address token) internal view returns (uint256) {
         (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         if (!success || data.length < 32) revert FailedBalanceOf();
         return abi.decode(data, (uint256));
+    }
+
+    /// @dev "Lock" the token so the token cannot be used again until unlock
+    function getBalanceAndLock(address token) internal returns (uint256) {
+        require(tokens[token].locked != 1); // 1 means locked
+        tokens[token].locked = 1;
+        return getBalance(token);
+    }
+
+    /// @dev "Unlock" the token after ensuring the contract reaches an expected balance
+    function checkBalanceAndUnlock(address token, uint256 balanceMinimum) internal {
+        if (getBalance(token) < balanceMinimum) revert NotEnoughToken();
+        tokens[token].locked = 2;
     }
 
     /*===============================================================
@@ -72,9 +91,9 @@ contract Engine is IEngine {
         uint256 amount,
         bytes calldata data
     ) external {
-        uint256 balance0Before = getBalance(token);
+        uint256 balanceBefore = getBalanceAndLock(token);
         IEngineCallbacks(msg.sender).depositCallback(token, amount, data);
-        if (getBalance(token) < balance0Before + amount) revert NotEnoughToken();
+        checkBalanceAndUnlock(token, balanceBefore + amount);
 
         accounts[token][getAccHash(recipient, recipientAccId)] += amount;
         emit Deposit(recipient, recipientAccId, token, amount);
@@ -114,7 +133,7 @@ contract Engine is IEngine {
         emit PoolCreated(token0, token1);
         emit UpdateTier(poolId, 0, sqrtGamma);
         pool.unlock();
-        tokens[poolId] = Tokens(token0, token1);
+        underlyings[poolId] = Pair(token0, token1);
     }
 
     /// @inheritdoc IEngineSettings
@@ -177,11 +196,11 @@ contract Engine is IEngine {
             (accounts[p.token1][accHash], amount1) = Math.subUntilZero(accounts[p.token1][accHash], amount1);
         }
         if (amount0 != 0 || amount1 != 0) {
-            uint256 balance0Before = getBalance(p.token0);
-            uint256 balance1Before = getBalance(p.token1);
+            uint256 balance0Before = getBalanceAndLock(p.token0);
+            uint256 balance1Before = getBalanceAndLock(p.token1);
             IEngineCallbacks(msg.sender).mintCallback(p.token0, p.token1, amount0, amount1, p.data);
-            if (getBalance(p.token0) < balance0Before + amount0) revert NotEnoughToken();
-            if (getBalance(p.token1) < balance1Before + amount1) revert NotEnoughToken();
+            checkBalanceAndUnlock(p.token0, balance0Before + amount0);
+            checkBalanceAndUnlock(p.token1, balance1Before + amount1);
         }
         emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
         pool.unlock();
@@ -312,7 +331,7 @@ contract Engine is IEngine {
             emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDistribution, tierData);
         }
         unchecked {
-            if (protocolFeeAmt != 0) protocolFeeAmts[tokenIn] += protocolFeeAmt;
+            if (protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(protocolFeeAmt);
             (amountIn, amountOut) = tokenIn < tokenOut
                 ? (uint256(amount0), uint256(-amount1))
                 : (uint256(amount1), uint256(-amount0));
@@ -339,9 +358,9 @@ contract Engine is IEngine {
             (accounts[tokenIn][accHash], amountIn) = Math.subUntilZero(accounts[tokenIn][accHash], amountIn);
         }
         if (amountIn > 0) {
-            uint256 balanceBefore = getBalance(tokenIn);
+            uint256 balanceBefore = getBalanceAndLock(tokenIn);
             IEngineCallbacks(msg.sender).swapCallback(tokenIn, tokenOut, amountIn, amountOut, data);
-            if (getBalance(tokenIn) < balanceBefore + amountIn) revert NotEnoughToken();
+            checkBalanceAndUnlock(tokenIn, balanceBefore + amountIn);
         }
     }
 
@@ -351,8 +370,8 @@ contract Engine is IEngine {
 
     /// @inheritdoc IEngineSettings
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint256 amount = protocolFeeAmts[token] - 1;
-        protocolFeeAmts[token] = 1;
+        uint248 amount = tokens[token].protocolFeeAmt - 1;
+        tokens[token].protocolFeeAmt = 1;
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit CollectProtocol(recipient, token, amount);
     }

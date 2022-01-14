@@ -53,6 +53,7 @@ library Pools {
     uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
     uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
 
+    // FIXME: since engine locks "input token", is it needed to lock the pool?
     function lock(Pool storage pool) internal {
         require(pool.unlocked);
         pool.unlocked = false;
