@@ -15,6 +15,6 @@ Side features include internal balances and single-contract design, for gas opti
 ## TODOs
 
 - [x] Engine interfaces + NatSpec
-- [ ] Manager interfaces + NatSpec
-- [ ] Unit tests
+- [x] Manager NatSpec
+- [x] Unit tests
 - [ ] Technical docs
