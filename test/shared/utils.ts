@@ -4,7 +4,6 @@ import { BigNumber, BigNumberish, Contract, ContractFactory, ContractTransaction
 import { ethers } from 'hardhat';
 import { jestSnapshotPlugin } from 'mocha-chai-jest-snapshot';
 import util from 'util';
-import { MIN_TICK, MIN_TICK_SPACING } from './constants';
 
 use(jestSnapshotPlugin());
 
@@ -105,12 +104,14 @@ export const getEvent = async (tx: ContractTransaction, contract: Contract, even
   throw new Error(`Cannot find ${eventName} event`);
 };
 
-export const getEvents = async (tx: ContractTransaction, contract: Contract) => {
+export const getEvents = async (tx: ContractTransaction, contract: Contract, eventName?: string) => {
   const parsedEvents = [];
   for (const evt of (await tx.wait()).events || []) {
     if (evt.address == contract.address) {
       const parsed = contract.interface.parseLog({ topics: evt.topics, data: evt.data });
-      parsedEvents.push(parsed);
+      if (eventName == null || parsed.name === eventName) {
+        parsedEvents.push(parsed.args);
+      }
     }
   }
   return parsedEvents;

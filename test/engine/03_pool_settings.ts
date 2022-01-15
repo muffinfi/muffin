@@ -48,6 +48,4 @@ describe('engine pool settings', () => {
     expect((await engine.getDefaults()).tickSpacing).eq(123);
     expect((await engine.getDefaults()).protocolFee).eq(234);
   });
-
-  it('collectProtocolFee'); // TODO: pending to decide when to store protocol fee
 });

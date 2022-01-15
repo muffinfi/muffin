@@ -1,7 +1,8 @@
 import chalk from 'chalk';
-import { BigNumberish, ContractTransaction } from 'ethers';
+import { BigNumberish, constants } from 'ethers';
+import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { Engine, MockCaller, MockERC20, Pools, WETH9 } from '../typechain';
+import { Engine, MockCallerRealistic, MockERC20, Pools, WETH9 } from '../typechain';
 import { bn, deployQuiet, logTxGas, wad } from './utils';
 
 main()
@@ -26,21 +27,20 @@ async function main() {
   const Engine = await ethers.getContractFactory('Engine', { libraries: { Pools: poolLib.address } });
 
   const engine = (await deployQuiet(Engine)) as Engine;
-  const caller = (await deployQuiet('MockCaller', engine.address)) as MockCaller;
+  const caller = (await deployQuiet('MockCallerRealistic', engine.address)) as MockCallerRealistic;
 
   // ===== token approval =====
   for (const token of [token0, token1]) {
-    await token.mint(wad('100_000_000_000'));
-    await token.approve(engine.address, wad('100_000_000_000'));
-    await token.approve(caller.address, wad('100_000_000_000'));
+    await token.mint(wad('1_000_000_000_000'));
+    await token.approve(caller.address, constants.MaxUint256);
   }
 
   // ===== deposit tokens =====
   const accId = 1;
-  await logTxGas(caller.deposit(caller.address, accId, token0.address, wad('100_000_000_000'), ''), 'deposit token0'); // prettier-ignore
-  await logTxGas(caller.deposit(caller.address, accId, token1.address, wad('100_000_000_000'), ''), 'deposit token1'); // prettier-ignore
-  await logTxGas(caller.deposit(me.address, accId, token0.address, wad('100_000_000_000'), ''), 'deposit token0 to me'); // prettier-ignore
-  await logTxGas(caller.deposit(me.address, accId, token1.address, wad('100_000_000_000'), ''), 'deposit token1 to me'); // prettier-ignore
+  await logTxGas(caller.deposit(caller.address, accId, token0.address, wad('100_000_000_000')), 'deposit token0');
+  await logTxGas(caller.deposit(caller.address, accId, token1.address, wad('100_000_000_000')), 'deposit token1');
+  await caller.deposit(me.address, accId, token0.address, wad('100_000_000_000'));
+  await caller.deposit(me.address, accId, token1.address, wad('100_000_000_000'));
 
   // ===== create pool and add tiers =====
   const price = 3100.0;
@@ -51,7 +51,7 @@ async function main() {
   await engine.addTier(token0.address, token1.address, 99975, accId); // add tier  5 bps
   await engine.addTier(token0.address, token1.address, 99990, accId); // add tier  2 bps
 
-  const poolId = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address])); // prettier-ignore
+  const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
   await engine.setProtocolFee(poolId, Math.floor(0.15 * 255));
   await engine.setTickSpacing(poolId, 1);
 
@@ -96,7 +96,6 @@ async function main() {
     const isToken0In = isToken0 == amountDesired > 0;
     const tokenIn = isToken0In ? token0.address : token1.address;
     const tokenOut = isToken0In ? token1.address : token0.address;
-
     await wait();
     await logTxGas(caller.swap(tokenIn, tokenOut, 0b111111, amountDesired, caller.address, 0, 0), notes);
     // await logTxGas(

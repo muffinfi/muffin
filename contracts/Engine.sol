@@ -43,6 +43,7 @@ contract Engine is IEngine {
     error InvalidSwapPath();
     error FailedBalanceOf();
     error NotEnoughToken();
+    error NotEnoughIntermediateOutput();
 
     constructor() {
         governance = msg.sender;
@@ -274,25 +275,37 @@ contract Engine is IEngine {
         bool exactIn = p.amountDesired > 0;
         bytes32[] memory poolIds = new bytes32[](path.hopCount());
         unchecked {
-            int256 amtNext = p.amountDesired;
+            int256 amtDesired = p.amountDesired;
             for (uint256 i; i < poolIds.length; i++) {
                 (address tokenIn, address tokenOut, uint256 tierChoices) = path.decodePool(i, exactIn);
                 address recipient = (exactIn ? i == poolIds.length - 1 : i == 0) ? p.recipient : address(this);
+
+                // For an "exact output" swap, it's possible to not receive the full desired output amount. therefore, in
+                // the 2nd (and following) swaps, we request more token output so as to ensure we get enough tokens to pay
+                // for the previous swap. The extra token is not refunded and thus results in a very small extra cost.
                 uint256 amtIn;
                 uint256 amtOut;
-                (, poolIds[i], amtIn, amtOut) = _computeSwap(tokenIn, tokenOut, tierChoices, amtNext, recipient);
+                (, poolIds[i], amtIn, amtOut) = _computeSwap(
+                    tokenIn,
+                    tokenOut,
+                    tierChoices,
+                    (exactIn || i == 0) ? amtDesired : amtDesired - Pools.SWAP_AMOUNT_TOLERANCE,
+                    recipient
+                );
+
                 if (exactIn) {
                     if (i == 0) amountIn = amtIn;
-                    amtNext = int256(amtOut);
+                    amtDesired = int256(amtOut);
                 } else {
                     if (i == 0) amountOut = amtOut;
-                    amtNext = -int256(amtIn); // FIXME: add tolerance for exact output swap
+                    else if (amtOut < uint256(-amtDesired)) revert NotEnoughIntermediateOutput();
+                    amtDesired = -int256(amtIn);
                 }
             }
             if (exactIn) {
-                amountOut = uint256(amtNext);
+                amountOut = uint256(amtDesired);
             } else {
-                amountIn = uint256(-amtNext);
+                amountIn = uint256(-amtDesired);
             }
         }
         (address _tokenIn, address _tokenOut) = path.tokensInOut(exactIn);
@@ -348,6 +361,9 @@ contract Engine is IEngine {
         uint256 senderAccId,
         bytes memory data
     ) internal {
+        if (tokenIn == tokenOut) {
+            (amountIn, amountOut) = Math.subUntilZero(amountIn, amountOut);
+        }
         if (recipientAccId == 0) {
             SafeTransferLib.safeTransfer(tokenOut, recipient, amountOut);
         } else {
@@ -370,8 +386,8 @@ contract Engine is IEngine {
 
     /// @inheritdoc IEngineSettings
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint248 amount = tokens[token].protocolFeeAmt - 1;
-        tokens[token].protocolFeeAmt = 1;
+        uint248 amount = tokens[token].protocolFeeAmt;
+        tokens[token].protocolFeeAmt = 0;
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit CollectProtocol(recipient, token, amount);
     }

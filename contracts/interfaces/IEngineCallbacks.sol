@@ -23,10 +23,4 @@ interface IEngineCallbacks {
         uint256 amountOut,
         bytes calldata data
     ) external;
-
-    function flashCallback(
-        uint256 feeAmt0,
-        uint256 feeAmt1,
-        bytes calldata data
-    ) external;
 }

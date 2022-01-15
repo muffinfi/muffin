@@ -52,6 +52,7 @@ library Pools {
     uint256 internal constant MAX_TIERS = 6;
     uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
     uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
+    int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between the desired and actual swapped amounts
 
     // FIXME: since engine locks "input token", is it needed to lock the pool?
     function lock(Pool storage pool) internal {
@@ -228,7 +229,6 @@ library Pools {
 
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
     int256 private constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
-    int256 private constant AMOUNT_TOLERANCE = 100; // tolerance between the desired and actual swap amounts
 
     struct SwapCache {
         bool zeroForOne;
@@ -308,7 +308,7 @@ library Pools {
             int256 amtRemaining = amtDesired - amountA;
             unchecked {
                 if (
-                    (amtDesired > 0 ? amtRemaining <= AMOUNT_TOLERANCE : amtRemaining >= -AMOUNT_TOLERANCE) ||
+                    (amtDesired > 0 ? amtRemaining <= SWAP_AMOUNT_TOLERANCE : amtRemaining >= -SWAP_AMOUNT_TOLERANCE) ||
                     cache.priceBoundReached == tierChoices & ((1 << tiers.length) - 1)
                 ) break;
             }

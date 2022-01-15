@@ -140,7 +140,7 @@ const testAddLiquidity = async (
     expect((await pool.getTick(tierId, nextTicks.nextAbove)).nextBelow).eq(tick);
   }
 
-  // check resulted token input amounts
+  // check resulting token input amounts
   const event = await getEvent(tx, pool, 'UpdateLiquidityReturns');
   expect(event.amount0).eq(amt0Expected);
   expect(event.amount1).eq(amt1Expected);
