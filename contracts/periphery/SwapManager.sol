@@ -25,9 +25,9 @@ abstract contract SwapManager is ManagerBase {
      * @notice                  Swap `amountIn` of one token for as much as possible of another token
      * @param tokenIn           Address of input token
      * @param tokenOut          Address of output token
+     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
      * @param amountIn          Desired input amount
      * @param amountOutMinimum  Minimum output amount
-     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
@@ -36,9 +36,9 @@ abstract contract SwapManager is ManagerBase {
     function exactInSingle(
         address tokenIn,
         address tokenOut,
+        uint256 tierChoices,
         uint256 amountIn,
         uint256 amountOutMinimum,
-        uint256 tierChoices,
         address recipient,
         bool fromAccount,
         bool toAccount
@@ -91,9 +91,9 @@ abstract contract SwapManager is ManagerBase {
      * @notice                  Swap as little as possible of one token for `amountOut` of another token
      * @param tokenIn           Address of input token
      * @param tokenOut          Address of output token
+     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
      * @param amountOut         Desired output amount
      * @param amountInMaximum   Maximum input amount to pay
-     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
@@ -102,9 +102,9 @@ abstract contract SwapManager is ManagerBase {
     function exactOutSingle(
         address tokenIn,
         address tokenOut,
+        uint256 tierChoices,
         uint256 amountOut,
         uint256 amountInMaximum,
-        uint256 tierChoices,
         address recipient,
         bool fromAccount,
         bool toAccount

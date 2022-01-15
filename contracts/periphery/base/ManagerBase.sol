@@ -61,6 +61,20 @@ abstract contract ManagerBase {
         IEngine(engine).withdraw(recipient, getAccId(msg.sender), token, amount);
     }
 
+    /// @notice             Deposit tokens into engine's internal account managed by other address
+    /// @dev                Rarely used
+    /// @param recipient    Recipient of the token deposit
+    /// @param token        Token address
+    /// @param amount       Amount to deposit
+    function depositToExternal(
+        address recipient,
+        uint256 recipientAccId,
+        address token,
+        uint256 amount
+    ) external payable {
+        IEngine(engine).deposit(recipient, recipientAccId, token, amount, abi.encode(msg.sender));
+    }
+
     /*===============================================================
      *                        PAYMENT UTILS
      *==============================================================*/
