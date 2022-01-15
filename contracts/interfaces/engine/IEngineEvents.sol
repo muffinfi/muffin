@@ -40,6 +40,10 @@ interface IEngineEvents {
     );
 
     /// @dev Emitted when a position's liquidity is removed
+    /// @param amount0 Token0 amount from the burned liquidity
+    /// @param amount1 Token1 amount from the burned liquidity
+    /// @param feeAmount0 Token0 fee collected from the position
+    /// @param feeAmount0 Token1 fee collected from the position
     event Burn(
         bytes32 indexed poolId,
         address indexed owner,
