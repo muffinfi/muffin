@@ -31,7 +31,7 @@ interface IEngineActions {
     /// @notice                 Create pool
     /// @param token0           Address of token0 of the pool
     /// @param token1           Address of token1 of the pool
-    /// @param sqrtGamma        Sqrt(1 - percentage swap fee of the tier) (precision: 1e5)
+    /// @param sqrtGamma        Sqrt (1 - percentage swap fee of the tier) (precision: 1e5)
     /// @param sqrtPrice        Sqrt price of token0 denominated in token1 (UQ56.72)
     /// @param senderAccId      Sender's account id, for paying the base liquidity
     function createPool(
@@ -45,7 +45,7 @@ interface IEngineActions {
     /// @notice                 Parameters for the mint function
     /// @param token0           Address of token0 of the pool
     /// @param token1           Address of token1 of the pool
-    /// @param tierId           Position's tier index of the
+    /// @param tierId           Position's tier index
     /// @param tickLower        Position's lower tick boundary
     /// @param tickUpper        Position's upper tick boundary
     /// @param liquidityD8      Amount of liquidity to mint, divided by 2^8

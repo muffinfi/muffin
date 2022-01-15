@@ -16,16 +16,23 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     struct PositionInfo {
         address owner;
-        uint24 poolNum;
+        uint24 pairId;
         uint8 tierId;
         int24 tickLower;
         int24 tickUpper;
         uint16 _ownedTokenIndex; // for token enumerability
     }
 
-    uint24 internal nextPoolNum = 1;
-    mapping(bytes32 => uint24) internal poolNums;
+    /// @dev Next pair id. skips 0
+    uint24 internal nextPairId = 1;
+
+    /// @notice Array of pools represented by its underlying token pair (pairId => Pair)
     mapping(uint24 => Pair) public pairs;
+
+    /// @notice Mapping of pool id to pair id
+    mapping(bytes32 => uint24) public pairIds;
+
+    /// @notice Mapping of token id to position managed by this contract
     mapping(uint256 => PositionInfo) public positions;
 
     constructor() ERC721Extended("Deliswap Position", "DELI-POS") {}
@@ -36,37 +43,28 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     function _checkApproved(uint256 tokenId) internal view {
-        require(
-            msg.sender == positions[tokenId].owner || (_exists(tokenId) && msg.sender == getApproved(tokenId)),
-            "NOT_APPROVED"
-        );
+        require(msg.sender == positions[tokenId].owner || msg.sender == getApproved(tokenId), "NOT_APPROVED");
     }
 
-    function getPoolNum(address token0, address token1) internal returns (uint24 poolNum) {
+    /// @dev Cache the underlying tokens of a pool and return an id of the cache
+    function _getPairId(address token0, address token1) internal returns (uint24 pairId) {
         bytes32 poolId = keccak256(abi.encode(token0, token1));
-        poolNum = poolNums[poolId];
-        if (poolNum == 0) {
-            poolNums[poolId] = (poolNum = nextPoolNum++);
-            pairs[poolNum] = Pair(token0, token1);
+        pairId = pairIds[poolId];
+        if (pairId == 0) {
+            pairIds[poolId] = (pairId = nextPairId++);
+            pairs[pairId] = Pair(token0, token1);
         }
-    }
-
-    function mintCallback(
-        address token0,
-        address token1,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external fromEngine {
-        address payer = abi.decode(data, (address));
-        if (amount0 > 0) pay(token0, payer, amount0);
-        if (amount1 > 0) pay(token1, payer, amount1);
     }
 
     /*===============================================================
      *                         CREATE POOL
      *==============================================================*/
 
+    /// @notice             Create a pool
+    /// @param token0       Address of token0 of the pool
+    /// @param token1       Address of token1 of the pool
+    /// @param sqrtGamma    Sqrt of (1 - percentage swap fee of the 1st tier)
+    /// @param sqrtPrice    Sqrt price of token0 denominated in token1
     function createPool(
         address token0,
         address token1,
@@ -79,13 +77,40 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
             IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccId(msg.sender));
         }
-        getPoolNum(token0, token1);
+        _getPairId(token0, token1);
     }
 
     /*===============================================================
      *                        ADD LIQUIDITY
      *==============================================================*/
 
+    /// @dev Called by engine contract
+    function mintCallback(
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external fromEngine {
+        address payer = abi.decode(data, (address));
+        if (amount0 > 0) pay(token0, payer, amount0);
+        if (amount1 > 0) pay(token1, payer, amount1);
+    }
+
+    /**
+     * @notice                  Parameters for the mint function
+     * @param token0            Address of token0 of the pool
+     * @param token1            Address of token1 of the pool
+     * @param tierId            Position's tier index
+     * @param tickLower         Position's lower tick boundary
+     * @param tickUpper         Position's upper tick boundary
+     * @param amount0Desired    Desired token0 amount to add to the pool
+     * @param amount1Desired    Desired token1 amount to add to the pool
+     * @param amount0Min        Minimum token0 amount
+     * @param amount1Min        Minimum token1 amount
+     * @param recipient         Recipient of the position token
+     * @param useAccount        Use sender's internal account to pay
+     */
     struct MintParams {
         address token0;
         address token1;
@@ -100,6 +125,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         bool useAccount;
     }
 
+    /**
+     * @notice              Mint a position NFT
+     * @param params        MintParams struct
+     * @return tokenId      Id of the NFT
+     * @return liquidityD8  Amount of liquidity added (divided by 2^8)
+     * @return amount0      Token0 amount paid
+     * @return amount1      Token1 amount paid
+     */
     function mint(MintParams calldata params)
         external
         payable
@@ -111,16 +144,15 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         tokenId = nextTokenId++;
-        _mint(params.recipient, tokenId);
-
         positions[tokenId] = PositionInfo({
             owner: params.recipient,
-            poolNum: getPoolNum(params.token0, params.token1),
+            pairId: _getPairId(params.token0, params.token1),
             tierId: params.tierId,
             tickLower: params.tickLower,
             tickUpper: params.tickUpper,
             _ownedTokenIndex: 0
         });
+        _mint(params.recipient, tokenId);
 
         (liquidityD8, amount0, amount1) = _addLiquidity(
             params.token0,
@@ -136,6 +168,15 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
     }
 
+    /**
+     * @notice                  Parameters for the addLiquidity function
+     * @param tokenId           Id of the position NFT
+     * @param amount0Desired    Desired token0 amount to add to the pool
+     * @param amount1Desired    Desired token1 amount to add to the pool
+     * @param amount0Min        Minimum token0 amount
+     * @param amount1Min        Minimum token1 amount
+     * @param useAccount        Use sender's internal account to pay
+     */
     struct AddLiquidityParams {
         uint256 tokenId;
         uint256 amount0Desired;
@@ -145,6 +186,13 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         bool useAccount;
     }
 
+    /**
+     * @notice              Add liquidity to an existing position
+     * @param params        AddLiquidityParams struct
+     * @return liquidityD8  Amount of liquidity added (divided by 2^8)
+     * @return amount0      Token0 amount paid
+     * @return amount1      Token1 amount paid
+     */
     function addLiquidity(AddLiquidityParams calldata params)
         external
         payable
@@ -156,7 +204,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         PositionInfo memory info = positions[params.tokenId];
-        Pair memory pair = pairs[info.poolNum];
+        Pair memory pair = pairs[info.pairId];
         (liquidityD8, amount0, amount1) = _addLiquidity(
             pair.token0,
             pair.token1,
@@ -216,6 +264,15 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *                       REMOVE LIQUIDITY
      *==============================================================*/
 
+    /**
+     * @notice                  Parameters for the removeLiquidity function
+     * @param tokenId           Id of the position NFT
+     * @param liquidityD8       Amount of liquidity to remove (divided by 2^8)
+     * @param amount0Min        Minimum token0 amount to collect
+     * @param amount1Min        Minimum token1 amount to collect
+     * @param withdrawTo        Recipient of the withdrawn tokens. Set to zero for no withdrawal
+     * @param collectAllFees    True to collect all remaining accrued fees in the position
+     */
     struct RemoveLiquidityParams {
         uint256 tokenId;
         uint96 liquidityD8;
@@ -225,6 +282,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         bool collectAllFees;
     }
 
+    /**
+     * @notice              Remove liquidity from a position
+     * @param params        RemoveLiquidityParams struct
+     * @return amount0      Token0 amount from the removed liquidity
+     * @return amount1      Token1 amount from the removed liquidity
+     * @return feeAmount0   Token0 fee collected from the position
+     * @return feeAmount1   Token1 fee collected from the position
+     */
     function removeLiquidity(RemoveLiquidityParams calldata params)
         external
         checkApproved(params.tokenId)
@@ -236,7 +301,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         PositionInfo memory info = positions[params.tokenId];
-        Pair memory pair = pairs[info.poolNum];
+        Pair memory pair = pairs[info.pairId];
         (amount0, amount1, feeAmount0, feeAmount1) = IEngine(engine).burn(
             IEngineActions.BurnParams({
                 token0: pair.token0,
@@ -261,6 +326,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *                          BURN NFT
      *==============================================================*/
 
+    /// @notice Burn NFTs of empty positions
+    /// @param tokenIds Array of NFT id
     function burn(uint256[] calldata tokenIds) external {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
@@ -268,7 +335,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
             // check position is empty
             PositionInfo memory info = positions[tokenId];
-            Pair memory pair = pairs[info.poolNum];
+            Pair memory pair = pairs[info.pairId];
             (, , uint128 liquidity) = IEngine(engine).getPosition(
                 keccak256(abi.encode(pair.token0, pair.token1)),
                 address(this),
@@ -279,8 +346,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             );
             require(liquidity == 0, "NOT_EMPTY");
 
-            delete positions[tokenId];
             _burn(tokenId);
+            delete positions[tokenId];
         }
     }
 
@@ -288,6 +355,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *                       VIEW FUNCTIONS
      *==============================================================*/
 
+    /// @notice Get the position info of an NFT
+    /// @param tokenId Id of the NFT
     function getPosition(uint256 tokenId)
         external
         view
@@ -304,7 +373,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         PositionInfo memory info = positions[tokenId];
-        Pair memory pair = pairs[info.poolNum];
+        Pair memory pair = pairs[info.pairId];
         (owner, tierId, tickLower, tickUpper) = (info.owner, info.tierId, info.tickLower, info.tickUpper);
         (token0, token1) = (pair.token0, pair.token1);
         (liquidityD8, feeGrowthInside0Last, feeGrowthInside1Last) = IEngine(engine).getPosition(

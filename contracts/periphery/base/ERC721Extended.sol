@@ -92,7 +92,7 @@ abstract contract ERC721Extended is ERC721 {
      * Adapted from OpenZeppelin 4.3.1's ERC721Enumerable.
      * Removed `allTokens` array and added `minted` and `burned` to keep track of total supply.
      * Removed `_ownedTokensIndex` mapping and added setter and getter functions for it.
-     * Changed `ownedTokens` from a "mapping of mapping" to a "mapping of uint80 array" for gas optimization.
+     * Changed `ownedTokens` from a "mapping of mapping" to a "mapping of uint80[]" for gas optimization.
      */
 
     function totalSupply() public view virtual returns (uint256) {
