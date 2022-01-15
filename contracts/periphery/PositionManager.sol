@@ -144,15 +144,16 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         tokenId = nextTokenId++;
+        _mint(params.recipient, tokenId);
+
         positions[tokenId] = PositionInfo({
             owner: params.recipient,
             pairId: _getPairId(params.token0, params.token1),
             tierId: params.tierId,
             tickLower: params.tickLower,
             tickUpper: params.tickUpper,
-            _ownedTokenIndex: 0
+            _ownedTokenIndex: positions[tokenId]._ownedTokenIndex
         });
-        _mint(params.recipient, tokenId);
 
         (liquidityD8, amount0, amount1) = _addLiquidity(
             params.token0,
