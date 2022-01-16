@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "../interfaces/engine/IEngine.sol";
-import "../libraries/math/Math.sol";
-import "./base/ManagerBase.sol";
+import "../../interfaces/engine/IEngine.sol";
+import "../../libraries/math/Math.sol";
+import "./ManagerBase.sol";
 
 abstract contract SwapManager is ManagerBase {
     using Math for uint256;

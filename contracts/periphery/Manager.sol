@@ -2,8 +2,8 @@
 pragma solidity 0.8.10;
 
 import "./base/ManagerBase.sol";
-import "./PositionManager.sol";
-import "./SwapManager.sol";
+import "./base/PositionManager.sol";
+import "./base/SwapManager.sol";
 import "./base/Multicall.sol";
 import "./base/SelfPermit.sol";
 

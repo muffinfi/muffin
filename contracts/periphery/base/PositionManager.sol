@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "../interfaces/engine/IEngine.sol";
-import "../libraries/math/PoolMath.sol";
-import "../libraries/math/TickMath.sol";
-import "../libraries/Constants.sol";
-import "./base/ManagerBase.sol";
-import "./base/ERC721Extended.sol";
+import "../../interfaces/engine/IEngine.sol";
+import "../../libraries/math/PoolMath.sol";
+import "../../libraries/math/TickMath.sol";
+import "../../libraries/Constants.sol";
+import "./ManagerBase.sol";
+import "./ERC721Extended.sol";
 
 abstract contract PositionManager is ManagerBase, ERC721Extended {
     struct PositionInfo {
