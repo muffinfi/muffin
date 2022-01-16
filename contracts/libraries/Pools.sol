@@ -747,7 +747,7 @@ library Pools {
     function setPositionType(
         Pool storage pool,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -757,7 +757,14 @@ library Pools {
         require(positionType <= Positions.TOKEN1_LIMIT);
         _checkTickInputs(tickLower, tickUpper);
 
-        Positions.Position storage position = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position storage position = Positions.get(
+            pool.positions,
+            owner,
+            positionRefId,
+            tierId,
+            tickLower,
+            tickUpper
+        );
         Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
         Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
         uint8 tickSpacing = pool.tickSpacing;
@@ -801,7 +808,7 @@ library Pools {
     function collectSettled(
         Pool storage pool,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -819,7 +826,14 @@ library Pools {
         lock(pool);
         _checkTickInputs(tickLower, tickUpper);
 
-        Positions.Position storage position = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position storage position = Positions.get(
+            pool.positions,
+            owner,
+            positionRefId,
+            tierId,
+            tickLower,
+            tickUpper
+        );
         {
             Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
             Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
@@ -879,13 +893,13 @@ library Pools {
     function getPositionFeeGrowthInside(
         Pool storage pool,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
     ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
         (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
-            Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper),
+            Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper),
             pool.ticks[tierId][tickLower],
             pool.ticks[tierId][tickUpper]
         );
@@ -896,13 +910,13 @@ library Pools {
     function getPositionSecondsPerLiquidityInside(
         Pool storage pool,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
     ) external view returns (uint96 secsPerLiquidityInside) {
         (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
-            Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper),
+            Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper),
             pool.ticks[tierId][tickLower],
             pool.ticks[tierId][tickUpper]
         );

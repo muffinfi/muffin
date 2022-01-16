@@ -76,7 +76,7 @@ interface IEngineView {
     function getPositionFeeGrowthInside(
         bytes32 poolId,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
@@ -85,7 +85,7 @@ interface IEngineView {
     function getPositionSecondsPerLiquidityInside(
         bytes32 poolId,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper

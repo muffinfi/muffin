@@ -132,7 +132,7 @@ interface IEngineActions {
     /// @param tierId           Tier index of the position
     /// @param tickLower        Lower tick boundary of the position
     /// @param tickUpper        Upper tick boundary of the position
-    /// @param accId            Position owner's account id
+    /// @param positionRefId    Arbitrary reference id for the position
     /// @param positionType     Position type (0: normal position, 1: token0 limit order, 2: token1 limit order)
     function setPositionType(
         address token0,
@@ -140,7 +140,7 @@ interface IEngineActions {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 positionType
     ) external;
 

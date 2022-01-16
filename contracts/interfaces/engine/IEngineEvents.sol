@@ -62,7 +62,7 @@ interface IEngineEvents {
     event CollectSettled(
         bytes32 indexed poolId,
         address indexed owner,
-        uint256 indexed accId,
+        uint256 indexed positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -77,7 +77,7 @@ interface IEngineEvents {
     event SetPositionType(
         bytes32 indexed poolId,
         address indexed owner,
-        uint256 indexed accId,
+        uint256 indexed positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
