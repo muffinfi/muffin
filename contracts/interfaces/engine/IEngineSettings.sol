@@ -6,12 +6,12 @@ interface IEngineSettings {
     /// @param token0 Address of token0 of the pool
     /// @param token1 Address of token1 of the pool
     /// @param sqrtGamma Sqrt(1 - percentage swap fee) (precision: 1e5)
-    /// @param senderAccId Sender's account id, for paying the base liquidity
+    /// @param senderAccRefId Sender's account id, for paying the base liquidity
     function addTier(
         address token0,
         address token1,
         uint24 sqrtGamma,
-        uint256 senderAccId
+        uint256 senderAccRefId
     ) external;
 
     /// @notice Update a tier's swap fee

@@ -30,8 +30,8 @@ contract MockCaller is IEngineCallbacks {
         } else if (action == keccak256("NO_TOKEN_IN")) {
             // do nothing
         } else if (action == keccak256("REENTRANCY_ATTACK")) {
-            (address recipient, uint256 accId, , ) = abi.decode(params, (address, uint256, address, uint256));
-            deposit(recipient, accId, token, amount, "");
+            (address recipient, uint256 accRefId, , ) = abi.decode(params, (address, uint256, address, uint256));
+            deposit(recipient, accRefId, token, amount, "");
         } else {
             revert("unknown action");
         }
@@ -39,13 +39,13 @@ contract MockCaller is IEngineCallbacks {
 
     function deposit(
         address recipient,
-        uint256 accId,
+        uint256 accRefId,
         address token,
         uint256 amount,
         string memory action
     ) public {
-        bytes memory data = abi.encode(keccak256(bytes(action)), abi.encode(recipient, accId, token, amount));
-        IEngine(engine).deposit(recipient, accId, token, amount, data);
+        bytes memory data = abi.encode(keccak256(bytes(action)), abi.encode(recipient, accRefId, token, amount));
+        IEngine(engine).deposit(recipient, accRefId, token, amount, data);
     }
 
     // -----
@@ -107,8 +107,8 @@ contract MockCaller is IEngineCallbacks {
         uint256 tierChoices,
         int256 amountDesired,
         address recipient,
-        uint256 recipientAccId,
-        uint256 senderAccId,
+        uint256 recipientAccRefId,
+        uint256 senderAccRefId,
         bytes32 callbackAction
     ) external {
         IEngine(engine).swap(
@@ -117,8 +117,8 @@ contract MockCaller is IEngineCallbacks {
             tierChoices,
             amountDesired,
             recipient,
-            recipientAccId,
-            senderAccId,
+            recipientAccRefId,
+            senderAccRefId,
             abi.encode(callbackAction)
         );
     }

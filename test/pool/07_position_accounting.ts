@@ -115,26 +115,26 @@ describe('position accounting', () => {
 
   context('collectAllFees true/false does not affect fees earned', () => {
     it('remove liquidity', async () => {
-      const accIdA = 1;
-      const accIdB = 2;
-      await pool.updateLiquidity(pool.address, accIdA, 0, -100, 100, 500_000, false);
-      await pool.updateLiquidity(pool.address, accIdB, 0, -100, 100, 500_000, false);
+      const refIdA = 1;
+      const refIdB = 2;
+      await pool.updateLiquidity(pool.address, refIdA, 0, -100, 100, 500_000, false);
+      await pool.updateLiquidity(pool.address, refIdB, 0, -100, 100, 500_000, false);
       await pool.increaseFeeGrowthGlobal(bn(10).pow(16), bn(10).pow(16));
-      const positionABefore = await pool.getPosition(pool.address, accIdA, 0, -100, 100);
+      const positionABefore = await pool.getPosition(pool.address, refIdA, 0, -100, 100);
 
       // A: not collect all fees
-      const txA = await pool.updateLiquidity(pool.address, accIdA, 0, -100, 100, -250000, false);
+      const txA = await pool.updateLiquidity(pool.address, refIdA, 0, -100, 100, -250000, false);
       const eventA = await getEvent(txA, pool, 'UpdateLiquidityReturns');
-      const [feeAmt0A, feeAmt1A] = await pool.getPositionFees(pool.address, accIdA, 0, -100, 100);
+      const [feeAmt0A, feeAmt1A] = await pool.getPositionFees(pool.address, refIdA, 0, -100, 100);
       expect(feeAmt0A).eq(eventA.feeAmtOut0);
       expect(feeAmt1A).eq(eventA.feeAmtOut1);
       expect(feeAmt0A).gt(0);
       expect(feeAmt1A).gt(0);
 
       // B: collect all fees
-      const txB = await pool.updateLiquidity(pool.address, accIdB, 0, -100, 100, -250000, true);
+      const txB = await pool.updateLiquidity(pool.address, refIdB, 0, -100, 100, -250000, true);
       const eventB = await getEvent(txB, pool, 'UpdateLiquidityReturns');
-      const [feeAmt0B, feeAmt1B] = await pool.getPositionFees(pool.address, accIdB, 0, -100, 100);
+      const [feeAmt0B, feeAmt1B] = await pool.getPositionFees(pool.address, refIdB, 0, -100, 100);
       expect(eventB.feeAmtOut0).gt(0);
       expect(eventB.feeAmtOut1).gt(0);
       expect(feeAmt0B).eq(0);
@@ -145,8 +145,8 @@ describe('position accounting', () => {
       expect(eventB.feeAmtOut1).eq(feeAmt1A.add(eventA.feeAmtOut1));
 
       // check position data changes
-      const positionA = await pool.getPosition(pool.address, accIdA, 0, -100, 100);
-      const positionB = await pool.getPosition(pool.address, accIdB, 0, -100, 100);
+      const positionA = await pool.getPosition(pool.address, refIdA, 0, -100, 100);
+      const positionB = await pool.getPosition(pool.address, refIdB, 0, -100, 100);
       expect(positionA.feeGrowthInside0Last).lt(positionB.feeGrowthInside0Last);
       expect(positionA.feeGrowthInside1Last).lt(positionB.feeGrowthInside1Last);
       expect(positionA.feeGrowthInside0Last).eq(positionABefore.feeGrowthInside0Last);
@@ -154,25 +154,25 @@ describe('position accounting', () => {
     });
 
     it('add liquidity ', async () => {
-      const accIdA = 1;
-      const accIdB = 2;
-      await pool.updateLiquidity(pool.address, accIdA, 0, -100, 100, 500_000, false);
-      await pool.updateLiquidity(pool.address, accIdB, 0, -100, 100, 500_000, false);
+      const refIdA = 1;
+      const refIdB = 2;
+      await pool.updateLiquidity(pool.address, refIdA, 0, -100, 100, 500_000, false);
+      await pool.updateLiquidity(pool.address, refIdB, 0, -100, 100, 500_000, false);
       await pool.increaseFeeGrowthGlobal(bn(10).pow(16), bn(10).pow(16));
 
       // A: not collect all fees
-      const txA = await pool.updateLiquidity(pool.address, accIdA, 0, -100, 100, 10000, false);
+      const txA = await pool.updateLiquidity(pool.address, refIdA, 0, -100, 100, 10000, false);
       const eventA = await getEvent(txA, pool, 'UpdateLiquidityReturns');
-      const [feeAmt0A, feeAmt1A] = await pool.getPositionFees(pool.address, accIdA, 0, -100, 100);
+      const [feeAmt0A, feeAmt1A] = await pool.getPositionFees(pool.address, refIdA, 0, -100, 100);
       expect(eventA.feeAmtOut0).eq(0);
       expect(eventA.feeAmtOut1).eq(0);
       expect(feeAmt0A).gt(0);
       expect(feeAmt1A).gt(0);
 
       // B: collect all fees
-      const txB = await pool.updateLiquidity(pool.address, accIdB, 0, -100, 100, 10000, true);
+      const txB = await pool.updateLiquidity(pool.address, refIdB, 0, -100, 100, 10000, true);
       const eventB = await getEvent(txB, pool, 'UpdateLiquidityReturns');
-      const [feeAmt0B, feeAmt1B] = await pool.getPositionFees(pool.address, accIdB, 0, -100, 100);
+      const [feeAmt0B, feeAmt1B] = await pool.getPositionFees(pool.address, refIdB, 0, -100, 100);
       expect(eventB.feeAmtOut0).gt(0);
       expect(eventB.feeAmtOut1).gt(0);
       expect(feeAmt0B).eq(0);
@@ -182,8 +182,8 @@ describe('position accounting', () => {
       expect(eventB.feeAmtOut1).eq(feeAmt1A);
 
       // check position data changes
-      const positionA = await pool.getPosition(pool.address, accIdA, 0, -100, 100);
-      const positionB = await pool.getPosition(pool.address, accIdB, 0, -100, 100);
+      const positionA = await pool.getPosition(pool.address, refIdA, 0, -100, 100);
+      const positionB = await pool.getPosition(pool.address, refIdB, 0, -100, 100);
       expect(positionA.feeGrowthInside0Last).lt(positionB.feeGrowthInside0Last);
       expect(positionA.feeGrowthInside1Last).lt(positionB.feeGrowthInside1Last);
     });

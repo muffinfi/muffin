@@ -15,8 +15,8 @@ describe('engine swap', () => {
   let user: SignerWithAddress;
   let poolId: string;
 
-  const getAccBalance = async (token: string, owner: string, accId: number) => {
-    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accId]));
+  const getAccBalance = async (token: string, owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
     return await engine.accounts(token, accHash);
   };
 
@@ -27,8 +27,8 @@ describe('engine swap', () => {
       tierChoices: number;
       amountDesired: BigNumberish;
       recipient: string;
-      recipientAccId: number;
-      senderAccId: number;
+      recipientAccRefId: number;
+      senderAccRefId: number;
       callbackAction: string;
     }>,
   ) => {
@@ -38,8 +38,8 @@ describe('engine swap', () => {
       params?.tierChoices ?? 0b111111,
       params?.amountDesired ?? 10000,
       params?.recipient ?? user.address,
-      params?.recipientAccId ?? 0,
-      params?.senderAccId ?? 0,
+      params?.recipientAccRefId ?? 0,
+      params?.senderAccRefId ?? 0,
       params?.callbackAction ?? utils.id(''),
     );
   };
@@ -136,7 +136,7 @@ describe('engine swap', () => {
     const reserve1Before = await token1.balanceOf(engine.address);
     const accBalance1Before = await getAccBalance(token1.address, user.address, 1);
 
-    await swap({ amountDesired: -10000, recipient: user.address, recipientAccId: 1 });
+    await swap({ amountDesired: -10000, recipient: user.address, recipientAccRefId: 1 });
 
     // check no token left the contract, and recipient internal balance increased
     expect(await token1.balanceOf(engine.address)).eq(reserve1Before);
@@ -159,7 +159,7 @@ describe('engine swap', () => {
       const reserve0Before = await token0.balanceOf(engine.address);
 
       // perform swap
-      const tx = await swap({ amountDesired, senderAccId: 1 });
+      const tx = await swap({ amountDesired, senderAccRefId: 1 });
       const event = await getEvent(tx, engine, 'Swap');
       expect(event.amount0).eq(amountDesired);
 

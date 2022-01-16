@@ -59,8 +59,8 @@ describe('engine swap multi hop', () => {
       tickUpper: MAX_TICK,
       liquidityD8: 100,
       recipient: user.address,
-      recipientAccId: 1,
-      senderAccId: 0,
+      positionRefId: 1,
+      senderAccRefId: 0,
       data: [],
       ...params,
     });
@@ -71,8 +71,8 @@ describe('engine swap multi hop', () => {
       path: [],
       amountDesired: 10000,
       recipient: user.address,
-      recipientAccId: 0,
-      senderAccId: 0,
+      recipientAccRefId: 0,
+      senderAccRefId: 0,
       data: utils.id(''),
       ...params,
     });

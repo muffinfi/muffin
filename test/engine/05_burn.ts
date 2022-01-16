@@ -7,6 +7,9 @@ import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { engineWithPoolFixture } from '../shared/fixtures';
 import { bn, wad } from '../shared/utils';
 
+const POSITION_REF_ID = 123;
+const ACC_REF_ID = 1;
+
 describe('engine burn', () => {
   let engine: MockEngine;
   let caller: MockCaller;
@@ -15,8 +18,8 @@ describe('engine burn', () => {
   let user: SignerWithAddress;
   let poolId: string;
 
-  const getAccBalance = async (token: string, owner: string, accId: number) => {
-    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accId]));
+  const getAccBalance = async (token: string, owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
     return await engine.accounts(token, accHash);
   };
 
@@ -29,8 +32,8 @@ describe('engine burn', () => {
       tickUpper: MAX_TICK,
       liquidityD8: 100,
       recipient: user.address,
-      recipientAccId: 1,
-      senderAccId: 0,
+      positionRefId: POSITION_REF_ID,
+      senderAccRefId: 0,
       data: [],
       ...params,
     });
@@ -45,7 +48,8 @@ describe('engine burn', () => {
       tickLower: MIN_TICK,
       tickUpper: MAX_TICK,
       liquidityD8: 50,
-      accId: 1,
+      positionRefId: POSITION_REF_ID,
+      accRefId: ACC_REF_ID,
       collectAllFees: false,
       ...params,
     });
@@ -55,8 +59,8 @@ describe('engine burn', () => {
     ({ engine, caller, token0, token1, user, poolId } = await waffle.loadFixture(engineWithPoolFixture));
     await mint();
     await engine.increaseFeeGrowthGlobal(poolId, wad(1), wad(1));
-    expect(await getAccBalance(token0.address, user.address, 1)).eq(0);
-    expect(await getAccBalance(token1.address, user.address, 1)).eq(0);
+    expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(0);
+    expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(0);
   });
 
   it('invalid token order', async () => {
@@ -70,8 +74,8 @@ describe('engine burn', () => {
   it('burn successfully', async () => {
     await expect(burn({ liquidityD8: 50, collectAllFees: false }))
       .to.emit(engine, 'Burn')
-      .withArgs(poolId, user.address, 1, 0, MIN_TICK, MAX_TICK, 50, 12799, 12799, 693, 693);
-    expect(await getAccBalance(token0.address, user.address, 1)).eq(12799 + 693);
-    expect(await getAccBalance(token1.address, user.address, 1)).eq(12799 + 693);
+      .withArgs(poolId, user.address, POSITION_REF_ID, 0, MIN_TICK, MAX_TICK, 50, 12799, 12799, 693, 693);
+    expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(12799 + 693);
+    expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(12799 + 693);
   });
 });

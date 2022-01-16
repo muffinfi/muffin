@@ -75,7 +75,7 @@ contract MockPool {
 
     function updateLiquidity(
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -84,7 +84,7 @@ contract MockPool {
     ) external unlock {
         (uint256 amount0, uint256 amount1, uint256 feeAmtOut0, uint256 feeAmtOut1) = pool.updateLiquidity(
             owner,
-            accId,
+            positionRefId,
             tierId,
             tickLower,
             tickUpper,
@@ -167,7 +167,7 @@ contract MockPool {
 
     function getPosition(
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
@@ -180,7 +180,7 @@ contract MockPool {
             uint80 feeGrowthInside1Last
         )
     {
-        Positions.Position memory p = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position memory p = Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper);
         return (p.liquidityD8, p.feeGrowthInside0Last, p.feeGrowthInside1Last);
     }
 
@@ -208,12 +208,19 @@ contract MockPool {
     // following Position.sol
     function getPositionFees(
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
     ) external view returns (uint256 feeAmt0, uint256 feeAmt1) {
-        Positions.Position memory position = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position memory position = Positions.get(
+            pool.positions,
+            owner,
+            positionRefId,
+            tierId,
+            tickLower,
+            tickUpper
+        );
         (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = pool._feeGrowthInside(tierId, tickLower, tickUpper);
         unchecked {
             uint96 liquidityD8 = position.liquidityD8;

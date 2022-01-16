@@ -23,8 +23,8 @@ describe('engine create pool', () => {
     await engine.addAccountBalance(user.address, 1, token1.address, 25600);
   });
 
-  const getAccBalance = async (token: string, owner: string, accId: number) => {
-    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accId]));
+  const getAccBalance = async (token: string, owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
     return await engine.accounts(token, accHash);
   };
 

@@ -15,8 +15,8 @@ describe('engine accounts', () => {
     ({ engine, caller, token0, user } = await waffle.loadFixture(engineFixture));
   });
 
-  const getAccBalance = async (owner: string, accId: number) => {
-    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accId]));
+  const getAccBalance = async (owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
     return await engine.accounts(token0.address, accHash);
   };
 

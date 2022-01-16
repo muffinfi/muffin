@@ -18,7 +18,7 @@ interface IEngineView {
     function getPosition(
         bytes32 poolId,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper

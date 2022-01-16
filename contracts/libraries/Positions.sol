@@ -12,24 +12,23 @@ library Positions {
     }
 
     /**
-     * @param positions The mapping of positions
-     * @param owner     The position owner's address
-     * @param accId     The position owner's account id
-     * @param tierId    The tier index of the position
-     * @param tickLower The lower tick boundary of the position
-     * @param tickUpper The upper tick boundary of the position
+     * @param positions Mapping of positions
+     * @param owner     Position owner's address
+     * @param refId     Arbitrary identifier set by the position owner
+     * @param tierId    Index of the tier which the position is in
+     * @param tickLower Lower tick boundary of the position
+     * @param tickUpper Upper tick boundary of the position
      * @return position The position object
      */
     function get(
         mapping(bytes32 => Position) storage positions,
         address owner,
-        uint256 accId,
+        uint256 refId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (Position storage position) {
-        require(accId != 0);
-        position = positions[keccak256(abi.encodePacked(owner, accId, tierId, tickLower, tickUpper))];
+        position = positions[keccak256(abi.encodePacked(owner, tierId, tickLower, tickUpper, refId))];
     }
 
     /**

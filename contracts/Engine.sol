@@ -78,16 +78,16 @@ contract Engine is IEngine {
      *                           ACCOUNT
      *==============================================================*/
 
-    /// @dev Hash [owner, accId] as the key for the `accounts` mapping
-    function getAccHash(address owner, uint256 accId) internal pure returns (bytes32) {
-        require(accId != 0);
-        return keccak256(abi.encode(owner, accId));
+    /// @dev Hash [owner, accRefId] as the key for the `accounts` mapping
+    function getAccHash(address owner, uint256 accRefId) internal pure returns (bytes32) {
+        require(accRefId != 0);
+        return keccak256(abi.encode(owner, accRefId));
     }
 
     /// @inheritdoc IEngineActions
     function deposit(
         address recipient,
-        uint256 recipientAccId,
+        uint256 recipientAccRefId,
         address token,
         uint256 amount,
         bytes calldata data
@@ -96,20 +96,20 @@ contract Engine is IEngine {
         IEngineCallbacks(msg.sender).depositCallback(token, amount, data);
         checkBalanceAndUnlock(token, balanceBefore + amount);
 
-        accounts[token][getAccHash(recipient, recipientAccId)] += amount;
-        emit Deposit(recipient, recipientAccId, token, amount);
+        accounts[token][getAccHash(recipient, recipientAccRefId)] += amount;
+        emit Deposit(recipient, recipientAccRefId, token, amount);
     }
 
     /// @inheritdoc IEngineActions
     function withdraw(
         address recipient,
-        uint256 senderAccId,
+        uint256 senderAccRefId,
         address token,
         uint256 amount
     ) external {
-        accounts[token][getAccHash(msg.sender, senderAccId)] -= amount;
+        accounts[token][getAccHash(msg.sender, senderAccRefId)] -= amount;
         SafeTransferLib.safeTransfer(token, recipient, amount);
-        emit Withdraw(recipient, senderAccId, token, amount);
+        emit Withdraw(recipient, senderAccRefId, token, amount);
     }
 
     /*===============================================================
@@ -122,14 +122,14 @@ contract Engine is IEngine {
         address token1,
         uint24 sqrtGamma,
         uint128 sqrtPrice,
-        uint256 senderAccId
+        uint256 senderAccRefId
     ) external {
         if (token0 >= token1 || token0 == address(0)) revert InvalidTokenOrder();
 
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
         (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
-        accounts[token0][getAccHash(msg.sender, senderAccId)] -= amount0;
-        accounts[token1][getAccHash(msg.sender, senderAccId)] -= amount1;
+        accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
+        accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
         emit PoolCreated(token0, token1);
         emit UpdateTier(poolId, 0, sqrtGamma);
@@ -142,12 +142,12 @@ contract Engine is IEngine {
         address token0,
         address token1,
         uint24 sqrtGamma,
-        uint256 senderAccId
+        uint256 senderAccRefId
     ) external onlyGovernance {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
         (uint256 amount0, uint256 amount1, uint8 tierId) = pool.addTier(sqrtGamma);
-        accounts[token0][getAccHash(msg.sender, senderAccId)] -= amount0;
-        accounts[token1][getAccHash(msg.sender, senderAccId)] -= amount1;
+        accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
+        accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
         emit UpdateTier(poolId, tierId, sqrtGamma);
         pool.unlock();
@@ -184,15 +184,15 @@ contract Engine is IEngine {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
         (amount0, amount1, , ) = pool.updateLiquidity(
             p.recipient,
-            p.recipientAccId,
+            p.positionRefId,
             p.tierId,
             p.tickLower,
             p.tickUpper,
             p.liquidityD8.toInt96(),
             false
         );
-        if (p.senderAccId != 0) {
-            bytes32 accHash = getAccHash(msg.sender, p.senderAccId);
+        if (p.senderAccRefId != 0) {
+            bytes32 accHash = getAccHash(msg.sender, p.senderAccRefId);
             (accounts[p.token0][accHash], amount0) = Math.subUntilZero(accounts[p.token0][accHash], amount0);
             (accounts[p.token1][accHash], amount1) = Math.subUntilZero(accounts[p.token1][accHash], amount1);
         }
@@ -203,7 +203,7 @@ contract Engine is IEngine {
             checkBalanceAndUnlock(p.token0, balance0Before + amount0);
             checkBalanceAndUnlock(p.token1, balance1Before + amount1);
         }
-        emit Mint(poolId, p.recipient, p.recipientAccId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
+        emit Mint(poolId, p.recipient, p.positionRefId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
         pool.unlock();
     }
 
@@ -220,20 +220,20 @@ contract Engine is IEngine {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
         (amount0, amount1, feeAmount0, feeAmount1) = pool.updateLiquidity(
             msg.sender,
-            p.accId,
+            p.positionRefId,
             p.tierId,
             p.tickLower,
             p.tickUpper,
             -p.liquidityD8.toInt96(),
             p.collectAllFees
         );
-        bytes32 accHash = getAccHash(msg.sender, p.accId);
+        bytes32 accHash = getAccHash(msg.sender, p.accRefId);
         accounts[p.token0][accHash] += amount0 + feeAmount0;
         accounts[p.token1][accHash] += amount1 + feeAmount1;
         emit Burn(
             poolId,
             msg.sender,
-            p.accId,
+            p.positionRefId,
             p.tierId,
             p.tickLower,
             p.tickUpper,
@@ -257,13 +257,13 @@ contract Engine is IEngine {
         uint256 tierChoices,
         int256 amountDesired,
         address recipient,
-        uint256 recipientAccId,
-        uint256 senderAccId,
+        uint256 recipientAccRefId,
+        uint256 senderAccRefId,
         bytes calldata data
     ) external returns (uint256 amountIn, uint256 amountOut) {
         Pools.Pool storage pool;
         (pool, , amountIn, amountOut) = _computeSwap(tokenIn, tokenOut, tierChoices, amountDesired, recipient);
-        _transferSwap(tokenIn, tokenOut, amountIn, amountOut, recipient, recipientAccId, senderAccId, data);
+        _transferSwap(tokenIn, tokenOut, amountIn, amountOut, recipient, recipientAccRefId, senderAccRefId, data);
         pool.unlock();
     }
 
@@ -309,7 +309,7 @@ contract Engine is IEngine {
             }
         }
         (address _tokenIn, address _tokenOut) = path.tokensInOut(exactIn);
-        _transferSwap(_tokenIn, _tokenOut, amountIn, amountOut, p.recipient, p.recipientAccId, p.senderAccId, p.data);
+        _transferSwap(_tokenIn, _tokenOut, amountIn, amountOut, p.recipient, p.recipientAccRefId, p.senderAccRefId, p.data);
         unchecked {
             for (uint256 i; i < poolIds.length; i++) pools[poolIds[i]].unlock();
         }
@@ -357,20 +357,20 @@ contract Engine is IEngine {
         uint256 amountIn,
         uint256 amountOut,
         address recipient,
-        uint256 recipientAccId,
-        uint256 senderAccId,
+        uint256 recipientAccRefId,
+        uint256 senderAccRefId,
         bytes memory data
     ) internal {
         if (tokenIn == tokenOut) {
             (amountIn, amountOut) = Math.subUntilZero(amountIn, amountOut);
         }
-        if (recipientAccId == 0) {
+        if (recipientAccRefId == 0) {
             SafeTransferLib.safeTransfer(tokenOut, recipient, amountOut);
         } else {
-            accounts[tokenOut][getAccHash(recipient, recipientAccId)] += amountOut;
+            accounts[tokenOut][getAccHash(recipient, recipientAccRefId)] += amountOut;
         }
-        if (senderAccId != 0) {
-            bytes32 accHash = getAccHash(msg.sender, senderAccId);
+        if (senderAccRefId != 0) {
+            bytes32 accHash = getAccHash(msg.sender, senderAccRefId);
             (accounts[tokenIn][accHash], amountIn) = Math.subUntilZero(accounts[tokenIn][accHash], amountIn);
         }
         if (amountIn > 0) {
@@ -439,7 +439,7 @@ contract Engine is IEngine {
     function getPosition(
         bytes32 poolId,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
@@ -452,7 +452,14 @@ contract Engine is IEngine {
             uint80 feeGrowthInside1Last
         )
     {
-        Positions.Position storage pos = Positions.get(pools[poolId].positions, owner, accId, tierId, tickLower, tickUpper);
+        Positions.Position storage pos = Positions.get(
+            pools[poolId].positions,
+            owner,
+            positionRefId,
+            tierId,
+            tickLower,
+            tickUpper
+        );
         return (pos.liquidityD8, pos.feeGrowthInside0Last, pos.feeGrowthInside1Last);
     }
 

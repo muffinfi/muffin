@@ -49,8 +49,8 @@ abstract contract SwapManager is ManagerBase {
             tierChoices,
             amountIn.toInt256(),
             toAccount ? address(this) : recipient,
-            toAccount ? getAccId(recipient) : 0,
-            fromAccount ? getAccId(msg.sender) : 0,
+            toAccount ? getAccRefId(recipient) : 0,
+            fromAccount ? getAccRefId(msg.sender) : 0,
             fromAccount ? new bytes(0) : abi.encode(msg.sender)
         );
         require(amountOut >= amountOutMinimum, "TOO_LITTLE_RECEIVED");
@@ -79,8 +79,8 @@ abstract contract SwapManager is ManagerBase {
                 path: path,
                 amountDesired: amountIn.toInt256(),
                 recipient: toAccount ? address(this) : recipient,
-                recipientAccId: toAccount ? getAccId(recipient) : 0,
-                senderAccId: fromAccount ? getAccId(msg.sender) : 0,
+                recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
+                senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
                 data: fromAccount ? new bytes(0) : abi.encode(msg.sender)
             })
         );
@@ -115,8 +115,8 @@ abstract contract SwapManager is ManagerBase {
             tierChoices,
             -amountOut.toInt256(),
             toAccount ? address(this) : recipient,
-            toAccount ? getAccId(recipient) : 0,
-            fromAccount ? getAccId(msg.sender) : 0,
+            toAccount ? getAccRefId(recipient) : 0,
+            fromAccount ? getAccRefId(msg.sender) : 0,
             fromAccount ? new bytes(0) : abi.encode(msg.sender)
         );
         require(amountIn <= amountInMaximum, "TOO_MUCH_REQUESTED");
@@ -145,8 +145,8 @@ abstract contract SwapManager is ManagerBase {
                 path: path,
                 amountDesired: -amountOut.toInt256(),
                 recipient: toAccount ? address(this) : recipient,
-                recipientAccId: toAccount ? getAccId(recipient) : 0,
-                senderAccId: fromAccount ? getAccId(msg.sender) : 0,
+                recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
+                senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
                 data: fromAccount ? new bytes(0) : abi.encode(msg.sender)
             })
         );

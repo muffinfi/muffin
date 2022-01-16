@@ -127,6 +127,6 @@ async function main() {
     }),
     'burn all liq in these ticks',
   );
-  await logTxGas(manager.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(manager.mint({ tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728'), ...mintArgs }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(manager.mint({ ...mintArgs, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(manager.mint({ ...mintArgs, recipient: manager.address, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
 }

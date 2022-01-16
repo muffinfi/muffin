@@ -1,6 +1,6 @@
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { Engine, MockCaller, MockERC20, Pools, MockPool, MockEngine } from '../../typechain';
+import { MockCaller, MockEngine, MockERC20, MockPool, Pools } from '../../typechain';
 import { bn, deploy, wad } from './utils';
 
 export const poolTestFixture = async () => {

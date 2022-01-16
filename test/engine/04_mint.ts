@@ -16,8 +16,8 @@ describe('engine mint', () => {
   let user: SignerWithAddress;
   let poolId: string;
 
-  const getAccBalance = async (token: string, owner: string, accId: number) => {
-    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accId]));
+  const getAccBalance = async (token: string, owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
     return await engine.accounts(token, accHash);
   };
 
@@ -30,8 +30,8 @@ describe('engine mint', () => {
       tickUpper: MAX_TICK,
       liquidityD8: 1,
       recipient: user.address,
-      recipientAccId: 1,
-      senderAccId: 0,
+      positionRefId: 1,
+      senderAccRefId: 0,
       data: [],
       ...params,
     });
@@ -84,7 +84,7 @@ describe('engine mint', () => {
 
       // perform mint
       const noNeedCallback = internalBalance == 256;
-      await mint({ senderAccId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
+      await mint({ senderAccRefId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
 
       // check amount of tokens "transfered" in
       expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(transferAmount);

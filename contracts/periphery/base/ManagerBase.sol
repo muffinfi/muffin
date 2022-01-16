@@ -20,8 +20,8 @@ abstract contract ManagerBase {
     }
 
     /// @dev Transform an user address into account id
-    function getAccId(address user) internal pure returns (uint256 accId) {
-        accId = uint256(uint160(user));
+    function getAccRefId(address user) internal pure returns (uint256 accRefId) {
+        accRefId = uint256(uint160(user));
     }
 
     /*===============================================================
@@ -46,7 +46,7 @@ abstract contract ManagerBase {
         address token,
         uint256 amount
     ) public payable {
-        IEngine(engine).deposit(address(this), getAccId(recipient), token, amount, abi.encode(msg.sender));
+        IEngine(engine).deposit(address(this), getAccRefId(recipient), token, amount, abi.encode(msg.sender));
     }
 
     /// @notice             Withdraw tokens from engine's internal account to recipient
@@ -58,7 +58,7 @@ abstract contract ManagerBase {
         address token,
         uint256 amount
     ) public payable {
-        IEngine(engine).withdraw(recipient, getAccId(msg.sender), token, amount);
+        IEngine(engine).withdraw(recipient, getAccRefId(msg.sender), token, amount);
     }
 
     /// @notice             Deposit tokens into engine's internal account managed by other address
@@ -68,11 +68,11 @@ abstract contract ManagerBase {
     /// @param amount       Amount to deposit
     function depositToExternal(
         address recipient,
-        uint256 recipientAccId,
+        uint256 recipientAccRefId,
         address token,
         uint256 amount
     ) external payable {
-        IEngine(engine).deposit(recipient, recipientAccId, token, amount, abi.encode(msg.sender));
+        IEngine(engine).deposit(recipient, recipientAccRefId, token, amount, abi.encode(msg.sender));
     }
 
     /*===============================================================

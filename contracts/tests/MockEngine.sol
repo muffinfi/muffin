@@ -13,12 +13,12 @@ interface IMockERC20 {
 contract MockEngine is Engine {
     function addAccountBalance(
         address recipient,
-        uint256 recipientAccId,
+        uint256 recipientAccRefId,
         address token,
         uint256 amount
     ) external {
         IMockERC20(token).mintTo(address(this), amount);
-        accounts[token][getAccHash(recipient, recipientAccId)] += amount;
+        accounts[token][getAccHash(recipient, recipientAccRefId)] += amount;
     }
 
     function increaseFeeGrowthGlobal(

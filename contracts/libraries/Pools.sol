@@ -31,9 +31,9 @@ library Pools {
     /// @param tickEma40    Tick 40-min EMA
     /// @param secondsPerLiquidityCumulative Accumulated seconds per unit of liquidity (UQ8.88)
     /// @param tiers        Array of tiers
-    /// @param tickMaps     Bitmap for each tier to store which ticks are initializated (tierId => TickMap)
-    /// @param ticks        Mapping of tick states for each tier (tierId => tick => Tick)
-    /// @param positions    Mapping of position states (keccak256(encodePacked(owner, accId, tierId, tickLower, tickUpper)) => Position)
+    /// @param tickMaps     Bitmap for each tier to store which ticks are initializated
+    /// @param ticks        Mapping of tick states of each tier
+    /// @param positions    Mapping of position states
     struct Pool {
         bool unlocked;
         uint8 tickSpacing;
@@ -443,7 +443,7 @@ library Pools {
     /// @notice                 Update a position's liquidity
     /// @dev                    External function. called by DELEGATECALL
     /// @param owner            Address of the position owner
-    /// @param accId            Account id of the position owner
+    /// @param positionRefId    Reference id of the position
     /// @param tierId           Tier index of the position
     /// @param tickLower        Lower tick boundary of the position
     /// @param tickUpper        Upper tick boundary of the position
@@ -452,7 +452,7 @@ library Pools {
     function updateLiquidity(
         Pool storage pool,
         address owner,
-        uint256 accId,
+        uint256 positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -501,7 +501,14 @@ library Pools {
         // -------------------- UPDATE POSITION ---------------------
         {
             (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = _feeGrowthInside(pool, tierId, tickLower, tickUpper);
-            Positions.Position storage pos = Positions.get(pool.positions, owner, accId, tierId, tickLower, tickUpper);
+            Positions.Position storage pos = Positions.get(
+                pool.positions,
+                owner,
+                positionRefId,
+                tierId,
+                tickLower,
+                tickUpper
+            );
             (feeAmtOut0, feeAmtOut1) = pos.update(liquidityDeltaD8, feeGrowthInside0, feeGrowthInside1, collectAllFees);
         }
 

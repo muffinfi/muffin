@@ -3,10 +3,10 @@ pragma solidity >=0.8.0;
 
 interface IEngineEvents {
     /// @dev Emitted when user deposits tokens to an account
-    event Deposit(address indexed recipient, uint256 indexed recipientAccId, address indexed token, uint256 amount);
+    event Deposit(address indexed recipient, uint256 indexed recipientAccRefId, address indexed token, uint256 amount);
 
     /// @dev Emitted when user withdraws tokens from an account
-    event Withdraw(address indexed recipient, uint256 indexed senderAccId, address indexed token, uint256 amount);
+    event Withdraw(address indexed recipient, uint256 indexed senderAccRefId, address indexed token, uint256 amount);
 
     /// @dev Emitted when a pool is created
     event PoolCreated(address indexed token0, address indexed token1);
@@ -30,7 +30,7 @@ interface IEngineEvents {
     event Mint(
         bytes32 indexed poolId,
         address indexed owner,
-        uint256 indexed accId,
+        uint256 indexed positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
@@ -47,7 +47,7 @@ interface IEngineEvents {
     event Burn(
         bytes32 indexed poolId,
         address indexed owner,
-        uint256 indexed accId,
+        uint256 indexed positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
