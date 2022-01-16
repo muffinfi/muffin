@@ -34,6 +34,10 @@ async function main() {
     await token.approve(manager.address, constants.MaxUint256);
   }
 
+  // ===== deposit some tokens =====
+  await logTxGas(manager.deposit(user.address, token0.address, wad('100_000_000_000')), 'deposit token0');
+  await logTxGas(manager.deposit(user.address, token1.address, wad('100_000_000_000')), 'deposit token1');
+
   // ===== create pool and add tiers =====
   const price = 3100.0;
   const sqrtP = bn(Math.floor(price ** 0.5 * 100_000_000)).shl(72).div(100_000_000); // prettier-ignore
@@ -127,6 +131,6 @@ async function main() {
     }),
     'burn all liq in these ticks',
   );
-  await logTxGas(manager.mint({ ...mintArgs, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
-  await logTxGas(manager.mint({ ...mintArgs, recipient: manager.address, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(manager.mint({ ...mintArgs, useAccount: false, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
+  await logTxGas(manager.mint({ ...mintArgs, useAccount: false, recipient: manager.address, tierId: 0, tickLower: 73590, tickUpper: 84600, amount0Desired: bn('1937313698881786826219'), amount1Desired: bn('7901968494783592122078728') }), 'add liq to tier #0'); // prettier-ignore
 }

@@ -11,11 +11,10 @@ import "./base/ERC721Extended.sol";
 abstract contract PositionManager is ManagerBase, ERC721Extended {
     struct PositionInfo {
         address owner;
-        uint24 pairId;
+        uint40 pairId;
         uint8 tierId;
         int24 tickLower;
         int24 tickUpper;
-        uint16 _ownedTokenIndex; // for token enumerability
     }
     /// @notice Mapping of token id to position managed by this contract
     mapping(uint256 => PositionInfo) public positionsByTokenId;
@@ -25,11 +24,11 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         address token1;
     }
     /// @dev Next pair id. skips 0
-    uint24 internal nextPairId = 1;
+    uint40 internal nextPairId = 1;
     /// @notice Array of pools represented by its underlying token pair (pairId => Pair)
-    mapping(uint24 => Pair) public pairs;
+    mapping(uint40 => Pair) public pairs;
     /// @notice Mapping of pool id to pair id
-    mapping(bytes32 => uint24) internal pairIdsByPoolId;
+    mapping(bytes32 => uint40) public pairIdsByPoolId;
 
     constructor() ERC721Extended("Deliswap Position", "DELI-POS") {}
 
@@ -43,7 +42,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     /// @dev Cache the underlying tokens of a pool and return an id of the cache
-    function _cacheTokenPair(address token0, address token1) internal returns (uint24 pairId) {
+    function _cacheTokenPair(address token0, address token1) internal returns (uint40 pairId) {
         bytes32 poolId = keccak256(abi.encode(token0, token1));
         pairId = pairIdsByPoolId[poolId];
         if (pairId == 0) {
@@ -139,16 +138,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             uint256 amount1
         )
     {
-        tokenId = nextTokenId++;
-        _mint(params.recipient, tokenId);
+        tokenId = _mintNext(params.recipient);
 
         PositionInfo memory info = PositionInfo({
             owner: params.recipient,
             pairId: _cacheTokenPair(params.token0, params.token1),
             tierId: params.tierId,
             tickLower: params.tickLower,
-            tickUpper: params.tickUpper,
-            _ownedTokenIndex: positionsByTokenId[tokenId]._ownedTokenIndex
+            tickUpper: params.tickUpper
         });
         positionsByTokenId[tokenId] = info;
 
@@ -383,7 +380,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     /*===============================================================
-     *            OVERRIDE FOR ERC721 and ERC721Extended
+     *                 OVERRIDE FUNCTIONS IN ERC721
      *==============================================================*/
 
     /// @dev override `_getOwner` in ERC721.sol
@@ -394,15 +391,5 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     /// @dev override `_setOwner` in ERC721.sol
     function _setOwner(uint256 tokenId, address owner) internal override {
         positionsByTokenId[tokenId].owner = owner;
-    }
-
-    /// @dev override `_getOwnedTokenIndex` in ERC721Extended.sol
-    function _getOwnedTokenIndex(uint80 tokenId) internal view override returns (uint16 index) {
-        index = positionsByTokenId[tokenId]._ownedTokenIndex;
-    }
-
-    /// @dev override `_getOwnedTokenIndex` in ERC721Extended.sol
-    function _setOwnedTokenIndex(uint80 tokenId, uint16 index) internal override {
-        positionsByTokenId[tokenId]._ownedTokenIndex = index;
     }
 }

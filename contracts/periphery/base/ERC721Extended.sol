@@ -13,10 +13,8 @@ abstract contract ERC721Extended is ERC721 {
     bytes32 private immutable nameHash;
     mapping(uint256 => uint256) public nonces;
 
-    uint80 internal minted;
-    uint80 internal burned;
-    uint80 internal nextTokenId;
-    mapping(address => uint80[65535]) internal ownedTokens; // user address => tokenId[]
+    uint128 internal minted;
+    uint128 internal burned;
 
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
         nameHash = keccak256(bytes(name_));
@@ -85,23 +83,16 @@ abstract contract ERC721Extended is ERC721 {
     }
 
     /*=====================================================================
-     *                           ENUMERABILITY
+     *                      TOKEN ID & TOTAL SUPPLY
      *====================================================================*/
-
-    /**
-     * Adapted from OpenZeppelin 4.3.1's ERC721Enumerable.
-     * Removed `allTokens` array and added `minted` and `burned` to keep track of total supply.
-     * Removed `_ownedTokensIndex` mapping and added setter and getter functions for it.
-     * Changed `ownedTokens` from a "mapping of mapping" to a "mapping of uint80[]" for gas optimization.
-     */
 
     function totalSupply() public view virtual returns (uint256) {
         return minted - burned;
     }
 
-    function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual returns (uint256 tokenId) {
-        require(index < ERC721.balanceOf(owner), "Index out of bound");
-        tokenId = ownedTokens[owner][index];
+    function _mintNext(address to) internal virtual returns (uint256 tokenId) {
+        tokenId = minted;
+        _mint(to, tokenId);
     }
 
     function _beforeTokenTransfer(
@@ -110,43 +101,7 @@ abstract contract ERC721Extended is ERC721 {
         uint256 tokenId
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
-        assert(tokenId <= type(uint80).max);
-
-        if (from == address(0)) {
-            minted++;
-        } else if (from != to) {
-            _removeTokenFromOwnerEnumeration(from, uint80(tokenId));
-        }
-
-        if (to == address(0)) {
-            burned++;
-        } else if (to != from) {
-            _addTokenToOwnerEnumeration(to, uint80(tokenId));
-        }
+        if (from == address(0)) minted++;
+        if (to == address(0)) burned++;
     }
-
-    function _addTokenToOwnerEnumeration(address to, uint80 tokenId) internal {
-        uint256 length = ERC721.balanceOf(to);
-        require(length <= type(uint16).max, "MAX_TOKENS_PER_ADDRESS");
-        ownedTokens[to][length] = tokenId;
-        _setOwnedTokenIndex(tokenId, uint16(length));
-    }
-
-    function _removeTokenFromOwnerEnumeration(address from, uint80 tokenId) internal {
-        uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
-        uint16 tokenIndex = _getOwnedTokenIndex(tokenId);
-
-        if (tokenIndex != lastTokenIndex) {
-            uint80 lastTokenId = ownedTokens[from][lastTokenIndex];
-            ownedTokens[from][tokenIndex] = lastTokenId;
-            _setOwnedTokenIndex(lastTokenId, tokenIndex);
-        }
-
-        _setOwnedTokenIndex(tokenId, 0);
-        delete ownedTokens[from][lastTokenIndex];
-    }
-
-    function _getOwnedTokenIndex(uint80 tokenId) internal view virtual returns (uint16 index);
-
-    function _setOwnedTokenIndex(uint80 tokenId, uint16 index) internal virtual;
 }
