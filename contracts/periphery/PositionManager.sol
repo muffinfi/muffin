@@ -142,7 +142,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         tokenId = nextTokenId++;
         _mint(params.recipient, tokenId);
 
-        positionsByTokenId[tokenId] = PositionInfo({
+        PositionInfo memory info = PositionInfo({
             owner: params.recipient,
             pairId: _cacheTokenPair(params.token0, params.token1),
             tierId: params.tierId,
@@ -150,19 +150,18 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             tickUpper: params.tickUpper,
             _ownedTokenIndex: positionsByTokenId[tokenId]._ownedTokenIndex
         });
+        positionsByTokenId[tokenId] = info;
 
         (liquidityD8, amount0, amount1) = _addLiquidity(
-            params.token0,
-            params.token1,
-            params.tierId,
-            params.tickLower,
-            params.tickUpper,
+            info,
+            Pair(params.token0, params.token1),
             tokenId,
             params.amount0Desired,
             params.amount1Desired,
+            params.amount0Min,
+            params.amount1Min,
             params.useAccount
         );
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
     }
 
     /**
@@ -201,33 +200,29 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         PositionInfo memory info = positionsByTokenId[params.tokenId];
-        Pair memory pair = pairs[info.pairId];
         (liquidityD8, amount0, amount1) = _addLiquidity(
-            pair.token0,
-            pair.token1,
-            info.tierId,
-            info.tickLower,
-            info.tickUpper,
+            info,
+            pairs[info.pairId],
             params.tokenId,
             params.amount0Desired,
             params.amount1Desired,
+            params.amount0Min,
+            params.amount1Min,
             params.useAccount
         );
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
     }
 
     function _addLiquidity(
-        address token0,
-        address token1,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper,
+        PositionInfo memory info,
+        Pair memory pair,
         uint256 tokenId,
         uint256 amount0Desired,
         uint256 amount1Desired,
+        uint256 amount0Min,
+        uint256 amount1Min,
         bool useAccount
     )
-        public
+        internal
         returns (
             uint96 liquidityD8,
             uint256 amount0,
@@ -235,19 +230,19 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         liquidityD8 = PoolMath.calcLiquidityForAmts(
-            IEngine(engine).getTier(keccak256(abi.encode(token0, token1)), tierId).sqrtPrice,
-            TickMath.tickToSqrtPrice(tickLower),
-            TickMath.tickToSqrtPrice(tickUpper),
+            IEngine(engine).getTier(keccak256(abi.encode(pair.token0, pair.token1)), info.tierId).sqrtPrice,
+            TickMath.tickToSqrtPrice(info.tickLower),
+            TickMath.tickToSqrtPrice(info.tickUpper),
             amount0Desired,
             amount1Desired
         );
         (amount0, amount1) = IEngine(engine).mint(
             IEngineActions.MintParams({
-                token0: token0,
-                token1: token1,
-                tierId: tierId,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
+                token0: pair.token0,
+                token1: pair.token1,
+                tierId: info.tierId,
+                tickLower: info.tickLower,
+                tickUpper: info.tickUpper,
                 liquidityD8: liquidityD8,
                 recipient: address(this),
                 positionRefId: tokenId,
@@ -255,6 +250,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
                 data: useAccount ? new bytes(0) : abi.encode(msg.sender)
             })
         );
+        require(amount0 >= amount0Min && amount1 >= amount1Min, "Price slippage");
     }
 
     /*===============================================================
