@@ -6,7 +6,7 @@ import { waffle } from 'hardhat';
 import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { engineWithPoolFixture } from '../shared/fixtures';
-import { bn } from '../shared/utils';
+import { bn, getEvent } from '../shared/utils';
 
 describe('engine mint', () => {
   let engine: MockEngine;
@@ -84,7 +84,7 @@ describe('engine mint', () => {
 
       // perform mint
       const noNeedCallback = internalBalance == 256;
-      await mint({ senderAccRefId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
+      const tx = await mint({ senderAccRefId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
 
       // check amount of tokens "transfered" in
       expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(transferAmount);
@@ -93,6 +93,11 @@ describe('engine mint', () => {
       // check internal balances are used up
       expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
       expect(await getAccBalance(token1.address, caller.address, 1)).eq(0);
+
+      // check event data and return values not affected by switching on/off internal account
+      const event = await getEvent(tx, engine, 'Mint');
+      expect(event.amount0).eq(256);
+      expect(event.amount1).eq(256);
     };
 
     it('cover all input', async () => {

@@ -12,6 +12,7 @@ import "./libraries/Pools.sol";
 
 contract Engine is IEngine {
     using Math for uint96;
+    using Math for uint256;
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
     using PathLib for bytes;
@@ -191,17 +192,19 @@ contract Engine is IEngine {
             p.liquidityD8.toInt96(),
             false
         );
+        uint256 _amt0 = amount0;
+        uint256 _amt1 = amount1;
         if (p.senderAccRefId != 0) {
             bytes32 accHash = getAccHash(msg.sender, p.senderAccRefId);
-            (accounts[p.token0][accHash], amount0) = Math.subUntilZero(accounts[p.token0][accHash], amount0);
-            (accounts[p.token1][accHash], amount1) = Math.subUntilZero(accounts[p.token1][accHash], amount1);
+            (accounts[p.token0][accHash], _amt0) = accounts[p.token0][accHash].subUntilZero(_amt0);
+            (accounts[p.token1][accHash], _amt1) = accounts[p.token1][accHash].subUntilZero(_amt1);
         }
-        if (amount0 != 0 || amount1 != 0) {
+        if (_amt0 != 0 || _amt1 != 0) {
             uint256 balance0Before = getBalanceAndLock(p.token0);
             uint256 balance1Before = getBalanceAndLock(p.token1);
-            IEngineCallbacks(msg.sender).mintCallback(p.token0, p.token1, amount0, amount1, p.data);
-            checkBalanceAndUnlock(p.token0, balance0Before + amount0);
-            checkBalanceAndUnlock(p.token1, balance1Before + amount1);
+            IEngineCallbacks(msg.sender).mintCallback(p.token0, p.token1, _amt0, _amt1, p.data);
+            checkBalanceAndUnlock(p.token0, balance0Before + _amt0);
+            checkBalanceAndUnlock(p.token1, balance1Before + _amt1);
         }
         emit Mint(poolId, p.recipient, p.positionRefId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
         pool.unlock();
@@ -362,7 +365,7 @@ contract Engine is IEngine {
         bytes memory data
     ) internal {
         if (tokenIn == tokenOut) {
-            (amountIn, amountOut) = Math.subUntilZero(amountIn, amountOut);
+            (amountIn, amountOut) = amountIn.subUntilZero(amountOut);
         }
         if (recipientAccRefId == 0) {
             SafeTransferLib.safeTransfer(tokenOut, recipient, amountOut);
@@ -371,7 +374,7 @@ contract Engine is IEngine {
         }
         if (senderAccRefId != 0) {
             bytes32 accHash = getAccHash(msg.sender, senderAccRefId);
-            (accounts[tokenIn][accHash], amountIn) = Math.subUntilZero(accounts[tokenIn][accHash], amountIn);
+            (accounts[tokenIn][accHash], amountIn) = accounts[tokenIn][accHash].subUntilZero(amountIn);
         }
         if (amountIn > 0) {
             uint256 balanceBefore = getBalanceAndLock(tokenIn);
