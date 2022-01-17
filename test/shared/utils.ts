@@ -142,7 +142,7 @@ export const expectBalanceChanges = async (changes: BalanceChange[], fn: () => a
 
   for (const [i, { token, account, delta }] of changes.entries()) {
     const balance = await getBalance(token, account);
-    const errorMsg = `token ${i} balance should change ${delta}`;
+    const errorMsg = `token #${i} balance should change ${delta}`;
     expect(balance.sub(balancesBefore[i]), errorMsg).eq(delta);
   }
 

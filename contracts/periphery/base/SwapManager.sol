@@ -140,7 +140,7 @@ abstract contract SwapManager is ManagerBase {
         bool fromAccount,
         bool toAccount
     ) external payable returns (uint256 amountIn) {
-        (, amountOut) = IEngine(engine).swapMultiHop(
+        (amountIn, ) = IEngine(engine).swapMultiHop(
             IEngineActions.SwapMultiHopParams({
                 path: path,
                 amountDesired: -amountOut.toInt256(),
