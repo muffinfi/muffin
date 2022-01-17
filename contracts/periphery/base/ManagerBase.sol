@@ -24,6 +24,24 @@ abstract contract ManagerBase {
         accRefId = uint256(uint160(user));
     }
 
+    function payEngine(
+        address token,
+        address payer,
+        uint256 amount
+    ) internal {
+        if (token == WETH9 && address(this).balance >= amount) {
+            // pay with WETH9
+            IWETH(WETH9).deposit{value: amount}(); // wrap only what is needed to pay
+            IWETH(WETH9).transfer(engine, amount);
+        } else if (payer == address(this)) {
+            // pay with tokens already in the contract (for the exact input multihop case)
+            SafeTransferLib.safeTransfer(token, engine, amount);
+        } else {
+            // pull payment
+            SafeTransferLib.safeTransferFrom(token, payer, engine, amount);
+        }
+    }
+
     /*===============================================================
      *                          ACCOUNTS
      *==============================================================*/
@@ -34,7 +52,7 @@ abstract contract ManagerBase {
         uint256 amount,
         bytes calldata data
     ) external fromEngine {
-        if (amount > 0) pay(token, abi.decode(data, (address)), amount);
+        if (amount > 0) payEngine(token, abi.decode(data, (address)), amount);
     }
 
     /// @notice             Deposit tokens into engine's internal account
@@ -76,34 +94,12 @@ abstract contract ManagerBase {
     }
 
     /*===============================================================
-     *                        PAYMENT UTILS
-     *==============================================================*/
-
-    function pay(
-        address token,
-        address payer,
-        uint256 amount
-    ) internal {
-        if (token == WETH9 && address(this).balance >= amount) {
-            // pay with WETH9
-            IWETH(WETH9).deposit{value: amount}(); // wrap only what is needed to pay
-            IWETH(WETH9).transfer(engine, amount);
-        } else if (payer == address(this)) {
-            // pay with tokens already in the contract (for the exact input multihop case)
-            SafeTransferLib.safeTransfer(token, engine, amount);
-        } else {
-            // pull payment
-            SafeTransferLib.safeTransferFrom(token, payer, engine, amount);
-        }
-    }
-
-    /*===============================================================
      *                  ETH TRANSFER (FOR MULTICALL)
      *==============================================================*/
 
     /// @notice Unwraps the contract's WETH balance and sends it to recipient as ETH.
     /// @dev The amountMinimum parameter prevents malicious contracts from stealing WETH from users.
-    function unwrapWETH(uint256 amountMinimum, address recipient) external {
+    function unwrapWETH(uint256 amountMinimum, address recipient) external payable {
         uint256 balanceWETH = IWETH(WETH9).balanceOf(address(this));
         require(balanceWETH >= amountMinimum, "Insufficient WETH");
 

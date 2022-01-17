@@ -88,8 +88,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         bytes calldata data
     ) external fromEngine {
         address payer = abi.decode(data, (address));
-        if (amount0 > 0) pay(token0, payer, amount0);
-        if (amount1 > 0) pay(token1, payer, amount1);
+        if (amount0 > 0) payEngine(token0, payer, amount0);
+        if (amount1 > 0) payEngine(token1, payer, amount1);
     }
 
     /**
@@ -282,6 +282,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      */
     function removeLiquidity(RemoveLiquidityParams calldata params)
         external
+        payable
         checkApproved(params.tokenId)
         returns (
             uint256 amount0,
@@ -308,8 +309,10 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
 
         if (params.withdrawTo != address(0)) {
-            if (amount0 > 0) withdraw(params.withdrawTo, pair.token0, amount0);
-            if (amount1 > 0) withdraw(params.withdrawTo, pair.token1, amount1);
+            uint256 sumAmt0 = amount0 + feeAmount0;
+            uint256 sumAmt1 = amount1 + feeAmount1;
+            if (sumAmt0 > 0) withdraw(params.withdrawTo, pair.token0, sumAmt0);
+            if (sumAmt1 > 0) withdraw(params.withdrawTo, pair.token1, sumAmt1);
         }
     }
 
@@ -319,18 +322,19 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
 
     /// @notice Burn NFTs of empty positions
     /// @param tokenIds Array of NFT id
-    function burn(uint256[] calldata tokenIds) external {
+    function burn(uint256[] calldata tokenIds) external payable {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
+            // check existance + approval
             _checkApproved(tokenId);
 
-            // check position is empty
+            // check if position is empty
             PositionInfo memory info = positionsByTokenId[tokenId];
             Pair memory pair = pairs[info.pairId];
-            (, , uint128 liquidity) = IEngine(engine).getPosition(
+            (uint128 liquidity, , ) = IEngine(engine).getPosition(
                 keccak256(abi.encode(pair.token0, pair.token1)),
                 address(this),
-                getAccRefId(info.owner),
+                tokenId,
                 info.tierId,
                 info.tickLower,
                 info.tickUpper
@@ -365,6 +369,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     {
         PositionInfo storage info = positionsByTokenId[tokenId];
         (owner, tierId, tickLower, tickUpper) = (info.owner, info.tierId, info.tickLower, info.tickUpper);
+        require(info.owner != address(0), 'NOT_EXISTS');
 
         Pair storage pair = pairs[info.pairId];
         (token0, token1) = (pair.token0, pair.token1);

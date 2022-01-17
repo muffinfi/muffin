@@ -1,6 +1,6 @@
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20, MockPool, Pools } from '../../typechain';
+import { Manager, MockCaller, MockEngine, MockERC20, MockPool, Pools, WETH9 } from '../../typechain';
 import { bn, deploy, wad } from './utils';
 
 export const poolTestFixture = async () => {
@@ -86,4 +86,29 @@ export const engineWithTwoPoolsFixture = async () => {
   }
 
   return { engine, caller, token0, token1, token2, user, other, poolId01, poolId12, poolId02 };
+};
+
+export const managerFixture = async () => {
+  const fixture = await engineWithTwoPoolsFixture();
+  const { engine, token0, token1, token2, user, other } = fixture;
+
+  // ===== deploy weth, must be a larger address than token2's =====
+  let weth = (await deploy('WETH9')) as WETH9;
+  while (weth.address.toLowerCase() < token2.address.toLowerCase()) weth = (await deploy('WETH9')) as WETH9;
+  await weth.deposit({ value: wad('100') });
+
+  // ===== deploy manager, approve tokens =====
+  const manager = (await deploy('Manager', engine.address, weth.address)) as Manager;
+  for (const token of [token0, token1, token2, weth]) {
+    await token.connect(user).approve(manager.address, wad('100'));
+    await token.connect(other).approve(manager.address, wad('100'));
+  }
+
+  // ===== create token2-weth pool =====
+  await engine.addAccountBalance(user.address, 1, token2.address, 25600);
+  await manager.depositToExternal(user.address, 1, weth.address, 25600);
+  await engine.createPool(token2.address, weth.address, 99850, bn(1).shl(72), 1);
+  const poolId2E = keccak256(defaultAbiCoder.encode(['address', 'address'], [token2.address, weth.address]));
+
+  return { ...fixture, manager, weth, poolId2E };
 };

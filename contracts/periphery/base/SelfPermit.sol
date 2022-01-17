@@ -17,7 +17,7 @@ abstract contract SelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external payable {
         (bool success, ) = token.call(
             abi.encodeWithSelector(0xd505accf, msg.sender, address(this), value, deadline, v, r, s)
         );
@@ -39,7 +39,7 @@ abstract contract SelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external payable {
         (bool success, ) = token.call(
             abi.encodeWithSelector(0x8fcbaf0c, msg.sender, address(this), nonce, expiry, true, v, r, s)
         );

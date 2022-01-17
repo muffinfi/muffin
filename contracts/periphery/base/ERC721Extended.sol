@@ -91,7 +91,7 @@ abstract contract ERC721Extended is ERC721 {
     }
 
     function _mintNext(address to) internal virtual returns (uint256 tokenId) {
-        tokenId = minted;
+        tokenId = minted + 1; // skip zero token id
         _mint(to, tokenId);
     }
 

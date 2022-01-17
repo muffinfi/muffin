@@ -16,7 +16,7 @@ abstract contract SwapManager is ManagerBase {
         uint256 amountOut,
         bytes calldata data
     ) external fromEngine {
-        if (amountIn > 0) pay(tokenIn, abi.decode(data, (address)), amountIn);
+        if (amountIn > 0) payEngine(tokenIn, abi.decode(data, (address)), amountIn);
         tokenOut; // shhh
         amountOut; // shhh
     }

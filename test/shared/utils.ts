@@ -1,9 +1,11 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect, use } from 'chai';
 import chalk from 'chalk';
 import { BigNumber, BigNumberish, Contract, ContractFactory, ContractTransaction } from 'ethers';
 import { ethers } from 'hardhat';
 import { jestSnapshotPlugin } from 'mocha-chai-jest-snapshot';
 import util from 'util';
+import { MockERC20, WETH9 } from '../../typechain';
 
 use(jestSnapshotPlugin());
 
@@ -115,4 +117,34 @@ export const getEvents = async (tx: ContractTransaction, contract: Contract, eve
     }
   }
   return parsedEvents;
+};
+
+//////////////////////////////////////////////////////////////////////////
+//                           COMMON CHECK
+//////////////////////////////////////////////////////////////////////////
+
+type BalanceChange = {
+  account: Contract | SignerWithAddress | string;
+  token: MockERC20 | WETH9 | 'ETH';
+  delta: BigNumberish;
+};
+
+export const expectBalanceChanges = async (changes: BalanceChange[], fn: () => any) => {
+  const getBalance = (token: BalanceChange['token'], account: BalanceChange['account']) => {
+    const addr = typeof account === 'string' ? account : account.address;
+    return token === 'ETH' ? ethers.provider.getBalance(addr) : token.balanceOf(addr);
+  };
+
+  const balancesBefore = [];
+  for (const { token, account } of changes) balancesBefore.push(await getBalance(token, account));
+
+  const retval = await fn();
+
+  for (const [i, { token, account, delta }] of changes.entries()) {
+    const balance = await getBalance(token, account);
+    const errorMsg = `token ${i} balance should change ${delta}`;
+    expect(balance.sub(balancesBefore[i]), errorMsg).eq(delta);
+  }
+
+  return retval;
 };
