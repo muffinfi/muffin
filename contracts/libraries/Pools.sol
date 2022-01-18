@@ -23,9 +23,9 @@ library Pools {
     error InvalidTierChoices();
     error InvalidTick();
     error InvalidTickRangeForLimitOrder();
-    error ZeroLiquidityForLimitOrder();
-    error AlreadySettled();
-    error NotSettled();
+    error NoLiquidityForLimitOrder();
+    error PositionAlreadySettled();
+    error PositionNotSettled();
 
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
@@ -402,71 +402,9 @@ library Pools {
                 }
             }
 
-            // handle liquidity removal (limit order settlement), which updates tick states and possibly tickmap
+            // settle single-sided positions (limit orders), which updates ticks and tickmap (effect) and tier (memory)
             if (cache.zeroForOne ? cross.needSettle0 : cross.needSettle1) {
-                Settlement.Info storage settlement;
-                int24 tickStart; // i.e. the starting tick of the limit order
-                Ticks.Tick storage start;
-                unchecked {
-                    if (cache.zeroForOne) {
-                        settlement = cross.settlement0;
-                        tickStart = tickCross + int24(uint24(settlement.tickSpacing));
-                    } else {
-                        settlement = cross.settlement1;
-                        tickStart = tickCross - int24(uint24(settlement.tickSpacing));
-                    }
-                    start = pool.ticks[tierId][tickStart];
-
-                    // remove liquidity on ticks (effect)
-                    if (cache.zeroForOne) {
-                        start.liquidityUpperD8 -= settlement.liquidityD8;
-                        cross.liquidityLowerD8 -= settlement.liquidityD8;
-                        cross.needSettle0 = false;
-                    } else {
-                        start.liquidityLowerD8 -= settlement.liquidityD8;
-                        cross.liquidityUpperD8 -= settlement.liquidityD8;
-                        cross.needSettle1 = false;
-                    }
-
-                    // snapshot data inside the tick range (effect)
-                    settlement.snapshots[settlement.snapshotId] = Settlement.Snapshot(
-                        cross.feeGrowthOutside0 - start.feeGrowthOutside0,
-                        cross.feeGrowthOutside1 - start.feeGrowthOutside1,
-                        cross.secondsPerLiquidityOutside - start.secondsPerLiquidityOutside
-                    );
-                }
-
-                // reset settlement data (effect)
-                settlement.snapshotId++;
-                settlement.tickSpacing = 0; // it'll be set when the next limit order is added
-                settlement.liquidityD8 = 0;
-
-                // after removing liquidity, delete any empty ticks
-                mapping(int24 => Ticks.Tick) storage ticks = pool.ticks[tierId];
-                TickMaps.TickMap storage tickMap = pool.tickMaps[tierId];
-
-                // delete the starting tick if empty (effect)
-                if (start.liquidityLowerD8 == 0 && start.liquidityUpperD8 == 0) {
-                    int24 below = start.nextBelow;
-                    int24 above = start.nextAbove;
-                    ticks[below].nextAbove = above;
-                    ticks[above].nextBelow = below;
-                    delete ticks[tickStart];
-                    tickMap.unset(tickStart);
-                }
-
-                // delete the ending tick if empty (effect), and update tier's next ticks (locally)
-                if (cross.liquidityLowerD8 == 0 && cross.liquidityUpperD8 == 0) {
-                    int24 below = cross.nextBelow;
-                    int24 above = cross.nextAbove;
-                    ticks[below].nextAbove = above;
-                    ticks[above].nextBelow = below;
-                    delete ticks[tickCross];
-                    tickMap.unset(tickCross);
-
-                    tier.nextTickBelow = below;
-                    tier.nextTickAbove = above;
-                }
+                Settlement.settle(pool.ticks[tierId], pool.tickMaps[tierId], tier, tickCross, cache.zeroForOne);
             }
         }
     }
@@ -550,10 +488,10 @@ library Pools {
         lock(pool);
         _updateTWAP(pool, pool.tiers);
         _checkTickInputs(tickLower, tickUpper);
-        if (
-            liquidityDeltaD8 > 0 &&
-            (tickLower % int24(uint24(pool.tickSpacing)) != 0 || tickUpper % int24(uint24(pool.tickSpacing)) != 0)
-        ) revert InvalidTick();
+        if (liquidityDeltaD8 > 0) {
+            if (tickLower % int24(uint24(pool.tickSpacing)) != 0) revert InvalidTick();
+            if (tickUpper % int24(uint24(pool.tickSpacing)) != 0) revert InvalidTick();
+        }
 
         // -------------------- UPDATE LIQUIDITY --------------------
         {
@@ -594,24 +532,24 @@ library Pools {
             }
 
             // update settlement if position is an unsettled limit order
-            if (position.positionType != Positions.NORMAL) {
+            if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
                 Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
                 Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
-                uint8 tickSpacing = pool.tickSpacing;
-                uint32 snapshotId = Settlement.update(
+                uint8 poolTickSpacing = pool.tickSpacing;
+                uint32 nextSnapshotId = Settlement.update(
                     lower,
                     upper,
-                    position.positionType,
+                    position.limitOrderType,
                     liquidityDeltaD8,
-                    tickSpacing
+                    poolTickSpacing
                 );
 
                 // cannot update if already settled
-                if (position.settlementSnapshotId != snapshotId) revert AlreadySettled();
+                if (position.settlementSnapshotId != nextSnapshotId) revert PositionAlreadySettled();
 
-                // reset position to normal type if it is emptied
+                // reset position to normal if it is emptied
                 if (position.liquidityD8 == 0) {
-                    position.positionType = Positions.NORMAL;
+                    position.limitOrderType = Positions.NOT_LIMIT_ORDER;
                     position.settlementSnapshotId = 0;
                 }
             }
@@ -751,10 +689,10 @@ library Pools {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint8 positionType
+        uint8 limitOrderType
     ) external {
         require(pool.unlocked);
-        require(positionType <= Positions.TOKEN1_LIMIT);
+        require(limitOrderType <= Positions.ONE_FOR_ZERO);
         _checkTickInputs(tickLower, tickUpper);
 
         Positions.Position storage position = Positions.get(
@@ -770,38 +708,38 @@ library Pools {
         uint8 tickSpacing = pool.tickSpacing;
 
         // unset position to normal type
-        if (position.positionType != Positions.NORMAL) {
-            (uint32 snapshotId, ) = Settlement.update(
+        if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
+            (uint32 nextSnapshotId, ) = Settlement.update(
                 lower,
                 upper,
-                position.positionType,
+                position.limitOrderType,
                 position.liquidityD8,
                 false,
                 tickSpacing
             );
             // cannot update if already settled
-            if (position.settlementSnapshotId != snapshotId) revert AlreadySettled();
+            if (position.settlementSnapshotId != nextSnapshotId) revert PositionAlreadySettled();
             // unset to normal
-            position.positionType = Positions.NORMAL;
+            position.limitOrderType = Positions.NOT_LIMIT_ORDER;
             position.settlementSnapshotId = 0;
         }
 
         // set position to limit order
-        if (positionType != Positions.NORMAL) {
-            if (position.liquidityD8 == 0) revert ZeroLiquidityForLimitOrder();
-            (uint32 snapshotId, uint8 settlementTickSpacing) = Settlement.update(
+        if (limitOrderType != Positions.NOT_LIMIT_ORDER) {
+            if (position.liquidityD8 == 0) revert NoLiquidityForLimitOrder();
+            (uint32 nextSnapshotId, uint8 settlementTickSpacing) = Settlement.update(
                 lower,
                 upper,
-                positionType,
+                limitOrderType,
                 position.liquidityD8,
                 true,
                 tickSpacing
             );
             // ensure position has a correct tick range for limit order
             if (uint24(tickUpper - tickLower) != settlementTickSpacing) revert InvalidTickRangeForLimitOrder();
-            // set to new position type
-            position.positionType = positionType;
-            position.settlementSnapshotId = snapshotId;
+            // set to limit order
+            position.limitOrderType = limitOrderType;
+            position.settlementSnapshotId = nextSnapshotId;
         }
     }
 
@@ -842,7 +780,7 @@ library Pools {
                 lower,
                 upper
             );
-            if (!settled) revert NotSettled();
+            if (!settled) revert PositionNotSettled();
             (feeAmtOut0, feeAmtOut1) = position.update(
                 -liquidityD8.toInt96(),
                 snapshot.feeGrowthInside0,
@@ -855,15 +793,15 @@ library Pools {
         uint128 sqrtPriceLower = TickMath.tickToSqrtPrice(tickLower);
         uint128 sqrtPriceUpper = TickMath.tickToSqrtPrice(tickUpper);
         (amount0, amount1) = PoolMath.calcAmtsForLiquidity(
-            position.positionType == Positions.TOKEN0_LIMIT ? sqrtPriceLower : sqrtPriceUpper,
+            position.limitOrderType == Positions.ZERO_FOR_ONE ? sqrtPriceUpper : sqrtPriceLower,
             sqrtPriceLower,
             sqrtPriceUpper,
             -liquidityD8.toInt96()
         );
 
-        // reset position to normal type if it is emptied
+        // reset position to normal if it is emptied
         if (position.liquidityD8 == 0) {
-            position.positionType = Positions.NORMAL;
+            position.limitOrderType = Positions.NOT_LIMIT_ORDER;
             position.settlementSnapshotId = 0;
         }
     }
