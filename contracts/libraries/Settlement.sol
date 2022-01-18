@@ -33,8 +33,9 @@ library Settlement {
     /**
      * @notice Update the amount of liquidity pending to be settled on a tick, given the lower and upper tick
      * boundaries of a limit-order position.
-     * @param lower             Lower tick boundary of the position
-     * @param upper             Upper tick boundary of the position
+     * @param ticks             Mapping of ticks of the tier which the position is in
+     * @param tickLower         Lower tick boundary of the position
+     * @param tickUpper         Upper tick boundary of the position
      * @param limitOrderType    Direction of the limit order (i.e. token0 or token1)
      * @param liquidityDeltaD8  Change of the amount of liquidity to be settled
      * @param isAdd             True if the change is additive
@@ -43,15 +44,19 @@ library Settlement {
      * @return tickSpacing      Tick spacing of the limit orders pending to be settled
      */
     function update(
-        Ticks.Tick storage lower,
-        Ticks.Tick storage upper,
+        mapping(int24 => Ticks.Tick) storage ticks,
+        int24 tickLower,
+        int24 tickUpper,
         uint8 limitOrderType,
         uint96 liquidityDeltaD8,
         bool isAdd,
         uint8 poolTickSpacing
     ) internal returns (uint32 nextSnapshotId, uint8 tickSpacing) {
         assert(limitOrderType != Positions.NOT_LIMIT_ORDER);
-        Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE ? upper.settlement1 : lower.settlement0;
+
+        Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE
+            ? ticks[tickUpper].settlement1
+            : ticks[tickLower].settlement0;
 
         // update the amount of liquidity to settle
         settlement.liquidityD8 = isAdd
@@ -70,9 +75,9 @@ library Settlement {
 
         // update "needSettle" flag in tick state
         if (limitOrderType == Positions.ONE_FOR_ZERO) {
-            lower.needSettle0 = !isEmpty;
+            ticks[tickLower].needSettle0 = !isEmpty;
         } else {
-            upper.needSettle1 = !isEmpty;
+            ticks[tickUpper].needSettle1 = !isEmpty;
         }
 
         // return data for validating position's settling status
@@ -82,16 +87,18 @@ library Settlement {
 
     /// @dev Bridging function to sidestep "stack too deep" problem
     function update(
-        Ticks.Tick storage lower,
-        Ticks.Tick storage upper,
+        mapping(int24 => Ticks.Tick) storage ticks,
+        int24 tickLower,
+        int24 tickUpper,
         uint8 limitOrderType,
         int96 liquidityDeltaD8,
         uint8 poolTickSpacing
     ) internal returns (uint32 nextSnapshotId) {
         unchecked {
             (nextSnapshotId, ) = update(
-                lower,
-                upper,
+                ticks,
+                tickLower,
+                tickUpper,
                 limitOrderType,
                 uint96(liquidityDeltaD8 < 0 ? -liquidityDeltaD8 : liquidityDeltaD8),
                 liquidityDeltaD8 > 0,
