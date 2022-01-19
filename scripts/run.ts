@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { BigNumberish, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { Engine, Manager, MockERC20, Pools, WETH9 } from '../typechain';
+import { Engine, EnginePositions, Manager, MockERC20, Pools, WETH9 } from '../typechain';
 import { bn, deployQuiet, logTxGas, wad } from './utils';
 
 main()
@@ -23,9 +23,11 @@ async function main() {
   const [token0, token1] = [tokenA, tokenB].sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1));
 
   // ===== deploy contracts =====
-  const poolLib = (await deployQuiet('Pools')) as Pools;
-  const Engine = await ethers.getContractFactory('Engine', { libraries: { Pools: poolLib.address } });
-  const engine = (await deployQuiet(Engine)) as Engine;
+  // const poolLib = (await deployQuiet('Pools')) as Pools;
+  // const Engine = await ethers.getContractFactory('Engine', { libraries: { Pools: poolLib.address } });
+
+  const positionController = (await deployQuiet('EnginePositions')) as EnginePositions;
+  const engine = (await deployQuiet('Engine', positionController.address)) as Engine;
   const manager = (await deployQuiet('Manager', engine.address, weth.address)) as Manager;
 
   // ===== token approval =====
@@ -125,7 +127,7 @@ async function main() {
   await logTxGas(
     manager.removeLiquidity({
       tokenId: 1,
-      liquidityD8: position.liquidityD8,
+      liquidityD8: position.position.liquidityD8,
       amount0Min: 0,
       amount1Min: 0,
       withdrawTo: user.address,

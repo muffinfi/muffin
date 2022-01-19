@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "../interfaces/engine/IEngine.sol";
+import "../interfaces/engine/positions/IEnginePositions.sol";
 import "../interfaces/IEngineCallbacks.sol";
 import "hardhat/console.sol";
 
@@ -13,10 +14,10 @@ interface IMockERC20 {
 }
 
 contract MockCallerRealistic is IEngineCallbacks {
-    IEngine public immutable engine;
+    address public immutable engine;
 
     constructor(address _engine) {
-        engine = IEngine(_engine);
+        engine = _engine;
     }
 
     function depositCallback(
@@ -62,13 +63,13 @@ contract MockCallerRealistic is IEngineCallbacks {
         IEngine(engine).deposit(recipient, accRefId, token, amount, abi.encode(msg.sender));
     }
 
-    function mint(IEngine.MintParams memory params) external {
+    function mint(IEnginePositions.MintParams memory params) external {
         params.data = abi.encode(msg.sender);
-        IEngine(engine).mint(params);
+        IEnginePositions(engine).mint(params);
     }
 
-    function burn(IEngine.BurnParams calldata params) external {
-        IEngine(engine).burn(params);
+    function burn(IEnginePositions.BurnParams calldata params) external {
+        IEnginePositions(engine).burn(params);
     }
 
     function swap(
@@ -97,7 +98,7 @@ contract MockCallerRealistic is IEngineCallbacks {
         IEngine(engine).swapMultiHop(params);
     }
 
-    function setPostionType(
+    function setLimitOrderType(
         address token0,
         address token1,
         uint8 tierId,
@@ -106,6 +107,14 @@ contract MockCallerRealistic is IEngineCallbacks {
         uint256 positionRefId,
         uint8 positionType
     ) external {
-        engine.setPositionType(token0, token1, tierId, tickLower, tickUpper, positionRefId, positionType);
+        IEnginePositions(engine).setLimitOrderType(
+            token0,
+            token1,
+            tierId,
+            tickLower,
+            tickUpper,
+            positionRefId,
+            positionType
+        );
     }
 }

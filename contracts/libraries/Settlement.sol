@@ -10,11 +10,11 @@ library Settlement {
     using TickMaps for TickMaps.TickMap;
 
     /**
-     * @notice              Data for settling single-sided positions (i.e. filled limit orders)
-     * @param liquidityD8   Amount of liquidity to remove
-     * @param tickSpacing   Tick spacing of the limit orders
-     * @param snapshotId    Next data snapshot id
-     * @param snapshots     Array of data snapshots
+     * @notice                  Data for settling single-sided positions (i.e. filled limit orders)
+     * @param liquidityD8       Amount of liquidity to remove
+     * @param tickSpacing       Tick spacing of the limit orders
+     * @param nextSnapshotId    Next data snapshot id
+     * @param snapshots         Array of data snapshots
      */
     struct Info {
         uint96 liquidityD8;
@@ -23,7 +23,7 @@ library Settlement {
         mapping(uint32 => Snapshot) snapshots;
     }
 
-    /// @notice Snapshot of the data inside the tick range of the settling positions
+    /// @notice Data snapshot when settling the positions
     struct Snapshot {
         uint80 feeGrowthInside0;
         uint80 feeGrowthInside1;
@@ -108,8 +108,8 @@ library Settlement {
     }
 
     /**
-     * @notice Settle single-sided positions (i.e. filled limit order) that ends at this tick `tickEnd` which is just
-     * being crossed during a swap. This'll update the settlement state and a tick state, and possibly tickmap.
+     * @notice Settle single-sided positions, i.e. filled limit orders, that ends at the tick `tickEnd`.
+     * @dev Called during a swap right after tickEnd is crossed. It updates settlement and tick, and possibly tickmap
      * @param ticks         Mapping of ticks of a tier
      * @param tickMap       Tick bitmap of a tier
      * @param tier          Latest tier data (in memory) currently used in the swap
@@ -150,7 +150,7 @@ library Settlement {
             }
 
             // snapshot data inside the tick range (effect)
-            settlement.snapshots[settlement.nextSnapshotId] = Settlement.Snapshot(
+            settlement.snapshots[settlement.nextSnapshotId] = Snapshot(
                 end.feeGrowthOutside0 - start.feeGrowthOutside0,
                 end.feeGrowthOutside1 - start.feeGrowthOutside1,
                 end.secondsPerLiquidityOutside - start.secondsPerLiquidityOutside
@@ -181,17 +181,25 @@ library Settlement {
             delete ticks[tickEnd];
             tickMap.unset(tickEnd);
 
+            // since the tier just crossed tickEnd, we can safely set tier's next ticks in this way
             tier.nextTickBelow = below;
             tier.nextTickAbove = above;
         }
     }
 
-    /// @notice Get data snapshot if the position is a settled limit order
-    function getSnapshotIfSettled(
+    /**
+     * @notice Get data snapshot if the position is a settled limit order
+     * @param position  Position state
+     * @param lower     Tick state of the position's lower tick boundary
+     * @param upper     Tick state of the position's upper tick boundary
+     * @return settled  True if the position is settled
+     * @return snapshot Data snapshot if position is settled
+     */
+    function getSnapshot(
         Positions.Position storage position,
         Ticks.Tick storage lower,
         Ticks.Tick storage upper
-    ) internal view returns (bool settled, Settlement.Snapshot memory snapshot) {
+    ) internal view returns (bool settled, Snapshot memory snapshot) {
         if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
             Info storage settlement = position.limitOrderType == Positions.ZERO_FOR_ONE
                 ? upper.settlement1

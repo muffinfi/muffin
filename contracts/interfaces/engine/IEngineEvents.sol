@@ -2,31 +2,31 @@
 pragma solidity >=0.8.0;
 
 interface IEngineEvents {
-    /// @dev Emitted when user deposits tokens to an account
+    /// @notice Emitted when user deposits tokens to an account
     event Deposit(address indexed recipient, uint256 indexed recipientAccRefId, address indexed token, uint256 amount);
 
-    /// @dev Emitted when user withdraws tokens from an account
+    /// @notice Emitted when user withdraws tokens from an account
     event Withdraw(address indexed recipient, uint256 indexed senderAccRefId, address indexed token, uint256 amount);
 
-    /// @dev Emitted when a pool is created
+    /// @notice Emitted when a pool is created
     event PoolCreated(address indexed token0, address indexed token1);
 
-    /// @dev Emitted when a new tier is added, or a tier's sqrt gamma is updated
+    /// @notice Emitted when a new tier is added, or a tier's sqrt gamma is updated
     event UpdateTier(bytes32 indexed poolId, uint8 indexed tierId, uint24 sqrtGamma);
 
-    /// @dev Emitted when a pool's tick spacing is updated
+    /// @notice Emitted when a pool's tick spacing is updated
     event UpdateTickSpacing(bytes32 indexed poolId, uint8 tickSpacing);
 
-    /// @dev Emitted when protocol percentage fee is updated
+    /// @notice Emitted when protocol percentage fee is updated
     event UpdateProtocolFee(bytes32 indexed poolId, uint8 protocolFee);
 
-    /// @dev Emitted when protocol fee is collected
+    /// @notice Emitted when protocol fee is collected
     event CollectProtocol(address indexed recipient, address indexed token, uint256 amount);
 
-    /// @dev Emitted when governance address is updated
+    /// @notice Emitted when governance address is updated
     event GovernanceUpdated(address governance);
 
-    /// @dev Emitted when liquidity is minted for a given position
+    /// @notice Emitted when liquidity is minted for a given position
     event Mint(
         bytes32 indexed poolId,
         address indexed owner,
@@ -39,7 +39,7 @@ interface IEngineEvents {
         uint256 amount1
     );
 
-    /// @dev Emitted when a position's liquidity is removed
+    /// @notice Emitted when a position's liquidity is removed and collected
     /// @param amount0 Token0 amount from the burned liquidity
     /// @param amount1 Token1 amount from the burned liquidity
     /// @param feeAmount0 Token0 fee collected from the position
@@ -58,7 +58,7 @@ interface IEngineEvents {
         uint256 feeAmount1
     );
 
-    /// @dev Emitted when a settled position's liquidity is collected
+    /// @notice Emitted when a settled position's liquidity is collected
     event CollectSettled(
         bytes32 indexed poolId,
         address indexed owner,
@@ -73,18 +73,18 @@ interface IEngineEvents {
         uint256 feeAmount1
     );
 
-    /// @dev Emitted when a position's type is updated
-    event SetPositionType(
+    /// @notice Emitted when a position's limit order type is updated
+    event SetLimitOrderType(
         bytes32 indexed poolId,
         address indexed owner,
         uint256 indexed positionRefId,
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
-        uint8 positionType
+        uint8 limitOrderType
     );
 
-    /// @dev Emitted for any swap happened in any pool
+    /// @notice Emitted for any swap happened in any pool
     /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value takes 42 bits (Q1.41)
     /// @param tierData Array of tier's liquidity (0-127th bits) and sqrt price (128-255th bits) after the swap
     event Swap(

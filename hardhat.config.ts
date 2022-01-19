@@ -26,7 +26,7 @@ const basicCompiler = {
 const engineCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 8000 },
+    optimizer: { enabled: true, runs: 9999 },
     metadata: { bytecodeHash: 'none' },
   },
 };

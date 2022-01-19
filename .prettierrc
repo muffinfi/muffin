@@ -14,7 +14,12 @@
       }
     },
     {
-      "files": ["Engine.sol", "PositionManager.sol"],
+      "files": [
+        "Engine.sol",
+        "EngineBase.sol",
+        "EnginePositions.sol",
+        "PositionManager.sol"
+      ],
       "options": {
         "printWidth": 130,
         "explicitTypes": "always"

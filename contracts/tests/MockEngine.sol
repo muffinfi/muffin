@@ -11,6 +11,8 @@ interface IMockERC20 {
 }
 
 contract MockEngine is Engine {
+    constructor(address _positionController) Engine(_positionController) {}
+
     function addAccountBalance(
         address recipient,
         uint256 recipientAccRefId,

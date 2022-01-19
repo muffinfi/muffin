@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "../interfaces/engine/IEngine.sol";
+import "../interfaces/engine/positions/IEnginePositions.sol";
 import "../interfaces/IEngineCallbacks.sol";
 import "hardhat/console.sol";
 
@@ -13,10 +14,10 @@ interface IMockERC20 {
 }
 
 contract MockCaller is IEngineCallbacks {
-    IEngine public immutable engine;
+    address public immutable engine;
 
     constructor(address _engine) {
-        engine = IEngine(_engine);
+        engine = _engine;
     }
 
     function depositCallback(
@@ -70,14 +71,14 @@ contract MockCaller is IEngineCallbacks {
         }
     }
 
-    function mint(IEngine.MintParams calldata params) external {
-        IEngine(engine).mint(params);
+    function mint(IEnginePositions.MintParams calldata params) external {
+        IEnginePositions(engine).mint(params);
     }
 
     // -----
 
-    function burn(IEngine.BurnParams calldata params) external {
-        IEngine(engine).burn(params);
+    function burn(IEnginePositions.BurnParams calldata params) external {
+        IEnginePositions(engine).burn(params);
     }
 
     // -----

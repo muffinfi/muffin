@@ -88,7 +88,7 @@ library Pools {
         uint128 sqrtPrice,
         uint8 tickSpacing, // assume checked
         uint8 protocolFee // assume checked
-    ) external returns (uint256 amount0, uint256 amount1) {
+    ) internal returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
         require(sqrtGamma == 99850 || sqrtGamma == 99975); // TODO:
@@ -102,7 +102,7 @@ library Pools {
     }
 
     function addTier(Pool storage pool, uint24 sqrtGamma)
-        external
+        internal
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -198,7 +198,7 @@ library Pools {
         int56 tickCum = pool.tickCumulative;
         int24 ema20 = pool.tickEma20;
         int24 ema40 = pool.tickEma40;
-        uint96 secsPerLiqCum = pool.secondsPerLiquidityCumulative;
+        uint96 secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
         uint32 timestamp = uint32(block.timestamp);
 
         unchecked {
@@ -213,7 +213,7 @@ library Pools {
                 sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
             }
             tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
-            secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+            secsPerLiqCumulative += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
 
             // calculate tick ema
             (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
@@ -225,7 +225,7 @@ library Pools {
         pool.tickCumulative = tickCum;
         pool.tickEma20 = ema20;
         pool.tickEma40 = ema40;
-        pool.secondsPerLiquidityCumulative = secsPerLiqCum;
+        pool.secondsPerLiquidityCumulative = secsPerLiqCumulative;
     }
 
     /*===============================================================
@@ -459,7 +459,6 @@ library Pools {
     }
 
     /// @notice                 Update a position's liquidity
-    /// @dev                    External function. called by DELEGATECALL
     /// @param owner            Address of the position owner
     /// @param positionRefId    Reference id of the position
     /// @param tierId           Tier index of the position
@@ -477,7 +476,7 @@ library Pools {
         int96 liquidityDeltaD8,
         bool collectAllFees
     )
-        external
+        internal
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -492,7 +491,6 @@ library Pools {
             if (tickLower % int24(uint24(pool.tickSpacing)) != 0) revert InvalidTick();
             if (tickUpper % int24(uint24(pool.tickSpacing)) != 0) revert InvalidTick();
         }
-
         // -------------------- UPDATE LIQUIDITY --------------------
         {
             // update current liquidity if in-range
@@ -501,7 +499,6 @@ library Pools {
                 tier.liquidity = tier.liquidity.addInt128(int128(liquidityDeltaD8) << 8);
             }
         }
-
         // --------------------- UPDATE TICKS -----------------------
         {
             bool initialized;
@@ -513,9 +510,7 @@ library Pools {
                 tier.updateNextTick(tickUpper);
             }
         }
-
         // -------------------- UPDATE POSITION ---------------------
-
         {
             Positions.Position storage position = Positions.get(
                 pool.positions,
@@ -543,7 +538,7 @@ library Pools {
                     poolTickSpacing
                 );
 
-                // cannot update if already settled
+                // not allowed to update if already settled
                 if (position.settlementSnapshotId != nextSnapshotId) revert PositionAlreadySettled();
 
                 // reset position to normal if it is emptied
@@ -553,12 +548,12 @@ library Pools {
                 }
             }
         }
-
         // -------------------- CLEAN UP TICKS ----------------------
         if (liquidityDeltaD8 < 0) {
             bool deleted;
             deleted = _deleteEmptyTick(pool, tierId, tickLower);
             deleted = _deleteEmptyTick(pool, tierId, tickUpper) || deleted;
+
             // reset tier's next ticks if any ticks deleted
             if (deleted) {
                 Tiers.Tier storage tier = pool.tiers[tierId];
@@ -568,7 +563,6 @@ library Pools {
                 tier.nextTickAbove = above;
             }
         }
-
         // -------------------- TOKEN AMOUNTS -----------------------
         // calculate input and output amount for the liquidity change
         if (liquidityDeltaD8 != 0)
@@ -681,7 +675,9 @@ library Pools {
      *                          LIMIT ORDER
      *==============================================================*/
 
-    function setPositionType(
+    /// @notice Set (or unset) position to (or from) a limit order
+    /// @dev It first unsets position from being a limit order (if it is), then set position to a new limit order type
+    function setLimitOrderType(
         Pool storage pool,
         address owner,
         uint256 positionRefId,
@@ -689,7 +685,7 @@ library Pools {
         int24 tickLower,
         int24 tickUpper,
         uint8 limitOrderType
-    ) external {
+    ) internal {
         require(pool.unlocked);
         require(limitOrderType <= Positions.ONE_FOR_ZERO);
         _checkTickInputs(tickLower, tickUpper);
@@ -715,8 +711,10 @@ library Pools {
                 false,
                 poolTickSpacing
             );
-            // cannot update if already settled
+
+            // not allowed to update if already settled
             if (position.settlementSnapshotId != nextSnapshotId) revert PositionAlreadySettled();
+
             // unset to normal
             position.limitOrderType = Positions.NOT_LIMIT_ORDER;
             position.settlementSnapshotId = 0;
@@ -725,7 +723,7 @@ library Pools {
         // set position to limit order
         if (limitOrderType != Positions.NOT_LIMIT_ORDER) {
             if (position.liquidityD8 == 0) revert NoLiquidityForLimitOrder();
-            (uint32 nextSnapshotId, uint8 settlementTickSpacing) = Settlement.update(
+            (uint32 nextSnapshotId, uint8 tickSpacing) = Settlement.update(
                 pool.ticks[tierId],
                 tickLower,
                 tickUpper,
@@ -734,14 +732,17 @@ library Pools {
                 true,
                 poolTickSpacing
             );
+
             // ensure position has a correct tick range for limit order
-            if (uint24(tickUpper - tickLower) != settlementTickSpacing) revert InvalidTickRangeForLimitOrder();
+            if (uint24(tickUpper - tickLower) != tickSpacing) revert InvalidTickRangeForLimitOrder();
+
             // set to limit order
             position.limitOrderType = limitOrderType;
             position.settlementSnapshotId = nextSnapshotId;
         }
     }
 
+    /// @notice Collect tokens from a settled position. Reset to normal position if all tokens are collected
     function collectSettled(
         Pool storage pool,
         address owner,
@@ -752,7 +753,7 @@ library Pools {
         uint96 liquidityD8,
         bool collectAllFees
     )
-        external
+        internal
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -771,15 +772,15 @@ library Pools {
             tickLower,
             tickUpper
         );
+
         {
+            // ensure settled, and get data snapshot
             Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
             Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
-            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
-                position,
-                lower,
-                upper
-            );
+            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshot(position, lower, upper);
             if (!settled) revert PositionNotSettled();
+
+            // update position using snapshotted data
             (feeAmtOut0, feeAmtOut1) = position.update(
                 -liquidityD8.toInt96(),
                 snapshot.feeGrowthInside0,
@@ -788,7 +789,7 @@ library Pools {
             );
         }
 
-        // calculate output amounts
+        // calculate output amounts using the price where settlement was done
         uint128 sqrtPriceLower = TickMath.tickToSqrtPrice(tickLower);
         uint128 sqrtPriceUpper = TickMath.tickToSqrtPrice(tickUpper);
         (amount0, amount1) = PoolMath.calcAmtsForLiquidity(
@@ -818,7 +819,7 @@ library Pools {
         int24 tickUpper
     ) internal view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
         if (owner != address(0)) {
-            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
+            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshot(
                 Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper),
                 pool.ticks[tierId][tickLower],
                 pool.ticks[tierId][tickUpper]
@@ -835,28 +836,23 @@ library Pools {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    ) internal view returns (uint96 secsPerLiquidityInside) {
+    ) internal view returns (uint96 secondsPerLiquidityInside) {
         if (owner != address(0)) {
-            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshotIfSettled(
+            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshot(
                 Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper),
                 pool.ticks[tierId][tickLower],
                 pool.ticks[tierId][tickUpper]
             );
             if (settled) return snapshot.secondsPerLiquidityInside;
         }
-        return _secondsPerLiquidityInside(pool, tierId, tickLower, tickUpper);
-    }
 
-    function _secondsPerLiquidityInside(
-        Pool storage pool,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) internal view returns (uint96 secondsPerLiquidityInside) {
+        // -----
+
         Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
         Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
         Tiers.Tier storage tier = pool.tiers[tierId];
         int24 tickCurrent = tier.tick;
+
         unchecked {
             if (tickCurrent < tickLower) {
                 // current price below range
@@ -867,15 +863,15 @@ library Pools {
             } else {
                 // current price in range
                 // calculate latest secondsPerLiquidityCumulative
-                uint96 secsPerLiqCum = pool.secondsPerLiquidityCumulative;
+                uint96 secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
                 uint32 secs = uint32(block.timestamp) - pool.tickLastUpdate;
                 if (secs != 0) {
                     uint256 sumL;
                     for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
-                    secsPerLiqCum += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+                    secsPerLiqCumulative += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
                 }
                 secondsPerLiquidityInside =
-                    secsPerLiqCum -
+                    secsPerLiqCumulative -
                     upper.secondsPerLiquidityOutside -
                     lower.secondsPerLiquidityOutside;
             }

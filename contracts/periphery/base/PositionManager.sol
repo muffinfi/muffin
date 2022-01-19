@@ -2,9 +2,11 @@
 pragma solidity 0.8.10;
 
 import "../../interfaces/engine/IEngine.sol";
+import "../../interfaces/engine/positions/IEnginePositions.sol";
 import "../../libraries/math/PoolMath.sol";
 import "../../libraries/math/TickMath.sol";
 import "../../libraries/Constants.sol";
+import "../../libraries/Positions.sol";
 import "./ManagerBase.sol";
 import "./ERC721Extended.sol";
 
@@ -233,8 +235,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             amount0Desired,
             amount1Desired
         );
-        (amount0, amount1) = IEngine(engine).mint(
-            IEngineActions.MintParams({
+        (amount0, amount1) = IEnginePositions(engine).mint(
+            IEnginePositionsActions.MintParams({
                 token0: pair.token0,
                 token1: pair.token1,
                 tierId: info.tierId,
@@ -293,8 +295,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     {
         PositionInfo memory info = positionsByTokenId[params.tokenId];
         Pair memory pair = pairs[info.pairId];
-        (amount0, amount1, feeAmount0, feeAmount1) = IEngine(engine).burn(
-            IEngineActions.BurnParams({
+        (amount0, amount1, feeAmount0, feeAmount1) = IEnginePositions(engine).burn(
+            IEnginePositionsActions.BurnParams({
                 token0: pair.token0,
                 token1: pair.token1,
                 tierId: info.tierId,
@@ -331,7 +333,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             // check if position is empty
             PositionInfo memory info = positionsByTokenId[tokenId];
             Pair memory pair = pairs[info.pairId];
-            (uint128 liquidity, , ) = IEngine(engine).getPosition(
+            Positions.Position memory position = IEnginePositions(engine).getPosition(
                 keccak256(abi.encode(pair.token0, pair.token1)),
                 address(this),
                 tokenId,
@@ -339,7 +341,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
                 info.tickLower,
                 info.tickUpper
             );
-            require(liquidity == 0, "NOT_EMPTY");
+            require(position.liquidityD8 == 0, "NOT_EMPTY");
 
             _burn(tokenId);
             delete positionsByTokenId[tokenId];
@@ -362,19 +364,17 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             uint8 tierId,
             int24 tickLower,
             int24 tickUpper,
-            uint96 liquidityD8,
-            uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last
+            Positions.Position memory position
         )
     {
         PositionInfo storage info = positionsByTokenId[tokenId];
         (owner, tierId, tickLower, tickUpper) = (info.owner, info.tierId, info.tickLower, info.tickUpper);
-        require(info.owner != address(0), 'NOT_EXISTS');
+        require(info.owner != address(0), "NOT_EXISTS");
 
         Pair storage pair = pairs[info.pairId];
         (token0, token1) = (pair.token0, pair.token1);
 
-        (liquidityD8, feeGrowthInside0Last, feeGrowthInside1Last) = IEngine(engine).getPosition(
+        position = IEnginePositions(engine).getPosition(
             keccak256(abi.encode(token0, token1)),
             address(this),
             tokenId,

@@ -3,51 +3,28 @@ pragma solidity 0.8.10;
 
 import "./interfaces/engine/IEngine.sol";
 import "./interfaces/IEngineCallbacks.sol";
-import "./interfaces/common/IERC20.sol";
 import "./libraries/utils/SafeTransferLib.sol";
 import "./libraries/utils/PathLib.sol";
 import "./libraries/math/Math.sol";
-import "./libraries/Positions.sol";
 import "./libraries/Pools.sol";
-import "./libraries/Settlement.sol";
+import "./EngineBase.sol";
 
-contract Engine is IEngine {
-    using Math for uint96;
+contract Engine is IEngine, EngineBase {
     using Math for uint256;
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
     using PathLib for bytes;
 
-    struct TokenData {
-        uint8 locked;
-        uint248 protocolFeeAmt;
-    }
-
-    struct Pair {
-        address token0;
-        address token1;
-    }
-
-    address public governance;
-    uint8 internal defaultTickSpacing = 200;
-    uint8 internal defaultProtocolFee = 0;
-
-    /// @dev Mapping of pools (keccak256(token0, token1) => Pool)
-    mapping(bytes32 => Pools.Pool) internal pools;
-    /// @dev Token balance in an user's account (token => keccak256(account owner, account id) => token balance)
-    mapping(address => mapping(bytes32 => uint256)) public accounts;
-    /// @dev Reentrancy lock for tokens and protocol accrued fees (token => TokenData)
-    mapping(address => TokenData) public tokens;
-    /// @dev Mapping of poolId to the pool's underlying tokens (for data lookup only)
-    mapping(bytes32 => Pair) public underlyings;
-
     error InvalidTokenOrder();
     error InvalidSwapPath();
-    error FailedBalanceOf();
-    error NotEnoughToken();
     error NotEnoughIntermediateOutput();
 
-    constructor() {
+    /// @dev To reduce bytecode size of this contract, we offload position-related codes and various view functions
+    /// to a second contract (i.e. EnginePositions.sol) and use delegatecall to call it.
+    address internal immutable positionController;
+
+    constructor(address _positionController) {
+        positionController = _positionController;
         governance = msg.sender;
     }
 
@@ -56,35 +33,9 @@ contract Engine is IEngine {
         _;
     }
 
-    /// @dev Get token balance of this contract
-    function getBalance(address token) internal view returns (uint256) {
-        (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
-        if (!success || data.length < 32) revert FailedBalanceOf();
-        return abi.decode(data, (uint256));
-    }
-
-    /// @dev "Lock" the token so the token cannot be used again until unlock
-    function getBalanceAndLock(address token) internal returns (uint256) {
-        require(tokens[token].locked != 1); // 1 means locked
-        tokens[token].locked = 1;
-        return getBalance(token);
-    }
-
-    /// @dev "Unlock" the token after ensuring the contract reaches an expected balance
-    function checkBalanceAndUnlock(address token, uint256 balanceMinimum) internal {
-        if (getBalance(token) < balanceMinimum) revert NotEnoughToken();
-        tokens[token].locked = 2;
-    }
-
     /*===============================================================
-     *                           ACCOUNT
+     *                           ACCOUNTS
      *==============================================================*/
-
-    /// @dev Hash [owner, accRefId] as the key for the `accounts` mapping
-    function getAccHash(address owner, uint256 accRefId) internal pure returns (bytes32) {
-        require(accRefId != 0);
-        return keccak256(abi.encode(owner, accRefId));
-    }
 
     /// @inheritdoc IEngineActions
     function deposit(
@@ -115,7 +66,7 @@ contract Engine is IEngine {
     }
 
     /*===============================================================
-     *                        POOL SETTINGS
+     *                      CREATE POOL / TIER
      *==============================================================*/
 
     /// @inheritdoc IEngineActions
@@ -139,7 +90,7 @@ contract Engine is IEngine {
         underlyings[poolId] = Pair(token0, token1);
     }
 
-    /// @inheritdoc IEngineSettings
+    /// @inheritdoc IEngineGatedActions
     function addTier(
         address token0,
         address token1,
@@ -153,155 +104,6 @@ contract Engine is IEngine {
 
         emit UpdateTier(poolId, tierId, sqrtGamma);
         pool.unlock();
-    }
-
-    /// @inheritdoc IEngineSettings
-    function setSqrtGamma(
-        bytes32 poolId,
-        uint8 tierId,
-        uint24 sqrtGamma
-    ) external onlyGovernance {
-        pools[poolId].setSqrtGamma(tierId, sqrtGamma);
-        emit UpdateTier(poolId, tierId, sqrtGamma);
-    }
-
-    /// @inheritdoc IEngineSettings
-    function setTickSpacing(bytes32 poolId, uint8 tickSpacing) external onlyGovernance {
-        pools[poolId].setTickSpacing(tickSpacing);
-        emit UpdateTickSpacing(poolId, tickSpacing);
-    }
-
-    /// @inheritdoc IEngineSettings
-    function setProtocolFee(bytes32 poolId, uint8 protocolFee) external onlyGovernance {
-        pools[poolId].setProtocolFee(protocolFee);
-        emit UpdateProtocolFee(poolId, protocolFee);
-    }
-
-    /*===============================================================
-     *                          POSITIONS
-     *==============================================================*/
-
-    /// @inheritdoc IEngineActions
-    function mint(MintParams calldata p) external returns (uint256 amount0, uint256 amount1) {
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
-        (amount0, amount1, , ) = pool.updateLiquidity(
-            p.recipient,
-            p.positionRefId,
-            p.tierId,
-            p.tickLower,
-            p.tickUpper,
-            p.liquidityD8.toInt96(),
-            false
-        );
-        uint256 _amt0 = amount0;
-        uint256 _amt1 = amount1;
-        if (p.senderAccRefId != 0) {
-            bytes32 accHash = getAccHash(msg.sender, p.senderAccRefId);
-            (accounts[p.token0][accHash], _amt0) = accounts[p.token0][accHash].subUntilZero(_amt0);
-            (accounts[p.token1][accHash], _amt1) = accounts[p.token1][accHash].subUntilZero(_amt1);
-        }
-        if (_amt0 != 0 || _amt1 != 0) {
-            uint256 balance0Before = getBalanceAndLock(p.token0);
-            uint256 balance1Before = getBalanceAndLock(p.token1);
-            IEngineCallbacks(msg.sender).mintCallback(p.token0, p.token1, _amt0, _amt1, p.data);
-            checkBalanceAndUnlock(p.token0, balance0Before + _amt0);
-            checkBalanceAndUnlock(p.token1, balance1Before + _amt1);
-        }
-        emit Mint(poolId, p.recipient, p.positionRefId, p.tierId, p.tickLower, p.tickUpper, p.liquidityD8, amount0, amount1);
-        pool.unlock();
-    }
-
-    /// @inheritdoc IEngineActions
-    function burn(BurnParams calldata p)
-        external
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 feeAmount0,
-            uint256 feeAmount1
-        )
-    {
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(p.token0, p.token1);
-        (amount0, amount1, feeAmount0, feeAmount1) = pool.updateLiquidity(
-            msg.sender,
-            p.positionRefId,
-            p.tierId,
-            p.tickLower,
-            p.tickUpper,
-            -p.liquidityD8.toInt96(),
-            p.collectAllFees
-        );
-        bytes32 accHash = getAccHash(msg.sender, p.accRefId);
-        accounts[p.token0][accHash] += amount0 + feeAmount0;
-        accounts[p.token1][accHash] += amount1 + feeAmount1;
-        emit Burn(
-            poolId,
-            msg.sender,
-            p.positionRefId,
-            p.tierId,
-            p.tickLower,
-            p.tickUpper,
-            p.liquidityD8,
-            amount0,
-            amount1,
-            feeAmount0,
-            feeAmount1
-        );
-        pool.unlock();
-    }
-
-    /// @inheritdoc IEngineActions
-    function collectSettled(BurnParams calldata params)
-        external
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 feeAmount0,
-            uint256 feeAmount1
-        )
-    {
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(params.token0, params.token1);
-        (amount0, amount1, feeAmount0, feeAmount1) = pool.collectSettled(
-            msg.sender,
-            params.positionRefId,
-            params.tierId,
-            params.tickLower,
-            params.tickUpper,
-            params.liquidityD8,
-            params.collectAllFees
-        );
-        bytes32 accHash = getAccHash(msg.sender, params.positionRefId);
-        accounts[params.token0][accHash] += amount0 + feeAmount0;
-        accounts[params.token1][accHash] += amount1 + feeAmount1;
-        emit CollectSettled(
-            poolId,
-            msg.sender,
-            params.positionRefId,
-            params.tierId,
-            params.tickLower,
-            params.tickUpper,
-            params.liquidityD8,
-            amount0,
-            amount1,
-            feeAmount0,
-            feeAmount1
-        );
-        pool.unlock();
-    }
-
-    /// @inheritdoc IEngineActions
-    function setPositionType(
-        address token0,
-        address token1,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 positionRefId,
-        uint8 positionType
-    ) external {
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
-        pool.setPositionType(msg.sender, positionRefId, tierId, tickLower, tickUpper, positionType);
-        emit SetPositionType(poolId, msg.sender, positionRefId, tierId, tickLower, tickUpper, positionType);
     }
 
     /*===============================================================
@@ -442,7 +244,29 @@ contract Engine is IEngine {
      *                          GOVERNANCE
      *==============================================================*/
 
-    /// @inheritdoc IEngineSettings
+    /// @inheritdoc IEngineGatedActions
+    function setSqrtGamma(
+        bytes32 poolId,
+        uint8 tierId,
+        uint24 sqrtGamma
+    ) external onlyGovernance {
+        pools[poolId].setSqrtGamma(tierId, sqrtGamma);
+        emit UpdateTier(poolId, tierId, sqrtGamma);
+    }
+
+    /// @inheritdoc IEngineGatedActions
+    function setTickSpacing(bytes32 poolId, uint8 tickSpacing) external onlyGovernance {
+        pools[poolId].setTickSpacing(tickSpacing);
+        emit UpdateTickSpacing(poolId, tickSpacing);
+    }
+
+    /// @inheritdoc IEngineGatedActions
+    function setProtocolFee(bytes32 poolId, uint8 protocolFee) external onlyGovernance {
+        pools[poolId].setProtocolFee(protocolFee);
+        emit UpdateProtocolFee(poolId, protocolFee);
+    }
+
+    /// @inheritdoc IEngineGatedActions
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
         uint248 amount = tokens[token].protocolFeeAmt;
         tokens[token].protocolFeeAmt = 0;
@@ -450,13 +274,13 @@ contract Engine is IEngine {
         emit CollectProtocol(recipient, token, amount);
     }
 
-    /// @inheritdoc IEngineSettings
+    /// @inheritdoc IEngineGatedActions
     function setGovernance(address _governance) external onlyGovernance {
         governance = _governance;
         emit GovernanceUpdated(_governance);
     }
 
-    /// @inheritdoc IEngineSettings
+    /// @inheritdoc IEngineGatedActions
     function setDefaults(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
@@ -519,53 +343,6 @@ contract Engine is IEngine {
         );
     }
 
-    function getPosition(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    )
-        external
-        view
-        returns (
-            uint96 liquidityD8,
-            uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last
-        )
-    {
-        Positions.Position storage pos = Positions.get(
-            pools[poolId].positions,
-            owner,
-            positionRefId,
-            tierId,
-            tickLower,
-            tickUpper
-        );
-        return (pos.liquidityD8, pos.feeGrowthInside0Last, pos.feeGrowthInside1Last);
-    }
-
-    function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {
-        return pools[poolId].tickMaps[tierId].blockmap;
-    }
-
-    function getTickMapBlock(
-        bytes32 poolId,
-        uint8 tierId,
-        uint256 blockIdx
-    ) external view returns (uint256) {
-        return pools[poolId].tickMaps[tierId].blocks[blockIdx];
-    }
-
-    function getTickMapWord(
-        bytes32 poolId,
-        uint8 tierId,
-        uint256 wordIdx
-    ) external view returns (uint256) {
-        return pools[poolId].tickMaps[tierId].words[wordIdx];
-    }
-
     function getTWAP(bytes32 poolId)
         external
         view
@@ -581,83 +358,24 @@ contract Engine is IEngine {
         return (pool.tickLastUpdate, pool.tickCumulative, pool.tickEma20, pool.tickEma40, pool.secondsPerLiquidityCumulative);
     }
 
-    function getFeeGrowthInside(
-        bytes32 poolId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
-        return pools[poolId].getFeeGrowthInside(tierId, tickLower, tickUpper);
-    }
+    /*===============================================================
+     *                FALLBACK TO POSITION CONTROLLER
+     *==============================================================*/
 
-    function getSecondsPerLiquidityInside(
-        bytes32 poolId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint96 secondsPerLiquidityInside) {
-        return pools[poolId].getSecondsPerLiquidityInside(tierId, tickLower, tickUpper);
-    }
-
-    function getPositionFeeGrowthInside(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
-        return pools[poolId].getPositionFeeGrowthInside(owner, positionRefId, tierId, tickLower, tickUpper);
-    }
-
-    function getPositionSecondsPerLiquidityInside(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint96 secondsPerLiquidityInside) {
-        return pools[poolId].getPositionSecondsPerLiquidityInside(owner, positionRefId, tierId, tickLower, tickUpper);
-    }
-
-    function getSettlement(
-        bytes32 poolId,
-        uint8 tierId,
-        int24 tick,
-        bool isToken0LimitOrder
-    )
-        external
-        view
-        returns (
-            uint96 liquidityD8,
-            uint24 tickSpacing,
-            uint32 snapshotId
-        )
-    {
-        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
-        Settlement.Info storage settlement = isToken0LimitOrder ? obj.settlement0 : obj.settlement1;
-        return (settlement.liquidityD8, settlement.tickSpacing, settlement.snapshotId);
-    }
-
-    function getSettlementSnapshot(
-        bytes32 poolId,
-        uint8 tierId,
-        int24 tick,
-        bool isToken0LimitOrder,
-        uint32 snapshotId
-    )
-        external
-        view
-        returns (
-            uint80 feeGrowthInside0,
-            uint80 feeGrowthInside1,
-            uint96 secondsPerLiquidityInside
-        )
-    {
-        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
-        Settlement.Info storage settlement = isToken0LimitOrder ? obj.settlement0 : obj.settlement1;
-        Settlement.Snapshot storage snapshot = settlement.snapshots[snapshotId];
-        return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside1, snapshot.secondsPerLiquidityInside);
+    /// @dev Adapted from openzepplin v4.4.1 proxy implementation
+    fallback() external {
+        address _positionController = positionController;
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), _positionController, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
+        }
     }
 }
