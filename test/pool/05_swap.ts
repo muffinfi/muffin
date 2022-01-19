@@ -633,7 +633,7 @@ const test = async (
 ///////////////
 
 type Tier = Awaited<ReturnType<MockPool['functions']['getTier']>>[0];
-type Tick = Awaited<ReturnType<MockPool['functions']['getTick']>>;
+type Tick = Awaited<ReturnType<MockPool['functions']['getTick']>>[0];
 
 /**
  * Get ticks from start tick to end tick
