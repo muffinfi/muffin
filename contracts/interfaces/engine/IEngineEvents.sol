@@ -11,14 +11,16 @@ interface IEngineEvents {
     /// @notice Emitted when a pool is created
     event PoolCreated(address indexed token0, address indexed token1);
 
-    /// @notice Emitted when a new tier is added, or a tier's sqrt gamma is updated
-    event UpdateTier(bytes32 indexed poolId, uint8 indexed tierId, uint24 sqrtGamma);
+    /// @notice Emitted when a new tier is added, or when tier's parameters are updated
+    event UpdateTier(
+        bytes32 indexed poolId,
+        uint8 indexed tierId,
+        uint24 indexed sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
+    );
 
-    /// @notice Emitted when a pool's tick spacing is updated
-    event UpdateTickSpacing(bytes32 indexed poolId, uint8 tickSpacing);
-
-    /// @notice Emitted when protocol percentage fee is updated
-    event UpdateProtocolFee(bytes32 indexed poolId, uint8 protocolFee);
+    /// @notice Emitted when a pool's tick spacing or protocol fee is updated
+    event UpdatePool(bytes32 indexed poolId, uint8 tickSpacing, uint8 protocolFee);
 
     /// @notice Emitted when protocol fee is collected
     event CollectProtocol(address indexed recipient, address indexed token, uint256 amount);

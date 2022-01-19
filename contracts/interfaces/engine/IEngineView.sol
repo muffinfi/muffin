@@ -4,9 +4,9 @@ pragma solidity >=0.8.0;
 import "../../libraries/Tiers.sol";
 
 interface IEngineView {
-    function getDefaults() external view returns (uint8 tickSpacing, uint8 protocolFee);
+    function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
 
-    function getPoolBasics(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee);
+    function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee);
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory);
 
@@ -43,4 +43,6 @@ interface IEngineView {
             int24 tickEma40,
             uint96 secondsPerLiquidityCumulative
         );
+
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
 }

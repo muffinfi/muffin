@@ -85,7 +85,7 @@ contract Engine is IEngine, EngineBase {
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
         emit PoolCreated(token0, token1);
-        emit UpdateTier(poolId, 0, sqrtGamma);
+        emit UpdateTier(poolId, 0, sqrtGamma, 0);
         pool.unlock();
         underlyings[poolId] = Pair(token0, token1);
     }
@@ -102,7 +102,7 @@ contract Engine is IEngine, EngineBase {
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
-        emit UpdateTier(poolId, tierId, sqrtGamma);
+        emit UpdateTier(poolId, tierId, sqrtGamma, 0);
         pool.unlock();
     }
 
@@ -245,25 +245,36 @@ contract Engine is IEngine, EngineBase {
      *==============================================================*/
 
     /// @inheritdoc IEngineGatedActions
-    function setSqrtGamma(
+    function setGovernance(address _governance) external onlyGovernance {
+        governance = _governance;
+        emit GovernanceUpdated(_governance);
+    }
+
+    /// @inheritdoc IEngineGatedActions
+    function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
+        defaultTickSpacing = tickSpacing;
+        defaultProtocolFee = protocolFee;
+    }
+
+    /// @inheritdoc IEngineGatedActions
+    function setPoolParameters(
+        bytes32 poolId,
+        uint8 tickSpacing,
+        uint8 protocolFee
+    ) external onlyGovernance {
+        pools[poolId].setPoolParameters(tickSpacing, protocolFee);
+        emit UpdatePool(poolId, tickSpacing, protocolFee);
+    }
+
+    /// @inheritdoc IEngineGatedActions
+    function setTierParameters(
         bytes32 poolId,
         uint8 tierId,
-        uint24 sqrtGamma
+        uint24 sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
     ) external onlyGovernance {
-        pools[poolId].setSqrtGamma(tierId, sqrtGamma);
-        emit UpdateTier(poolId, tierId, sqrtGamma);
-    }
-
-    /// @inheritdoc IEngineGatedActions
-    function setTickSpacing(bytes32 poolId, uint8 tickSpacing) external onlyGovernance {
-        pools[poolId].setTickSpacing(tickSpacing);
-        emit UpdateTickSpacing(poolId, tickSpacing);
-    }
-
-    /// @inheritdoc IEngineGatedActions
-    function setProtocolFee(bytes32 poolId, uint8 protocolFee) external onlyGovernance {
-        pools[poolId].setProtocolFee(protocolFee);
-        emit UpdateProtocolFee(poolId, protocolFee);
+        pools[poolId].setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+        emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
     }
 
     /// @inheritdoc IEngineGatedActions
@@ -274,27 +285,15 @@ contract Engine is IEngine, EngineBase {
         emit CollectProtocol(recipient, token, amount);
     }
 
-    /// @inheritdoc IEngineGatedActions
-    function setGovernance(address _governance) external onlyGovernance {
-        governance = _governance;
-        emit GovernanceUpdated(_governance);
-    }
-
-    /// @inheritdoc IEngineGatedActions
-    function setDefaults(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
-        defaultTickSpacing = tickSpacing;
-        defaultProtocolFee = protocolFee;
-    }
-
     /*===============================================================
      *                         VIEW FUNCTIONS
      *==============================================================*/
 
-    function getDefaults() external view returns (uint8 tickSpacing, uint8 protocolFee) {
+    function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee) {
         return (defaultTickSpacing, defaultProtocolFee);
     }
 
-    function getPoolBasics(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
+    function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
         return (pools[poolId].tickSpacing, pools[poolId].protocolFee);
     }
 
@@ -356,6 +355,10 @@ contract Engine is IEngine, EngineBase {
     {
         Pools.Pool storage pool = pools[poolId];
         return (pool.tickLastUpdate, pool.tickCumulative, pool.tickEma20, pool.tickEma40, pool.secondsPerLiquidityCumulative);
+    }
+
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory) {
+        return pools[poolId].limitOrderTickSpacingMultipliers;
     }
 
     /*===============================================================

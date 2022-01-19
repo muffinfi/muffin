@@ -18,7 +18,7 @@ library Settlement {
      */
     struct Info {
         uint96 liquidityD8;
-        uint8 tickSpacing;
+        uint16 tickSpacing;
         uint32 nextSnapshotId;
         mapping(uint32 => Snapshot) snapshots;
     }
@@ -39,7 +39,7 @@ library Settlement {
      * @param limitOrderType    Direction of the limit order (i.e. token0 or token1)
      * @param liquidityDeltaD8  Change of the amount of liquidity to be settled
      * @param isAdd             True if the change is additive
-     * @param poolTickSpacing   Default tick spacing of limit orders
+     * @param defaultTickSpacing Default tick spacing of limit orders
      * @return nextSnapshotId   Settlement's next snapshot id
      * @return tickSpacing      Tick spacing of the limit orders pending to be settled
      */
@@ -50,8 +50,8 @@ library Settlement {
         uint8 limitOrderType,
         uint96 liquidityDeltaD8,
         bool isAdd,
-        uint8 poolTickSpacing
-    ) internal returns (uint32 nextSnapshotId, uint8 tickSpacing) {
+        uint16 defaultTickSpacing
+    ) internal returns (uint32 nextSnapshotId, uint16 tickSpacing) {
         assert(limitOrderType != Positions.NOT_LIMIT_ORDER);
 
         Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE
@@ -65,7 +65,7 @@ library Settlement {
 
         // initialize settlement if it's the first limit order at this tick
         if (settlement.tickSpacing == 0) {
-            settlement.tickSpacing = poolTickSpacing;
+            settlement.tickSpacing = defaultTickSpacing;
             settlement.snapshots[settlement.nextSnapshotId] = Snapshot(0, 0, 1); // pre-fill to reduce SSTORE gas during swap
         }
 
@@ -81,8 +81,7 @@ library Settlement {
         }
 
         // return data for validating position's settling status
-        nextSnapshotId = settlement.nextSnapshotId;
-        tickSpacing = settlement.tickSpacing;
+        return (settlement.nextSnapshotId, settlement.tickSpacing);
     }
 
     /// @dev Bridging function to sidestep "stack too deep" problem
@@ -92,7 +91,7 @@ library Settlement {
         int24 tickUpper,
         uint8 limitOrderType,
         int96 liquidityDeltaD8,
-        uint8 poolTickSpacing
+        uint16 defaultTickSpacing
     ) internal returns (uint32 nextSnapshotId) {
         unchecked {
             (nextSnapshotId, ) = update(
@@ -102,7 +101,7 @@ library Settlement {
                 limitOrderType,
                 uint96(liquidityDeltaD8 < 0 ? -liquidityDeltaD8 : liquidityDeltaD8),
                 liquidityDeltaD8 > 0,
-                poolTickSpacing
+                defaultTickSpacing
             );
         }
     }

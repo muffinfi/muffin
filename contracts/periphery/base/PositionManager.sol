@@ -68,7 +68,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         uint24 sqrtGamma,
         uint128 sqrtPrice
     ) external {
-        (uint8 tickSpacing, ) = IEngine(engine).getPoolBasics(keccak256(abi.encode(token0, token1)));
+        (uint8 tickSpacing, ) = IEngine(engine).getPoolParameters(keccak256(abi.encode(token0, token1)));
         if (tickSpacing == 0) {
             deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
             deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));

@@ -27,6 +27,11 @@ library Pools {
     error PositionAlreadySettled();
     error PositionNotSettled();
 
+    uint256 internal constant MAX_TIERS = 6;
+    uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
+    uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
+    int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between desired and actual swap amounts
+
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
     /// @param protocolFee  Protocol fee with base 255 (e.g. protocolFee = 51 for 20% protocol fee)
@@ -39,6 +44,7 @@ library Pools {
     /// @param tickMaps     Bitmap for each tier to store which ticks are initializated
     /// @param ticks        Mapping of tick states of each tier
     /// @param positions    Mapping of position states
+    /// @param limitOrderTickSpacingMultipliers Tick spacing of limit order for each tier, as multiples of the pool's tick spacing
     struct Pool {
         bool unlocked;
         uint8 tickSpacing;
@@ -52,12 +58,8 @@ library Pools {
         mapping(uint256 => TickMaps.TickMap) tickMaps;
         mapping(uint256 => mapping(int24 => Ticks.Tick)) ticks;
         mapping(bytes32 => Positions.Position) positions;
+        uint8[MAX_TIERS] limitOrderTickSpacingMultipliers;
     }
-
-    uint256 internal constant MAX_TIERS = 6;
-    uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
-    uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
-    int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between the desired and actual swapped amounts
 
     // FIXME: since engine locks "input token", is it needed to lock the pool?
     function lock(Pool storage pool) internal {
@@ -165,26 +167,28 @@ library Pools {
      *                           SETTINGS
      *==============================================================*/
 
-    function setSqrtGamma(
+    function setPoolParameters(
+        Pool storage pool,
+        uint8 tickSpacing,
+        uint8 protocolFee
+    ) internal {
+        require(pool.unlocked);
+        require(int24(uint24(tickSpacing)) >= Constants.MIN_TICK_SPACING);
+        pool.tickSpacing = tickSpacing;
+        pool.protocolFee = protocolFee;
+    }
+
+    function setTierParameters(
         Pool storage pool,
         uint8 tierId,
-        uint24 sqrtGamma
+        uint24 sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
     ) internal {
         require(pool.unlocked);
         require(tierId < pool.tiers.length);
         require(sqrtGamma <= 100000);
         pool.tiers[tierId].sqrtGamma = sqrtGamma;
-    }
-
-    function setProtocolFee(Pool storage pool, uint8 protocolFee) internal {
-        require(pool.unlocked);
-        pool.protocolFee = protocolFee;
-    }
-
-    function setTickSpacing(Pool storage pool, uint8 tickSpacing) internal {
-        require(pool.unlocked);
-        require(int24(uint24(tickSpacing)) >= Constants.MIN_TICK_SPACING);
-        pool.tickSpacing = tickSpacing;
+        pool.limitOrderTickSpacingMultipliers[tierId] = limitOrderTickSpacingMultiplier;
     }
 
     /*===============================================================
@@ -528,14 +532,14 @@ library Pools {
 
             // update settlement if position is an unsettled limit order
             if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
-                uint8 poolTickSpacing = pool.tickSpacing;
+                uint16 defaultTickSpacing = uint16(pool.tickSpacing) * pool.limitOrderTickSpacingMultipliers[tierId];
                 uint32 nextSnapshotId = Settlement.update(
                     pool.ticks[tierId],
                     tickLower,
                     tickUpper,
                     position.limitOrderType,
                     liquidityDeltaD8,
-                    poolTickSpacing
+                    defaultTickSpacing
                 );
 
                 // not allowed to update if already settled
@@ -698,7 +702,7 @@ library Pools {
             tickLower,
             tickUpper
         );
-        uint8 poolTickSpacing = pool.tickSpacing;
+        uint16 defaultTickSpacing = uint16(pool.tickSpacing) * pool.limitOrderTickSpacingMultipliers[tierId];
 
         // unset position to normal type
         if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
@@ -709,7 +713,7 @@ library Pools {
                 position.limitOrderType,
                 position.liquidityD8,
                 false,
-                poolTickSpacing
+                defaultTickSpacing
             );
 
             // not allowed to update if already settled
@@ -723,14 +727,14 @@ library Pools {
         // set position to limit order
         if (limitOrderType != Positions.NOT_LIMIT_ORDER) {
             if (position.liquidityD8 == 0) revert NoLiquidityForLimitOrder();
-            (uint32 nextSnapshotId, uint8 tickSpacing) = Settlement.update(
+            (uint32 nextSnapshotId, uint16 tickSpacing) = Settlement.update(
                 pool.ticks[tierId],
                 tickLower,
                 tickUpper,
                 limitOrderType,
                 position.liquidityD8,
                 true,
-                poolTickSpacing
+                defaultTickSpacing
             );
 
             // ensure position has a correct tick range for limit order
