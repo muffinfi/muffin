@@ -7,3 +7,9 @@ export const MIN_SQRT_P = BigNumber.from('65539');
 export const MAX_SQRT_P = BigNumber.from('340271175397327323250730767849398346765');
 export const BASE_LIQUIDITY_D8 = BigNumber.from('100');
 export const BASE_LIQUIDITY = BASE_LIQUIDITY_D8.shl(8);
+
+export const LimitOrderType = {
+  NOT_LIMIT_ORDER: 0,
+  ZERO_FOR_ONE: 1,
+  ONE_FOR_ZERO: 2,
+};

@@ -126,6 +126,15 @@ contract MockPool {
         reserve1 = amount1 >= 0 ? reserve1 + abs(amount1) : reserve1 - abs(amount1);
     }
 
+    function incrementSnapshotIds(
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external {
+        pool.settlements[tierId][tickLower][0].nextSnapshotId++;
+        pool.settlements[tierId][tickUpper][1].nextSnapshotId++;
+    }
+
     function setLimitOrderType(
         address owner,
         uint256 positionRefId,
@@ -133,7 +142,7 @@ contract MockPool {
         int24 tickLower,
         int24 tickUpper,
         uint8 limitOrderType
-    ) internal {
+    ) external {
         pool.setLimitOrderType(owner, positionRefId, tierId, tickLower, tickUpper, limitOrderType);
     }
 
@@ -151,29 +160,8 @@ contract MockPool {
         return pool.tiers.length;
     }
 
-    function getTick(uint8 tierId, int24 tick)
-        external
-        view
-        returns (
-            uint96 liquidityLowerD8,
-            uint96 liquidityUpperD8,
-            int24 nextBelow,
-            int24 nextAbove,
-            uint80 feeGrowthOutside0,
-            uint80 feeGrowthOutside1,
-            uint96 secondsPerLiquidityOutside
-        )
-    {
-        Ticks.Tick storage t = pool.ticks[tierId][tick];
-        return (
-            t.liquidityLowerD8,
-            t.liquidityUpperD8,
-            t.nextBelow,
-            t.nextAbove,
-            t.feeGrowthOutside0,
-            t.feeGrowthOutside1,
-            t.secondsPerLiquidityOutside
-        );
+    function getTick(uint8 tierId, int24 tick) external view returns (Ticks.Tick memory) {
+        return pool.ticks[tierId][tick];
     }
 
     function getPosition(
@@ -182,17 +170,8 @@ contract MockPool {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper
-    )
-        external
-        view
-        returns (
-            uint96 liquidityD8,
-            uint80 feeGrowthInside0Last,
-            uint80 feeGrowthInside1Last
-        )
-    {
-        Positions.Position memory p = Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper);
-        return (p.liquidityD8, p.feeGrowthInside0Last, p.feeGrowthInside1Last);
+    ) external view returns (Positions.Position memory) {
+        return Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper);
     }
 
     function checkTickMap(
@@ -215,7 +194,6 @@ contract MockPool {
     ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
         return pool._getFeeGrowthInside(tierId, tickLower, tickUpper);
     }
-
 
     /// @dev for unsettled position
     function getPositionFees(
@@ -241,6 +219,33 @@ contract MockPool {
             feeAmt0 = (uint256(liquidityD8) * feeGrowthDelta0) >> 56;
             feeAmt1 = (uint256(liquidityD8) * feeGrowthDelta1) >> 56;
         }
+    }
+
+    function getSettlement(
+        uint8 tierId,
+        int24 tick,
+        bool zeroForOne
+    )
+        external
+        view
+        returns (
+            uint96 liquidityD8,
+            uint16 tickSpacing,
+            uint32 nextSnapshotId
+        )
+    {
+        Settlement.Info storage settlement = pool.settlements[tierId][tick][zeroForOne ? 1 : 0];
+        return (settlement.liquidityD8, settlement.tickSpacing, settlement.nextSnapshotId);
+    }
+
+    function getSettlementSnapshot(
+        uint8 tierId,
+        int24 tick,
+        bool zeroForOne,
+        uint32 snapshotId
+    ) external view returns (Settlement.Snapshot memory) {
+        Settlement.Info storage settlement = pool.settlements[tierId][tick][zeroForOne ? 1 : 0];
+        return settlement.snapshots[snapshotId];
     }
 
     // ----- helpers -----
