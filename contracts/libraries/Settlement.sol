@@ -33,6 +33,7 @@ library Settlement {
     /**
      * @notice Update the amount of liquidity pending to be settled on a tick, given the lower and upper tick
      * boundaries of a limit-order position.
+     * @param settlements       Mapping of settlements of each tick
      * @param ticks             Mapping of ticks of the tier which the position is in
      * @param tickLower         Lower tick boundary of the position
      * @param tickUpper         Upper tick boundary of the position
@@ -44,6 +45,7 @@ library Settlement {
      * @return tickSpacing      Tick spacing of the limit orders pending to be settled
      */
     function update(
+        mapping(int24 => Settlement.Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         int24 tickLower,
         int24 tickUpper,
@@ -55,8 +57,8 @@ library Settlement {
         assert(limitOrderType != Positions.NOT_LIMIT_ORDER);
 
         Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE
-            ? ticks[tickUpper].settlement1
-            : ticks[tickLower].settlement0;
+            ? settlements[tickUpper][1]
+            : settlements[tickLower][0];
 
         // update the amount of liquidity to settle
         settlement.liquidityD8 = isAdd
@@ -74,10 +76,10 @@ library Settlement {
         if (isEmpty) settlement.tickSpacing = 0;
 
         // update "needSettle" flag in tick state
-        if (limitOrderType == Positions.ONE_FOR_ZERO) {
-            ticks[tickLower].needSettle0 = !isEmpty;
-        } else {
+        if (limitOrderType == Positions.ZERO_FOR_ONE) {
             ticks[tickUpper].needSettle1 = !isEmpty;
+        } else {
+            ticks[tickLower].needSettle0 = !isEmpty;
         }
 
         // return data for validating position's settling status
@@ -86,6 +88,7 @@ library Settlement {
 
     /// @dev Bridging function to sidestep "stack too deep" problem
     function update(
+        mapping(int24 => Settlement.Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         int24 tickLower,
         int24 tickUpper,
@@ -95,6 +98,7 @@ library Settlement {
     ) internal returns (uint32 nextSnapshotId) {
         unchecked {
             (nextSnapshotId, ) = update(
+                settlements,
                 ticks,
                 tickLower,
                 tickUpper,
@@ -109,6 +113,7 @@ library Settlement {
     /**
      * @notice Settle single-sided positions, i.e. filled limit orders, that ends at the tick `tickEnd`.
      * @dev Called during a swap right after tickEnd is crossed. It updates settlement and tick, and possibly tickmap
+     * @param settlements   Mapping of settlements of each tick
      * @param ticks         Mapping of ticks of a tier
      * @param tickMap       Tick bitmap of a tier
      * @param tier          Latest tier data (in memory) currently used in the swap
@@ -116,6 +121,7 @@ library Settlement {
      * @param zeroForOne    The direction of the ongoing swap
      */
     function settle(
+        mapping(int24 => Settlement.Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         TickMaps.TickMap storage tickMap,
         Tiers.Tier memory tier,
@@ -129,7 +135,7 @@ library Settlement {
 
         unchecked {
             if (zeroForOne) {
-                settlement = end.settlement0;
+                settlement = settlements[tickEnd][0];
                 tickStart = tickEnd + int24(uint24(settlement.tickSpacing));
                 start = ticks[tickStart];
 
@@ -138,7 +144,7 @@ library Settlement {
                 end.liquidityLowerD8 -= settlement.liquidityD8;
                 end.needSettle0 = false;
             } else {
-                settlement = end.settlement1;
+                settlement = settlements[tickEnd][1];
                 tickStart = tickEnd - int24(uint24(settlement.tickSpacing));
                 start = ticks[tickStart];
 
@@ -188,21 +194,23 @@ library Settlement {
 
     /**
      * @notice Get data snapshot if the position is a settled limit order
-     * @param position  Position state
-     * @param lower     Tick state of the position's lower tick boundary
-     * @param upper     Tick state of the position's upper tick boundary
-     * @return settled  True if the position is settled
-     * @return snapshot Data snapshot if position is settled
+     * @param settlements   Mapping of settlements of each tick
+     * @param position      Position state
+     * @param tickLower     Position's lower tick boundary
+     * @param tickUpper     Position's upper tick boundary
+     * @return settled      True if position is settled
+     * @return snapshot     Data snapshot if position is settled
      */
     function getSnapshot(
+        mapping(int24 => Settlement.Info[2]) storage settlements,
         Positions.Position storage position,
-        Ticks.Tick storage lower,
-        Ticks.Tick storage upper
+        int24 tickLower,
+        int24 tickUpper
     ) internal view returns (bool settled, Snapshot memory snapshot) {
         if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
             Info storage settlement = position.limitOrderType == Positions.ZERO_FOR_ONE
-                ? upper.settlement1
-                : lower.settlement0;
+                ? settlements[tickLower][1]
+                : settlements[tickUpper][0];
 
             if (position.settlementSnapshotId < settlement.nextSnapshotId) {
                 settled = true;

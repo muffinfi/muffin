@@ -52,6 +52,7 @@ const config: HardhatUserConfig = {
     compilers: [basicCompiler],
     overrides: {
       'contracts/Engine.sol': engineCompiler,
+      'contracts/tests/MockPool.sol': testCompiler,
       'contracts/tests/MockEngine.sol': testCompiler,
     },
   },

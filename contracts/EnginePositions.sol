@@ -207,8 +207,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
             uint32 snapshotId
         )
     {
-        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
-        Settlement.Info storage settlement = zeroForOne ? obj.settlement1 : obj.settlement0;
+        Settlement.Info storage settlement = pools[poolId].settlements[tierId][tick][zeroForOne ? 1 : 0];
         return (settlement.liquidityD8, settlement.tickSpacing, settlement.nextSnapshotId);
     }
 
@@ -219,8 +218,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
         bool zeroForOne,
         uint32 snapshotId
     ) external view returns (Settlement.Snapshot memory snapshot) {
-        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
-        Settlement.Info storage settlement = zeroForOne ? obj.settlement1 : obj.settlement0;
+        Settlement.Info storage settlement = pools[poolId].settlements[tierId][tick][zeroForOne ? 1 : 0];
         return settlement.snapshots[snapshotId];
     }
 

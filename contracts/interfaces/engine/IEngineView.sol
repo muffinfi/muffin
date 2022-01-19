@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0;
 
 import "../../libraries/Tiers.sol";
+import "../../libraries/Ticks.sol";
 
 interface IEngineView {
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
@@ -18,20 +19,7 @@ interface IEngineView {
         bytes32 poolId,
         uint8 tierId,
         int24 tick
-    )
-        external
-        view
-        returns (
-            uint96 liquidityLowerD8,
-            uint96 liquidityUpperD8,
-            int24 nextBelow,
-            int24 nextAbove,
-            bool needSettle0,
-            bool needSettle1,
-            uint80 feeGrowthOutside0,
-            uint80 feeGrowthOutside1,
-            uint96 secondsPerLiquidityOutside
-        );
+    ) external view returns (Ticks.Tick memory);
 
     function getTWAP(bytes32 poolId)
         external

@@ -126,6 +126,17 @@ contract MockPool {
         reserve1 = amount1 >= 0 ? reserve1 + abs(amount1) : reserve1 - abs(amount1);
     }
 
+    function setLimitOrderType(
+        address owner,
+        uint256 positionRefId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint8 limitOrderType
+    ) internal {
+        pool.setLimitOrderType(owner, positionRefId, tierId, tickLower, tickUpper, limitOrderType);
+    }
+
     // ---
 
     function getTier(uint8 tierId) external view returns (Tiers.Tier memory) {
@@ -202,10 +213,11 @@ contract MockPool {
         int24 tickLower,
         int24 tickUpper
     ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1) {
-        return pool._feeGrowthInside(tierId, tickLower, tickUpper);
+        return pool._getFeeGrowthInside(tierId, tickLower, tickUpper);
     }
 
-    // following Position.sol
+
+    /// @dev for unsettled position
     function getPositionFees(
         address owner,
         uint256 positionRefId,
@@ -221,7 +233,7 @@ contract MockPool {
             tickLower,
             tickUpper
         );
-        (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = pool._feeGrowthInside(tierId, tickLower, tickUpper);
+        (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = pool._getFeeGrowthInside(tierId, tickLower, tickUpper);
         unchecked {
             uint96 liquidityD8 = position.liquidityD8;
             uint80 feeGrowthDelta0 = feeGrowthInside0 - position.feeGrowthInside0Last;

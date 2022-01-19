@@ -313,33 +313,8 @@ contract Engine is IEngine, EngineBase {
         bytes32 poolId,
         uint8 tierId,
         int24 tick
-    )
-        external
-        view
-        returns (
-            uint96 liquidityLowerD8,
-            uint96 liquidityUpperD8,
-            int24 nextBelow,
-            int24 nextAbove,
-            bool needSettle0,
-            bool needSettle1,
-            uint80 feeGrowthOutside0,
-            uint80 feeGrowthOutside1,
-            uint96 secondsPerLiquidityOutside
-        )
-    {
-        Ticks.Tick storage obj = pools[poolId].ticks[tierId][tick];
-        return (
-            obj.liquidityLowerD8,
-            obj.liquidityUpperD8,
-            obj.nextBelow,
-            obj.nextAbove,
-            obj.needSettle0,
-            obj.needSettle1,
-            obj.feeGrowthOutside0,
-            obj.feeGrowthOutside1,
-            obj.secondsPerLiquidityOutside
-        );
+    ) external view returns (Ticks.Tick memory) {
+        return pools[poolId].ticks[tierId][tick];
     }
 
     function getTWAP(bytes32 poolId)
