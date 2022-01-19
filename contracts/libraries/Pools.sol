@@ -408,7 +408,7 @@ library Pools {
                 }
             }
 
-            // settle single-sided positions (limit orders), which updates ticks and tickmap (effect) and tier (memory)
+            // settle single-sided positions (i.e. filled limit orders) if neccessary
             if (cache.zeroForOne ? cross.needSettle0 : cross.needSettle1)
                 Settlement.settle(
                     pool.settlements[tierId],
@@ -681,7 +681,8 @@ library Pools {
 
         // update settlement if position is an unsettled limit order
         if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
-            uint16 defaultTickSpacing = uint16(pool.tickSpacing) * pool.limitOrderTickSpacingMultipliers[tierId];
+            // passing a zero default tick spacing to here since the settlement state must be already initialized as
+            // this position has been a limit order
             uint32 nextSnapshotId = Settlement.update(
                 pool.settlements[tierId],
                 pool.ticks[tierId],
@@ -689,7 +690,7 @@ library Pools {
                 tickUpper,
                 position.limitOrderType,
                 liquidityDeltaD8,
-                defaultTickSpacing
+                0
             );
 
             // not allowed to update if already settled
@@ -777,6 +778,8 @@ library Pools {
     }
 
     /// @notice Collect tokens from a settled position. Reset to normal position if all tokens are collected
+    /// @dev We only need to update position state. No need to remove any active liquidity from tier or update upper or
+    /// lower tick states as these have already been done when settling these positions during a swap
     function collectSettled(
         Pool storage pool,
         address owner,
@@ -808,7 +811,7 @@ library Pools {
         );
 
         {
-            // ensure settled, and get data snapshot
+            // ensure it's a settled limit order, and get data snapshot
             (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshot(
                 pool.settlements[tierId],
                 position,
@@ -862,7 +865,7 @@ library Pools {
                 tickLower,
                 tickUpper
             );
-            if (settled) return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside0);
+            if (settled) return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside1);
         }
         return _getFeeGrowthInside(pool, tierId, tickLower, tickUpper);
     }

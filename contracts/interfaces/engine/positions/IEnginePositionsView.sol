@@ -42,7 +42,7 @@ interface IEnginePositionsView {
         view
         returns (
             uint96 liquidityD8,
-            uint24 tickSpacing,
+            uint16 tickSpacing,
             uint32 snapshotId
         );
 

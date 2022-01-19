@@ -40,7 +40,7 @@ library Settlement {
      * @param limitOrderType    Direction of the limit order (i.e. token0 or token1)
      * @param liquidityDeltaD8  Change of the amount of liquidity to be settled
      * @param isAdd             True if the change is additive
-     * @param defaultTickSpacing Default tick spacing of limit orders
+     * @param defaultTickSpacing Default tick spacing of limit orders. Only needed when initializing
      * @return nextSnapshotId   Settlement's next snapshot id
      * @return tickSpacing      Tick spacing of the limit orders pending to be settled
      */
@@ -118,7 +118,7 @@ library Settlement {
      * @param tickMap       Tick bitmap of a tier
      * @param tier          Latest tier data (in memory) currently used in the swap
      * @param tickEnd       Ending tick of the limit orders, i.e. the tick just being crossed in the swap
-     * @param zeroForOne    The direction of the ongoing swap
+     * @param token0In      The direction of the ongoing swap
      */
     function settle(
         mapping(int24 => Settlement.Info[2]) storage settlements,
@@ -126,7 +126,7 @@ library Settlement {
         TickMaps.TickMap storage tickMap,
         Tiers.Tier memory tier,
         int24 tickEnd,
-        bool zeroForOne
+        bool token0In
     ) internal {
         Info storage settlement;
         int24 tickStart; // i.e. the starting tick of the limit orders
@@ -134,7 +134,7 @@ library Settlement {
         Ticks.Tick storage end = ticks[tickEnd];
 
         unchecked {
-            if (zeroForOne) {
+            if (token0In) {
                 settlement = settlements[tickEnd][0];
                 tickStart = tickEnd + int24(uint24(settlement.tickSpacing));
                 start = ticks[tickStart];
@@ -209,8 +209,8 @@ library Settlement {
     ) internal view returns (bool settled, Snapshot memory snapshot) {
         if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
             Info storage settlement = position.limitOrderType == Positions.ZERO_FOR_ONE
-                ? settlements[tickLower][1]
-                : settlements[tickUpper][0];
+                ? settlements[tickUpper][1]
+                : settlements[tickLower][0];
 
             if (position.settlementSnapshotId < settlement.nextSnapshotId) {
                 settled = true;
