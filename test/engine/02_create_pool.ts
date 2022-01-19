@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { engineFixture } from '../shared/fixtures';
 import { bn, deploy } from '../shared/utils';
 
 const Q72 = bn(1).shl(72);
 
 describe('engine create pool', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -58,7 +58,7 @@ describe('engine create pool', () => {
 
       // check events
       expect(promise).to.emit(engine, 'PoolCreated').withArgs(token0.address, token1.address);
-      expect(promise).to.emit(engine, 'UpdateTier').withArgs(poolId, 0, 99850);
+      expect(promise).to.emit(engine, 'UpdateTier').withArgs(poolId, 0, 99850, 0);
 
       // check underlying tokens are stored
       const underlying = await engine.underlyings(poolId);
@@ -66,7 +66,7 @@ describe('engine create pool', () => {
       expect(underlying.token1).eq(token1.address);
 
       // check pool object created
-      expect((await engine.getPoolBasics(poolId)).tickSpacing).gt(0);
+      expect((await engine.getPoolParameters(poolId)).tickSpacing).gt(0);
 
       // check account balance change
       expect(await getAccBalance(token0.address, user.address, 1)).eq(0);
@@ -123,7 +123,7 @@ describe('engine create pool', () => {
       // check events
       expect(promise)
         .to.emit(engine, 'UpdateTier')
-        .withArgs(poolId, +tierCount, 99850);
+        .withArgs(poolId, +tierCount, 99850, 0);
 
       // check tier count
       expect(await engine.getTiersCount(poolId)).eq(tierCount.add(1));

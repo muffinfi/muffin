@@ -48,16 +48,16 @@ contract MockPool {
         reserve1 += amount1;
     }
 
-    function setSqrtGamma(uint8 tierId, uint24 sqrtGamma) external unlock {
-        pool.setSqrtGamma(tierId, sqrtGamma);
+    function setTierParameters(
+        uint8 tierId,
+        uint24 sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
+    ) external unlock {
+        pool.setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
     }
 
-    function setProtocolFee(uint8 protocolFee) external unlock {
-        pool.setProtocolFee(protocolFee);
-    }
-
-    function setTickSpacing(uint8 tickSpacing) external unlock {
-        pool.setTickSpacing(tickSpacing);
+    function setPoolParameters(uint8 tickSpacing, uint8 protocolFee) external unlock {
+        pool.setPoolParameters(tickSpacing, protocolFee);
     }
 
     function prepareUpdateLiquidity() external {

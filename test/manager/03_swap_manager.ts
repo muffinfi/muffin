@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { Manager, MockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, expectBalanceChanges, getEvent, getEvents } from '../shared/utils';
 
 const { MaxUint256 } = constants;
 
 describe('manager swap manager', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let manager: Manager;
   let token0: MockERC20;
   let token1: MockERC20;

@@ -23,9 +23,6 @@ async function main() {
   const [token0, token1] = [tokenA, tokenB].sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1));
 
   // ===== deploy contracts =====
-  // const poolLib = (await deployQuiet('Pools')) as Pools;
-  // const Engine = await ethers.getContractFactory('Engine', { libraries: { Pools: poolLib.address } });
-
   const positionController = (await deployQuiet('EnginePositions')) as EnginePositions;
   const engine = (await deployQuiet('Engine', positionController.address)) as Engine;
   const manager = (await deployQuiet('Manager', engine.address, weth.address)) as Manager;
@@ -53,8 +50,7 @@ async function main() {
   await engine.addTier(token0.address, token1.address, 99990, 1); // add tier  2 bps
 
   const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
-  await engine.setProtocolFee(poolId, Math.floor(0.15 * 255));
-  await engine.setTickSpacing(poolId, 1);
+  await engine.setPoolParameters(poolId, 1, Math.floor(0.15 * 255));
 
   // ===== add liquidity =====
   const mintArgs = {

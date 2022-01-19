@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, utils } from 'ethers';
 import { solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { engineWithTwoPoolsFixture } from '../shared/fixtures';
 import { getEvents } from '../shared/utils';
@@ -11,7 +11,7 @@ import { getEvents } from '../shared/utils';
 const EXTRA_INTERMEDIATE_OUTPUT = 100;
 
 describe('engine swap multi hop', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;

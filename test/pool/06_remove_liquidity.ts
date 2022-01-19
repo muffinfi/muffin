@@ -28,7 +28,7 @@ describe('pool remove liquidity', () => {
       await burn(0, 100, 0, false);
       await burn(0, 100, 0, true);
 
-      await pool.setTickSpacing(123);
+      await pool.setPoolParameters(123, 25);
       await burn(0, 100, 0, true); // won't fail even ticks are not divisable by tick spacing
     });
 

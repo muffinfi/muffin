@@ -1,11 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { waffle } from 'hardhat';
-import { MockEngine } from '../../typechain';
+import { IMockEngine } from '../../typechain';
 import { engineWithPoolFixture } from '../shared/fixtures';
 
 describe('engine pool settings', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let user: SignerWithAddress;
   let other: SignerWithAddress;
   let poolId: string;
@@ -16,26 +16,22 @@ describe('engine pool settings', () => {
   });
 
   it('cannot called by governance', async () => {
-    await expect(engine.connect(other).setSqrtGamma(poolId, 0, 90000)).to.be.revertedWith('');
-    await expect(engine.connect(other).setTickSpacing(poolId, 123)).to.be.revertedWith('');
-    await expect(engine.connect(other).setProtocolFee(poolId, 123)).to.be.revertedWith('');
+    await expect(engine.connect(other).setTierParameters(poolId, 0, 90000, 0)).to.be.revertedWith('');
+    await expect(engine.connect(other).setPoolParameters(poolId, 123, 234)).to.be.revertedWith('');
     await expect(engine.connect(other).setGovernance(other.address)).to.be.revertedWith('');
-    await expect(engine.connect(other).setDefaults(123, 234)).to.be.revertedWith('');
+    await expect(engine.connect(other).setDefaultParameters(123, 234)).to.be.revertedWith('');
   });
 
-  it('setSqrtGamma', async () => {
-    await expect(engine.setSqrtGamma(poolId, 0, 90000)).to.emit(engine, 'UpdateTier').withArgs(poolId, 0, 90000);
+  it('setTierParameters', async () => {
+    await expect(engine.setTierParameters(poolId, 0, 90000, 10)).to.emit(engine, 'UpdateTier').withArgs(poolId, 0, 90000, 10);
     expect((await engine.getTier(poolId, 0)).sqrtGamma).eq(90000);
+    expect((await engine.getLimitOrderTickSpacingMultipliers(poolId))[0]).eq(10);
   });
 
-  it('setTickSpacing', async () => {
-    await expect(engine.setTickSpacing(poolId, 123)).to.emit(engine, 'UpdateTickSpacing').withArgs(poolId, 123);
-    expect((await engine.getPoolBasics(poolId)).tickSpacing).eq(123);
-  });
-
-  it('setProtocolFee', async () => {
-    await expect(engine.setProtocolFee(poolId, 234)).to.emit(engine, 'UpdateProtocolFee').withArgs(poolId, 234);
-    expect((await engine.getPoolBasics(poolId)).protocolFee).eq(234);
+  it('setPoolParameters', async () => {
+    await expect(engine.setPoolParameters(poolId, 123, 234)).to.emit(engine, 'UpdatePool').withArgs(poolId, 123, 234);
+    expect((await engine.getPoolParameters(poolId)).tickSpacing).eq(123);
+    expect((await engine.getPoolParameters(poolId)).protocolFee).eq(234);
   });
 
   it('setGovernance', async () => {
@@ -43,9 +39,9 @@ describe('engine pool settings', () => {
     expect(await engine.governance()).eq(other.address);
   });
 
-  it('setDefaults', async () => {
-    await engine.setDefaults(123, 234);
-    expect((await engine.getDefaults()).tickSpacing).eq(123);
-    expect((await engine.getDefaults()).protocolFee).eq(234);
+  it('setDefaultParameters', async () => {
+    await engine.setDefaultParameters(123, 234);
+    expect((await engine.getDefaultParameters()).tickSpacing).eq(123);
+    expect((await engine.getDefaultParameters()).protocolFee).eq(234);
   });
 });

@@ -2,12 +2,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { Manager, MockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, expectBalanceChanges } from '../shared/utils';
 
 describe('manager accounts', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let manager: Manager;
   let token0: MockERC20;
   let weth: WETH9;

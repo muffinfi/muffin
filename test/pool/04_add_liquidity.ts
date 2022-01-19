@@ -31,7 +31,7 @@ describe('pool add liquidity', () => {
     await expect(updateLiquidity(MIN_TICK - 1, MAX_TICK, 1, false)).to.be.reverted; // lower tick too low
     await expect(updateLiquidity(MIN_TICK, MAX_TICK + 1, 1, false)).to.be.reverted; // upper tick too high
 
-    await pool.setTickSpacing(200);
+    await pool.setPoolParameters(200, 25);
     const minTick = Math.ceil(MIN_TICK / 200) * 200;
     const maxTick = Math.floor(MAX_TICK / 200) * 200;
     await expect(updateLiquidity(minTick + 1, maxTick, 1, false)).to.be.reverted; // lower tick not divisible by tick spacing

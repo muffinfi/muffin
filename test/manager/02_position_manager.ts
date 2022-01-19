@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, waffle } from 'hardhat';
-import { Manager, MockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, deploy, expectBalanceChanges, getEvent } from '../shared/utils';
 
@@ -11,7 +11,7 @@ const Q72 = bn(1).shl(72);
 const FIRST_TOKEN_ID = 1;
 
 describe('manager position manager', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let manager: Manager;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -84,8 +84,8 @@ describe('manager position manager', () => {
           expect(await manager.pairIdsByPoolId(poolId)).eq(1);
 
           // check pool created
-          expect((await engine.getPoolBasics(poolId)).tickSpacing).eq(1);
-          expect((await engine.getPoolBasics(poolId)).protocolFee).eq(25);
+          expect((await engine.getPoolParameters(poolId)).tickSpacing).eq(1);
+          expect((await engine.getPoolParameters(poolId)).protocolFee).eq(25);
         },
       );
     });
@@ -372,7 +372,7 @@ describe('manager position manager', () => {
         useAccount: false,
       });
       expect(await manager.ownerOf(tokenId)).eq(user.address);
-      expect((await manager.getPosition(tokenId)).liquidityD8).eq(liquidityD8);
+      expect((await manager.getPosition(tokenId)).position.liquidityD8).eq(liquidityD8);
 
       await engine.increaseFeeGrowthGlobal(poolId01, 1e15, 1e15);
     });

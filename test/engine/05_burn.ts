@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { engineWithPoolFixture } from '../shared/fixtures';
 import { bn, wad } from '../shared/utils';
@@ -11,7 +11,7 @@ const POSITION_REF_ID = 123;
 const ACC_REF_ID = 1;
 
 describe('engine burn', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;

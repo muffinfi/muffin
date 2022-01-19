@@ -2,11 +2,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { engineFixture } from '../shared/fixtures';
 
 describe('engine accounts', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let user: SignerWithAddress;
@@ -28,7 +28,7 @@ describe('engine accounts', () => {
 
     it('zero token in', async () => {
       const promise = caller.deposit(caller.address, 1, token0.address, 100, 'NO_TOKEN_IN');
-      await expect(promise).to.be.revertedWith('NotEnoughToken()');
+      await expect(promise).to.be.revertedWith('NotEnoughTokenInput()');
     });
 
     it('reentrancy attack', async () => {

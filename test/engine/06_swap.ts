@@ -3,12 +3,12 @@ import { expect } from 'chai';
 import { BigNumberish, constants, utils } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { engineWithPoolFixture } from '../shared/fixtures';
 import { getEvent } from '../shared/utils';
 
 describe('engine swap', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -54,7 +54,7 @@ describe('engine swap', () => {
   });
 
   it('not enough token in', async () => {
-    await expect(swap({ callbackAction: utils.id('NO_TOKEN_IN') })).to.be.revertedWith('NotEnoughToken()');
+    await expect(swap({ callbackAction: utils.id('NO_TOKEN_IN') })).to.be.revertedWith('NotEnoughTokenInput()');
   });
 
   it('exact input', async () => {

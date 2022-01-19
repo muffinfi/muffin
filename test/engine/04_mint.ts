@@ -3,13 +3,13 @@ import { expect } from 'chai';
 import { utils } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, MockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { engineWithPoolFixture } from '../shared/fixtures';
 import { bn, getEvent } from '../shared/utils';
 
 describe('engine mint', () => {
-  let engine: MockEngine;
+  let engine: IMockEngine;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -50,11 +50,11 @@ describe('engine mint', () => {
   });
 
   it('not enough token0 in', async () => {
-    await expect(mint({ data: utils.id('NO_TOKEN0_IN') })).to.be.revertedWith('NotEnoughToken()');
+    await expect(mint({ data: utils.id('NO_TOKEN0_IN') })).to.be.revertedWith('NotEnoughTokenInput()');
   });
 
   it('not enough token1 in', async () => {
-    await expect(mint({ data: utils.id('NO_TOKEN1_IN') })).to.be.revertedWith('NotEnoughToken()');
+    await expect(mint({ data: utils.id('NO_TOKEN1_IN') })).to.be.revertedWith('NotEnoughTokenInput()');
   });
 
   it('mint successfully using token transfer', async () => {

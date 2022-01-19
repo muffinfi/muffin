@@ -1,20 +1,18 @@
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { Manager, MockCaller, MockEngine, MockERC20, MockPool, Pools, WETH9 } from '../../typechain';
+import { EnginePositions, IMockEngine, Manager, MockCaller, MockERC20, MockPool, Pools, WETH9 } from '../../typechain';
 import { bn, deploy, wad } from './utils';
 
 export const poolTestFixture = async () => {
-  const poolLib = (await deploy('Pools')) as Pools;
-  const MockPool = await ethers.getContractFactory('MockPool', { libraries: { Pools: poolLib.address } });
-  const pool = (await deploy(MockPool)) as MockPool;
+  const pool = (await deploy('MockPool')) as MockPool;
   return { pool };
 };
 
 export const engineFixture = async () => {
   // ===== contracts =====
-  const poolLib = (await deploy('Pools')) as Pools;
-  const MockEngine = await ethers.getContractFactory('MockEngine', { libraries: { Pools: poolLib.address } });
-  const engine = (await deploy(MockEngine)) as MockEngine;
+  const positionController = (await deploy('EnginePositions')) as EnginePositions;
+  const _engine = (await deploy('MockEngine', positionController.address)) as IMockEngine;
+  const engine = (await ethers.getContractAt('IMockEngine', _engine.address)) as IMockEngine;
   const caller = (await deploy('MockCaller', engine.address)) as MockCaller;
 
   // ===== token =====
@@ -36,7 +34,7 @@ export const engineWithPoolFixture = async () => {
   // ===== create pool =====
   await engine.addAccountBalance(user.address, 1, token0.address, 25600);
   await engine.addAccountBalance(user.address, 1, token1.address, 25600);
-  await engine.setDefaults(1, 25);
+  await engine.setDefaultParameters(1, 25);
   await engine.createPool(token0.address, token1.address, 99850, bn(1).shl(72), 1);
 
   // ===== token approval =====
@@ -50,9 +48,9 @@ export const engineWithPoolFixture = async () => {
 
 export const engineWithTwoPoolsFixture = async () => {
   // ===== contracts =====
-  const poolLib = (await deploy('Pools')) as Pools;
-  const MockEngine = await ethers.getContractFactory('MockEngine', { libraries: { Pools: poolLib.address } });
-  const engine = (await deploy(MockEngine)) as MockEngine;
+  const positionController = (await deploy('EnginePositions')) as EnginePositions;
+  const _engine = (await deploy('MockEngine', positionController.address)) as IMockEngine;
+  const engine = (await ethers.getContractAt('IMockEngine', _engine.address)) as IMockEngine;
   const caller = (await deploy('MockCaller', engine.address)) as MockCaller;
 
   // ===== token =====
@@ -70,7 +68,7 @@ export const engineWithTwoPoolsFixture = async () => {
   await engine.addAccountBalance(user.address, 1, token1.address, 25600 * 2);
   await engine.addAccountBalance(user.address, 1, token2.address, 25600 * 2);
 
-  await engine.setDefaults(1, 25);
+  await engine.setDefaultParameters(1, 25);
   await engine.createPool(token0.address, token1.address, 99850, bn(1).shl(72), 1);
   await engine.createPool(token1.address, token2.address, 99850, bn(1).shl(72), 1);
   await engine.createPool(token0.address, token2.address, 99850, bn(1).shl(72), 1);
