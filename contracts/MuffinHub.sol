@@ -90,7 +90,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         underlyings[poolId] = Pair(token0, token1);
     }
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function addTier(
         address token0,
         address token1,
@@ -244,19 +244,19 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
      *                          GOVERNANCE
      *==============================================================*/
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function setGovernance(address _governance) external onlyGovernance {
         governance = _governance;
         emit GovernanceUpdated(_governance);
     }
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
     }
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function setPoolParameters(
         bytes32 poolId,
         uint8 tickSpacing,
@@ -266,7 +266,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         emit UpdatePool(poolId, tickSpacing, protocolFee);
     }
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function setTierParameters(
         bytes32 poolId,
         uint8 tierId,
@@ -277,7 +277,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
     }
 
-    /// @inheritdoc IMuffinHubGatedActions
+    /// @inheritdoc IMuffinHubActions
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
         uint248 amount = tokens[token].protocolFeeAmt;
         tokens[token].protocolFeeAmt = 0;
