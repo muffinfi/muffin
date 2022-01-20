@@ -6,4 +6,4 @@ import "./IMuffinHubEvents.sol";
 import "./IMuffinHubActions.sol";
 import "./IMuffinHubView.sol";
 
-interface IMuffinHub is IMuffinHubBase, IMuffinHubEvents, IMuffinHubActions, IMuffinHubGatedActions, IMuffinHubView {}
+interface IMuffinHub is IMuffinHubBase, IMuffinHubEvents, IMuffinHubActions, IMuffinHubView {}
