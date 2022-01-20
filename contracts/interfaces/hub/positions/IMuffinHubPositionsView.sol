@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import "../../../libraries/Positions.sol";
 import "../../../libraries/Settlement.sol";
 
-interface IEnginePositionsView {
+interface IMuffinHubPositionsView {
     function getPosition(
         bytes32 poolId,
         address owner,

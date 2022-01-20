@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "../interfaces/engine/IEngine.sol";
-import "../interfaces/engine/positions/IEnginePositions.sol";
-import "../interfaces/IEngineCallbacks.sol";
+import "../interfaces/hub/IMuffinHub.sol";
+import "../interfaces/hub/positions/IMuffinHubPositions.sol";
+import "../interfaces/IMuffinHubCallbacks.sol";
 import "hardhat/console.sol";
 
 // prettier-ignore
@@ -13,11 +13,11 @@ interface IMockERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool success);
 }
 
-contract MockCallerRealistic is IEngineCallbacks {
-    address public immutable engine;
+contract MockCallerRealistic is IMuffinHubCallbacks {
+    address public immutable hub;
 
-    constructor(address _engine) {
-        engine = _engine;
+    constructor(address _hub) {
+        hub = _hub;
     }
 
     function depositCallback(
@@ -60,16 +60,16 @@ contract MockCallerRealistic is IEngineCallbacks {
         address token,
         uint256 amount
     ) public {
-        IEngine(engine).deposit(recipient, accRefId, token, amount, abi.encode(msg.sender));
+        IMuffinHub(hub).deposit(recipient, accRefId, token, amount, abi.encode(msg.sender));
     }
 
-    function mint(IEnginePositions.MintParams memory params) external {
+    function mint(IMuffinHubPositions.MintParams memory params) external {
         params.data = abi.encode(msg.sender);
-        IEnginePositions(engine).mint(params);
+        IMuffinHubPositions(hub).mint(params);
     }
 
-    function burn(IEnginePositions.BurnParams calldata params) external {
-        IEnginePositions(engine).burn(params);
+    function burn(IMuffinHubPositions.BurnParams calldata params) external {
+        IMuffinHubPositions(hub).burn(params);
     }
 
     function swap(
@@ -81,7 +81,7 @@ contract MockCallerRealistic is IEngineCallbacks {
         uint256 recipientAccRefId,
         uint256 senderAccRefId
     ) external {
-        IEngine(engine).swap(
+        IMuffinHub(hub).swap(
             tokenIn,
             tokenOut,
             tierChoices,
@@ -93,9 +93,9 @@ contract MockCallerRealistic is IEngineCallbacks {
         );
     }
 
-    function swapHop(IEngine.SwapMultiHopParams memory params) external {
+    function swapHop(IMuffinHub.SwapMultiHopParams memory params) external {
         params.data = abi.encode(msg.sender);
-        IEngine(engine).swapMultiHop(params);
+        IMuffinHub(hub).swapMultiHop(params);
     }
 
     function setLimitOrderType(
@@ -107,7 +107,7 @@ contract MockCallerRealistic is IEngineCallbacks {
         uint256 positionRefId,
         uint8 positionType
     ) external {
-        IEnginePositions(engine).setLimitOrderType(
+        IMuffinHubPositions(hub).setLimitOrderType(
             token0,
             token1,
             tierId,

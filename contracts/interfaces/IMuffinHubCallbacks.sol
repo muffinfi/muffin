@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.0;
 
-interface IEngineCallbacks {
+interface IMuffinHubCallbacks {
     function depositCallback(
         address token,
         uint256 amount,

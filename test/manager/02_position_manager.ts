@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, waffle } from 'hardhat';
-import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockMuffinHub, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, deploy, expectBalanceChanges, getEvent } from '../shared/utils';
 
@@ -11,7 +11,7 @@ const Q72 = bn(1).shl(72);
 const FIRST_TOKEN_ID = 1;
 
 describe('manager position manager', () => {
-  let engine: IMockEngine;
+  let hub: IMockMuffinHub;
   let manager: Manager;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -22,12 +22,12 @@ describe('manager position manager', () => {
   let other: SignerWithAddress;
 
   beforeEach(async () => {
-    ({ engine, manager, token0, token1, token2, weth, poolId01, user, other } = await waffle.loadFixture(managerFixture));
+    ({ hub, manager, token0, token1, token2, weth, poolId01, user, other } = await waffle.loadFixture(managerFixture));
   });
 
   const getAccBalance = async (token: string, userAddress: string) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [manager.address, bn(userAddress)]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   const checkEthBalanceChanges = async (
@@ -37,23 +37,23 @@ describe('manager position manager', () => {
   ) => {
     const userEthBefore = await ethers.provider.getBalance(user.address);
     const managerEthBefore = await ethers.provider.getBalance(manager.address);
-    const reserveEthBefore = await ethers.provider.getBalance(engine.address);
+    const reserveEthBefore = await ethers.provider.getBalance(hub.address);
 
     const userWethBefore = await weth.balanceOf(user.address);
     const managerWethBefore = await weth.balanceOf(manager.address);
-    const reserveWethBefore = await weth.balanceOf(engine.address);
+    const reserveWethBefore = await weth.balanceOf(hub.address);
 
     const retval = await fn();
 
     // check eth balance changes
     expect((await ethers.provider.getBalance(user.address)).sub(userEthBefore)).eq(ethDeltas[0]);
     expect((await ethers.provider.getBalance(manager.address)).sub(managerEthBefore)).eq(ethDeltas[1]);
-    expect((await ethers.provider.getBalance(engine.address)).sub(reserveEthBefore)).eq(ethDeltas[2]);
+    expect((await ethers.provider.getBalance(hub.address)).sub(reserveEthBefore)).eq(ethDeltas[2]);
 
     // check weth balance changes
     expect((await weth.balanceOf(user.address)).sub(userWethBefore)).eq(wethDeltas[0]);
     expect((await weth.balanceOf(manager.address)).sub(managerWethBefore)).eq(wethDeltas[1]);
-    expect((await weth.balanceOf(engine.address)).sub(reserveWethBefore)).eq(wethDeltas[2]);
+    expect((await weth.balanceOf(hub.address)).sub(reserveWethBefore)).eq(wethDeltas[2]);
 
     return retval;
   };
@@ -71,8 +71,8 @@ describe('manager position manager', () => {
         [
           { account: user, token: tokens[0], delta: -25600 },
           { account: user, token: tokens[1], delta: -25600 },
-          { account: engine, token: tokens[0], delta: 25600 },
-          { account: engine, token: tokens[1], delta: 25600 },
+          { account: hub, token: tokens[0], delta: 25600 },
+          { account: hub, token: tokens[1], delta: 25600 },
         ],
         async () => {
           await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72);
@@ -84,8 +84,8 @@ describe('manager position manager', () => {
           expect(await manager.pairIdsByPoolId(poolId)).eq(1);
 
           // check pool created
-          expect((await engine.getPoolParameters(poolId)).tickSpacing).eq(1);
-          expect((await engine.getPoolParameters(poolId)).protocolFee).eq(25);
+          expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(1);
+          expect((await hub.getPoolParameters(poolId)).protocolFee).eq(25);
         },
       );
     });
@@ -95,8 +95,8 @@ describe('manager position manager', () => {
         [
           { account: user, token: token0, delta: 0 },
           { account: user, token: token1, delta: 0 },
-          { account: engine, token: token0, delta: 0 },
-          { account: engine, token: token1, delta: 0 },
+          { account: hub, token: token0, delta: 0 },
+          { account: hub, token: token1, delta: 0 },
         ],
         async () => {
           await manager.createPool(token0.address, token1.address, 99850, Q72);
@@ -133,8 +133,8 @@ describe('manager position manager', () => {
     });
 
     it('mint NFT successfully', async () => {
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const nftTotalSupplyBefore = await manager.totalSupply();
@@ -160,8 +160,8 @@ describe('manager position manager', () => {
       expect(pair[0]).eq(token0.address);
       expect(pair[1]).eq(token1.address);
 
-      // check engine event
-      const event = await getEvent(tx, engine, 'Mint');
+      // check hub event
+      const event = await getEvent(tx, hub, 'Mint');
       expect(event.poolId).eq(poolId01);
       expect(event.owner).eq(manager.address);
       expect(event.positionRefId).eq(tokenId);
@@ -174,18 +174,18 @@ describe('manager position manager', () => {
       // check balance changes
       const amount0 = event.amount0;
       const amount1 = event.amount1;
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(amount0.mul(-1));
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(amount1.mul(-1));
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 1e8);
-      await engine.addAccountBalance(manager.address, bn(user.address), token1.address, 1e8);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 1e8);
+      await hub.addAccountBalance(manager.address, bn(user.address), token1.address, 1e8);
 
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const userAccBalance0Before = await getAccBalance(token0.address, user.address);
@@ -194,13 +194,13 @@ describe('manager position manager', () => {
       const tx = await manager.mint({ ...baseParams(), useAccount: true });
 
       // check no real token transfer
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(0);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
 
       // check use internal balance used
-      const event = await getEvent(tx, engine, 'Mint');
+      const event = await getEvent(tx, hub, 'Mint');
       expect((await getAccBalance(token0.address, user.address)).sub(userAccBalance0Before)).eq(-event.amount0);
       expect((await getAccBalance(token1.address, user.address)).sub(userAccBalance1Before)).eq(-event.amount1);
     });
@@ -214,7 +214,7 @@ describe('manager position manager', () => {
           ],
           { value: 25600 + 10000 },
         );
-        const event = await getEvent(tx, engine, 'Mint');
+        const event = await getEvent(tx, hub, 'Mint');
         expect(event.amount0).eq(25600);
         expect(event.amount1).eq(25600);
       });
@@ -274,14 +274,14 @@ describe('manager position manager', () => {
     });
 
     it('add liquidity successfully', async () => {
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const tx = await manager.addLiquidity(baseParams());
 
-      // check engine event
-      const event = await getEvent(tx, engine, 'Mint');
+      // check hub event
+      const event = await getEvent(tx, hub, 'Mint');
       expect(event.poolId).eq(poolId01);
       expect(event.owner).eq(manager.address);
       expect(event.positionRefId).eq(tokenId);
@@ -291,18 +291,18 @@ describe('manager position manager', () => {
       // check balance changes
       const amount0 = event.amount0;
       const amount1 = event.amount1;
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(amount0.mul(-1));
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(amount1.mul(-1));
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 1e8);
-      await engine.addAccountBalance(manager.address, bn(user.address), token1.address, 1e8);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 1e8);
+      await hub.addAccountBalance(manager.address, bn(user.address), token1.address, 1e8);
 
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const userAccBalance0Before = await getAccBalance(token0.address, user.address);
@@ -311,13 +311,13 @@ describe('manager position manager', () => {
       const tx = await manager.addLiquidity({ ...baseParams(), useAccount: true });
 
       // check no real token transfer
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(0);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
 
       // check use internal balance used
-      const event = await getEvent(tx, engine, 'Mint');
+      const event = await getEvent(tx, hub, 'Mint');
       expect((await getAccBalance(token0.address, user.address)).sub(userAccBalance0Before)).eq(-event.amount0);
       expect((await getAccBalance(token1.address, user.address)).sub(userAccBalance1Before)).eq(-event.amount1);
     });
@@ -346,7 +346,7 @@ describe('manager position manager', () => {
           ],
           { value: 25600 + 10000 },
         );
-        const event = await getEvent(tx, engine, 'Mint');
+        const event = await getEvent(tx, hub, 'Mint');
         expect(event.amount0).eq(25600);
         expect(event.amount1).eq(25600);
       });
@@ -374,7 +374,7 @@ describe('manager position manager', () => {
       expect(await manager.ownerOf(tokenId)).eq(user.address);
       expect((await manager.getPosition(tokenId)).position.liquidityD8).eq(liquidityD8);
 
-      await engine.increaseFeeGrowthGlobal(poolId01, 1e15, 1e15);
+      await hub.increaseFeeGrowthGlobal(poolId01, 1e15, 1e15);
     });
 
     const baseParams = () => {
@@ -409,8 +409,8 @@ describe('manager position manager', () => {
     });
 
     it('remove + no withdraw', async () => {
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const userAccBalance0Before = await getAccBalance(token0.address, user.address);
@@ -418,8 +418,8 @@ describe('manager position manager', () => {
 
       const tx = await manager.removeLiquidity(baseParams());
 
-      // check engine event
-      const event = await getEvent(tx, engine, 'Burn');
+      // check hub event
+      const event = await getEvent(tx, hub, 'Burn');
       expect(event.poolId).eq(poolId01);
       expect(event.owner).eq(manager.address);
       expect(event.positionRefId).eq(tokenId);
@@ -433,8 +433,8 @@ describe('manager position manager', () => {
       // check balance changes
       const sumAmount0 = event.amount0.add(event.feeAmount0);
       const sumAmount1 = event.amount1.add(event.feeAmount1);
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(0);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
       expect((await getAccBalance(token0.address, user.address)).sub(userAccBalance0Before)).eq(sumAmount0);
@@ -442,8 +442,8 @@ describe('manager position manager', () => {
     });
 
     it('remove + withdraw', async () => {
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
       const userBalance0Before = await token0.balanceOf(user.address);
       const userBalance1Before = await token1.balanceOf(user.address);
       const userAccBalance0Before = await getAccBalance(token0.address, user.address);
@@ -451,8 +451,8 @@ describe('manager position manager', () => {
 
       const tx = await manager.removeLiquidity({ ...baseParams(), withdrawTo: user.address });
 
-      // check engine event
-      const event = await getEvent(tx, engine, 'Burn');
+      // check hub event
+      const event = await getEvent(tx, hub, 'Burn');
       expect(event.poolId).eq(poolId01);
       expect(event.owner).eq(manager.address);
       expect(event.positionRefId).eq(tokenId);
@@ -466,8 +466,8 @@ describe('manager position manager', () => {
       // check balance changes
       const sumAmount0 = event.amount0.add(event.feeAmount0);
       const sumAmount1 = event.amount1.add(event.feeAmount1);
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(-sumAmount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(-sumAmount1);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(-sumAmount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(-sumAmount1);
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(sumAmount0);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(sumAmount1);
       expect((await getAccBalance(token0.address, user.address)).sub(userAccBalance0Before)).eq(0);
@@ -497,7 +497,7 @@ describe('manager position manager', () => {
           ]),
           manager.interface.encodeFunctionData('unwrapWETH', [29999, user.address]),
         ]);
-        const event = await getEvent(tx, engine, 'Burn');
+        const event = await getEvent(tx, hub, 'Burn');
         expect(event.amount0).eq(29999);
         expect(event.amount1).eq(29999);
       });

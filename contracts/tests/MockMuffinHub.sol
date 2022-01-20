@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "../interfaces/engine/IEngine.sol";
-import "../interfaces/engine/positions/IEnginePositions.sol";
-import "../Engine.sol";
+import "../interfaces/hub/IMuffinHub.sol";
+import "../interfaces/hub/positions/IMuffinHubPositions.sol";
+import "../MuffinHub.sol";
 
 // prettier-ignore
 interface IMockERC20 {
@@ -12,7 +12,7 @@ interface IMockERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool success);
 }
 
-interface IMockEngine is IEngine, IEnginePositions {
+interface IMockMuffinHub is IMuffinHub, IMuffinHubPositions {
     function addAccountBalance(
         address recipient,
         uint256 recipientAccRefId,
@@ -27,8 +27,8 @@ interface IMockEngine is IEngine, IEnginePositions {
     ) external;
 }
 
-contract MockEngine is Engine {
-    constructor(address _positionController) Engine(_positionController) {}
+contract MockMuffinHub is MuffinHub {
+    constructor(address _positionController) MuffinHub(_positionController) {}
 
     function addAccountBalance(
         address recipient,

@@ -63,7 +63,7 @@ library Pools {
         uint8[MAX_TIERS] limitOrderTickSpacingMultipliers;
     }
 
-    // TODO: since engine locks "input token", is it needed to lock the pool?
+    // TODO: since hub locks "input token", is it needed to lock the pool?
     function lock(Pool storage pool) internal {
         require(pool.unlocked);
         pool.unlocked = false;

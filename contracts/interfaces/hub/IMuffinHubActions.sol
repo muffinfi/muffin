@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.0;
 
-interface IEngineActions {
+interface IMuffinHubActions {
     /// @notice                 Deposit token into recipient's account
     /// @param recipient        Recipient's address
     /// @param recipientAccRefId Recipient's account id

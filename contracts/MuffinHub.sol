@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "./interfaces/engine/IEngine.sol";
-import "./interfaces/IEngineCallbacks.sol";
+import "./interfaces/hub/IMuffinHub.sol";
+import "./interfaces/IMuffinHubCallbacks.sol";
 import "./libraries/utils/SafeTransferLib.sol";
 import "./libraries/utils/PathLib.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Pools.sol";
-import "./EngineBase.sol";
+import "./MuffinHubBase.sol";
 
-contract Engine is IEngine, EngineBase {
+contract MuffinHub is IMuffinHub, MuffinHubBase {
     using Math for uint256;
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
@@ -20,7 +20,7 @@ contract Engine is IEngine, EngineBase {
     error NotEnoughIntermediateOutput();
 
     /// @dev To reduce bytecode size of this contract, we offload position-related codes and various view functions
-    /// to a second contract (i.e. EnginePositions.sol) and use delegatecall to call it.
+    /// to a second contract (i.e. MuffinHubPositions.sol) and use delegatecall to call it.
     address internal immutable positionController;
 
     constructor(address _positionController) {
@@ -37,7 +37,7 @@ contract Engine is IEngine, EngineBase {
      *                           ACCOUNTS
      *==============================================================*/
 
-    /// @inheritdoc IEngineActions
+    /// @inheritdoc IMuffinHubActions
     function deposit(
         address recipient,
         uint256 recipientAccRefId,
@@ -46,14 +46,14 @@ contract Engine is IEngine, EngineBase {
         bytes calldata data
     ) external {
         uint256 balanceBefore = getBalanceAndLock(token);
-        IEngineCallbacks(msg.sender).depositCallback(token, amount, data);
+        IMuffinHubCallbacks(msg.sender).depositCallback(token, amount, data);
         checkBalanceAndUnlock(token, balanceBefore + amount);
 
         accounts[token][getAccHash(recipient, recipientAccRefId)] += amount;
         emit Deposit(recipient, recipientAccRefId, token, amount);
     }
 
-    /// @inheritdoc IEngineActions
+    /// @inheritdoc IMuffinHubActions
     function withdraw(
         address recipient,
         uint256 senderAccRefId,
@@ -69,7 +69,7 @@ contract Engine is IEngine, EngineBase {
      *                      CREATE POOL / TIER
      *==============================================================*/
 
-    /// @inheritdoc IEngineActions
+    /// @inheritdoc IMuffinHubActions
     function createPool(
         address token0,
         address token1,
@@ -90,7 +90,7 @@ contract Engine is IEngine, EngineBase {
         underlyings[poolId] = Pair(token0, token1);
     }
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function addTier(
         address token0,
         address token1,
@@ -110,7 +110,7 @@ contract Engine is IEngine, EngineBase {
      *                            SWAP
      *==============================================================*/
 
-    /// @inheritdoc IEngineActions
+    /// @inheritdoc IMuffinHubActions
     function swap(
         address tokenIn,
         address tokenOut,
@@ -127,7 +127,7 @@ contract Engine is IEngine, EngineBase {
         pool.unlock();
     }
 
-    /// @inheritdoc IEngineActions
+    /// @inheritdoc IMuffinHubActions
     function swapMultiHop(SwapMultiHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut) {
         bytes memory path = p.path;
         if (path.invalid()) revert InvalidSwapPath();
@@ -235,7 +235,7 @@ contract Engine is IEngine, EngineBase {
         }
         if (amountIn > 0) {
             uint256 balanceBefore = getBalanceAndLock(tokenIn);
-            IEngineCallbacks(msg.sender).swapCallback(tokenIn, tokenOut, amountIn, amountOut, data);
+            IMuffinHubCallbacks(msg.sender).swapCallback(tokenIn, tokenOut, amountIn, amountOut, data);
             checkBalanceAndUnlock(tokenIn, balanceBefore + amountIn);
         }
     }
@@ -244,19 +244,19 @@ contract Engine is IEngine, EngineBase {
      *                          GOVERNANCE
      *==============================================================*/
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function setGovernance(address _governance) external onlyGovernance {
         governance = _governance;
         emit GovernanceUpdated(_governance);
     }
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
     }
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function setPoolParameters(
         bytes32 poolId,
         uint8 tickSpacing,
@@ -266,7 +266,7 @@ contract Engine is IEngine, EngineBase {
         emit UpdatePool(poolId, tickSpacing, protocolFee);
     }
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function setTierParameters(
         bytes32 poolId,
         uint8 tierId,
@@ -277,7 +277,7 @@ contract Engine is IEngine, EngineBase {
         emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
     }
 
-    /// @inheritdoc IEngineGatedActions
+    /// @inheritdoc IMuffinHubGatedActions
     function collectProtocolFee(address token, address recipient) external onlyGovernance {
         uint248 amount = tokens[token].protocolFeeAmt;
         tokens[token].protocolFeeAmt = 0;

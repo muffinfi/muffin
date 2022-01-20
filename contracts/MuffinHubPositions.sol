@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "./interfaces/engine/positions/IEnginePositions.sol";
-import "./interfaces/IEngineCallbacks.sol";
+import "./interfaces/hub/positions/IMuffinHubPositions.sol";
+import "./interfaces/IMuffinHubCallbacks.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Positions.sol";
 import "./libraries/Pools.sol";
 import "./libraries/Settlement.sol";
-import "./EngineBase.sol";
+import "./MuffinHubBase.sol";
 
 /**
  * @dev "Implementation" contract for position-related functions and various view functions, called using DELEGATECALL.
  * Codes are offloaded from the primary contract to here for reducing the primary contract's bytecode size.
  */
-contract EnginePositions is IEnginePositions, EngineBase {
+contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     using Math for uint96;
     using Math for uint256;
     using Pools for Pools.Pool;
@@ -23,7 +23,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
      *                          POSITIONS
      *==============================================================*/
 
-    /// @inheritdoc IEnginePositionsActions
+    /// @inheritdoc IMuffinHubPositionsActions
     function mint(MintParams calldata params) external returns (uint256 amount0, uint256 amount1) {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(params.token0, params.token1);
         (amount0, amount1, , ) = pool.updateLiquidity(
@@ -45,7 +45,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
         if (_amt0 != 0 || _amt1 != 0) {
             uint256 balance0Before = getBalanceAndLock(params.token0);
             uint256 balance1Before = getBalanceAndLock(params.token1);
-            IEngineCallbacks(msg.sender).mintCallback(params.token0, params.token1, _amt0, _amt1, params.data);
+            IMuffinHubCallbacks(msg.sender).mintCallback(params.token0, params.token1, _amt0, _amt1, params.data);
             checkBalanceAndUnlock(params.token0, balance0Before + _amt0);
             checkBalanceAndUnlock(params.token1, balance1Before + _amt1);
         }
@@ -63,7 +63,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
         pool.unlock();
     }
 
-    /// @inheritdoc IEnginePositionsActions
+    /// @inheritdoc IMuffinHubPositionsActions
     function burn(BurnParams calldata params)
         external
         returns (
@@ -102,7 +102,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
         pool.unlock();
     }
 
-    /// @inheritdoc IEnginePositionsActions
+    /// @inheritdoc IMuffinHubPositionsActions
     function setLimitOrderType(
         address token0,
         address token1,
@@ -117,7 +117,7 @@ contract EnginePositions is IEnginePositions, EngineBase {
         emit SetLimitOrderType(poolId, msg.sender, positionRefId, tierId, tickLower, tickUpper, limitOrderType);
     }
 
-    /// @inheritdoc IEnginePositionsActions
+    /// @inheritdoc IMuffinHubPositionsActions
     function collectSettled(BurnParams calldata params)
         external
         returns (

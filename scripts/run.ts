@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { BigNumberish, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
-import { Engine, EnginePositions, Manager, MockERC20, Pools, WETH9 } from '../typechain';
+import { MuffinHub, MuffinHubPositions, Manager, MockERC20, Pools, WETH9 } from '../typechain';
 import { bn, deployQuiet, logTxGas, wad } from './utils';
 
 main()
@@ -23,9 +23,9 @@ async function main() {
   const [token0, token1] = [tokenA, tokenB].sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1));
 
   // ===== deploy contracts =====
-  const positionController = (await deployQuiet('EnginePositions')) as EnginePositions;
-  const engine = (await deployQuiet('Engine', positionController.address)) as Engine;
-  const manager = (await deployQuiet('Manager', engine.address, weth.address)) as Manager;
+  const positionController = (await deployQuiet('MuffinHubPositions')) as MuffinHubPositions;
+  const hub = (await deployQuiet('MuffinHub', positionController.address)) as MuffinHub;
+  const manager = (await deployQuiet('Manager', hub.address, weth.address)) as Manager;
 
   // ===== token approval =====
   for (const token of [token0, token1]) {
@@ -44,13 +44,13 @@ async function main() {
 
   await manager.depositToExternal(user.address, 1, token0.address, wad(1));
   await manager.depositToExternal(user.address, 1, token1.address, wad(1));
-  await engine.addTier(token0.address, token1.address, 99750, 1); // add tier 50 bps
-  await engine.addTier(token0.address, token1.address, 99925, 1); // add tier 15 bps
-  await engine.addTier(token0.address, token1.address, 99975, 1); // add tier  5 bps
-  await engine.addTier(token0.address, token1.address, 99990, 1); // add tier  2 bps
+  await hub.addTier(token0.address, token1.address, 99750, 1); // add tier 50 bps
+  await hub.addTier(token0.address, token1.address, 99925, 1); // add tier 15 bps
+  await hub.addTier(token0.address, token1.address, 99975, 1); // add tier  5 bps
+  await hub.addTier(token0.address, token1.address, 99990, 1); // add tier  2 bps
 
   const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
-  await engine.setPoolParameters(poolId, 1, Math.floor(0.15 * 255));
+  await hub.setPoolParameters(poolId, 1, Math.floor(0.15 * 255));
 
   // ===== add liquidity =====
   const mintArgs = {

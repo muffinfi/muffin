@@ -3,15 +3,15 @@ import { expect } from 'chai';
 import { BigNumber, utils } from 'ethers';
 import { solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
-import { engineWithTwoPoolsFixture } from '../shared/fixtures';
+import { hubWithTwoPoolsFixture } from '../shared/fixtures';
 import { getEvents } from '../shared/utils';
 
 const EXTRA_INTERMEDIATE_OUTPUT = 100;
 
-describe('engine swap multi hop', () => {
-  let engine: IMockEngine;
+describe('hub swap multi hop', () => {
+  let hub: IMockMuffinHub;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -34,20 +34,20 @@ describe('engine swap multi hop', () => {
   let protocolFeeAmt2Before: BigNumber;
 
   beforeEach(async () => {
-    ({ engine, caller, token0, token1, token2, user, poolId01, poolId12, poolId02 } = await waffle.loadFixture(
-      engineWithTwoPoolsFixture,
+    ({ hub, caller, token0, token1, token2, user, poolId01, poolId12, poolId02 } = await waffle.loadFixture(
+      hubWithTwoPoolsFixture,
     ));
-    reserve0Before = await token0.balanceOf(engine.address);
-    reserve1Before = await token2.balanceOf(engine.address);
-    reserve2Before = await token2.balanceOf(engine.address);
+    reserve0Before = await token0.balanceOf(hub.address);
+    reserve1Before = await token2.balanceOf(hub.address);
+    reserve2Before = await token2.balanceOf(hub.address);
 
     userBalance0Before = await token0.balanceOf(user.address);
     userBalance1Before = await token1.balanceOf(user.address);
     userBalance2Before = await token2.balanceOf(user.address);
 
-    protocolFeeAmt0Before = (await engine.tokens(token0.address)).protocolFeeAmt;
-    protocolFeeAmt1Before = (await engine.tokens(token1.address)).protocolFeeAmt;
-    protocolFeeAmt2Before = (await engine.tokens(token2.address)).protocolFeeAmt;
+    protocolFeeAmt0Before = (await hub.tokens(token0.address)).protocolFeeAmt;
+    protocolFeeAmt1Before = (await hub.tokens(token1.address)).protocolFeeAmt;
+    protocolFeeAmt2Before = (await hub.tokens(token2.address)).protocolFeeAmt;
   });
 
   const mint = async (params?: Partial<Parameters<MockCaller['functions']['mint']>[0]>) => {
@@ -106,7 +106,7 @@ describe('engine swap multi hop', () => {
   context('exact input', () => {
     it('0 -> 1', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -115,15 +115,15 @@ describe('engine swap multi hop', () => {
       const amount0 = +events[0].amount0;
       const amount1 = +events[0].amount1;
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(-amount1);
-      expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+      expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
     });
 
     it('0 -> 1 -> 2', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1, token2]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -136,20 +136,20 @@ describe('engine swap multi hop', () => {
       const amount0 = +events[0].amount0;
       const amount2 = +events[1].amount1;
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
-      expect((await token2.balanceOf(engine.address)).sub(reserve2Before)).eq(amount2);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
+      expect((await token2.balanceOf(hub.address)).sub(reserve2Before)).eq(amount2);
 
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
       expect((await token2.balanceOf(user.address)).sub(userBalance2Before)).eq(-amount2);
 
-      expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
-      expect((await engine.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
+      expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+      expect((await hub.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
     });
 
     it('0 -> 1 -> 2 -> 0', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1, token2, token0]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -166,20 +166,20 @@ describe('engine swap multi hop', () => {
       const amount0Delta = +events[0].amount0 + +events[2].amount0;
       expect(amount0Delta).gt(0);
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0Delta);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
-      expect((await token2.balanceOf(engine.address)).sub(reserve2Before)).eq(0);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0Delta);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
+      expect((await token2.balanceOf(hub.address)).sub(reserve2Before)).eq(0);
 
-      expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
-      expect((await engine.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
-      expect((await engine.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
+      expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+      expect((await hub.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
+      expect((await hub.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
     });
   });
 
   context('exact output', () => {
     it('0 <- 1', async () => {
       const tx = await swapMultiHop({ amountDesired: -10000, path: toPath([token0, token1]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-10000);
@@ -188,17 +188,17 @@ describe('engine swap multi hop', () => {
       const amount0 = +events[0].amount0; // negative
       const amount1 = +events[0].amount1; // positive
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
 
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(-amount0);
 
-      expect((await engine.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
+      expect((await hub.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
     });
 
     it('0 <- 1 <- 2', async () => {
       const tx = await swapMultiHop({ amountDesired: -10000, path: toPath([token0, token1, token2]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-10000);
@@ -211,20 +211,20 @@ describe('engine swap multi hop', () => {
       const amount0 = +events[0].amount0; // negative
       const amount2 = +events[1].amount1; // positive
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
-      expect((await token2.balanceOf(engine.address)).sub(reserve2Before)).eq(amount2);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
+      expect((await token2.balanceOf(hub.address)).sub(reserve2Before)).eq(amount2);
 
       expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(-amount0);
       expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
 
-      expect((await engine.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
-      expect((await engine.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
+      expect((await hub.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
+      expect((await hub.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
     });
 
     it('0 <- 1 <- 2 <- 0', async () => {
       const tx = await swapMultiHop({ amountDesired: -5000, path: toPath([token0, token1, token2, token0]) });
-      const events = await getEvents(tx, engine, 'Swap');
+      const events = await getEvents(tx, hub, 'Swap');
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-5000);
@@ -241,13 +241,13 @@ describe('engine swap multi hop', () => {
       const amount0Delta = +events[0].amount0 + +events[2].amount0;
       expect(amount0Delta).gt(0);
 
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0Delta);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(0);
-      expect((await token2.balanceOf(engine.address)).sub(reserve2Before)).eq(0);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0Delta);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
+      expect((await token2.balanceOf(hub.address)).sub(reserve2Before)).eq(0);
 
-      expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
-      expect((await engine.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
-      expect((await engine.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
+      expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+      expect((await hub.tokens(token1.address)).protocolFeeAmt).gt(protocolFeeAmt1Before);
+      expect((await hub.tokens(token2.address)).protocolFeeAmt).gt(protocolFeeAmt2Before);
     });
 
     context('special cases in intermediate swaps', () => {
@@ -260,7 +260,7 @@ describe('engine swap multi hop', () => {
         await mint({ tickLower: 0, tickUpper: 1 });
 
         const tx = await swapMultiHop({ amountDesired: -1, path: toPath([token2, token1, token0]) });
-        const events = await getEvents(tx, engine, 'Swap');
+        const events = await getEvents(tx, hub, 'Swap');
         expect(events[0].poolId).eq(poolId12);
         expect(events[0].amount0).eq(3);
         expect(events[0].amount1).eq(-1);
@@ -274,7 +274,7 @@ describe('engine swap multi hop', () => {
       it('0 <- 1 <- 2: intermediate swap hitting end tick', async () => {
         // perform a multihop which the intermediate step _almost but does not_ hit end tick
         const tx = await swapMultiHop({ amountDesired: -12780, path: toPath([token0, token1, token2]) });
-        const events = await getEvents(tx, engine, 'Swap');
+        const events = await getEvents(tx, hub, 'Swap');
 
         // note that the 2nd swap almost takes out all token1 in the token1-token2 pool
         expect(events[0].poolId).eq(poolId01);

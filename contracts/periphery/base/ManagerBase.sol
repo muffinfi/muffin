@@ -2,20 +2,20 @@
 pragma solidity 0.8.10;
 
 import "../../interfaces/common/IWETH.sol";
-import "../../interfaces/engine/IEngine.sol";
+import "../../interfaces/hub/IMuffinHub.sol";
 import "../../libraries/utils/SafeTransferLib.sol";
 
 abstract contract ManagerBase {
     address public immutable WETH9;
-    address public immutable engine;
+    address public immutable hub;
 
-    constructor(address _engine, address _WETH9) {
-        engine = _engine;
+    constructor(address _hub, address _WETH9) {
+        hub = _hub;
         WETH9 = _WETH9;
     }
 
-    modifier fromEngine() {
-        require(msg.sender == engine);
+    modifier fromHub() {
+        require(msg.sender == hub);
         _;
     }
 
@@ -24,7 +24,7 @@ abstract contract ManagerBase {
         accRefId = uint256(uint160(user));
     }
 
-    function payEngine(
+    function payHub(
         address token,
         address payer,
         uint256 amount
@@ -32,13 +32,13 @@ abstract contract ManagerBase {
         if (token == WETH9 && address(this).balance >= amount) {
             // pay with WETH9
             IWETH(WETH9).deposit{value: amount}(); // wrap only what is needed to pay
-            IWETH(WETH9).transfer(engine, amount);
+            IWETH(WETH9).transfer(hub, amount);
         } else if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
-            SafeTransferLib.safeTransfer(token, engine, amount);
+            SafeTransferLib.safeTransfer(token, hub, amount);
         } else {
             // pull payment
-            SafeTransferLib.safeTransferFrom(token, payer, engine, amount);
+            SafeTransferLib.safeTransferFrom(token, payer, hub, amount);
         }
     }
 
@@ -46,16 +46,16 @@ abstract contract ManagerBase {
      *                          ACCOUNTS
      *==============================================================*/
 
-    /// @dev Called by the engine contract
+    /// @dev Called by the hub contract
     function depositCallback(
         address token,
         uint256 amount,
         bytes calldata data
-    ) external fromEngine {
-        if (amount > 0) payEngine(token, abi.decode(data, (address)), amount);
+    ) external fromHub {
+        if (amount > 0) payHub(token, abi.decode(data, (address)), amount);
     }
 
-    /// @notice             Deposit tokens into engine's internal account
+    /// @notice             Deposit tokens into hub's internal account
     /// @param recipient    Recipient of the token deposit
     /// @param token        Token address
     /// @param amount       Amount to deposit
@@ -64,10 +64,10 @@ abstract contract ManagerBase {
         address token,
         uint256 amount
     ) public payable {
-        IEngine(engine).deposit(address(this), getAccRefId(recipient), token, amount, abi.encode(msg.sender));
+        IMuffinHub(hub).deposit(address(this), getAccRefId(recipient), token, amount, abi.encode(msg.sender));
     }
 
-    /// @notice             Withdraw tokens from engine's internal account to recipient
+    /// @notice             Withdraw tokens from hub's internal account to recipient
     /// @param recipient    Recipient of the withdrawn token
     /// @param token        Token address
     /// @param amount       Amount to withdraw
@@ -76,10 +76,10 @@ abstract contract ManagerBase {
         address token,
         uint256 amount
     ) public payable {
-        IEngine(engine).withdraw(recipient, getAccRefId(msg.sender), token, amount);
+        IMuffinHub(hub).withdraw(recipient, getAccRefId(msg.sender), token, amount);
     }
 
-    /// @notice             Deposit tokens into engine's internal account managed by other address
+    /// @notice             Deposit tokens into hub's internal account managed by other address
     /// @dev                Rarely used
     /// @param recipient    Recipient of the token deposit
     /// @param token        Token address
@@ -90,7 +90,7 @@ abstract contract ManagerBase {
         address token,
         uint256 amount
     ) external payable {
-        IEngine(engine).deposit(recipient, recipientAccRefId, token, amount, abi.encode(msg.sender));
+        IMuffinHub(hub).deposit(recipient, recipientAccRefId, token, amount, abi.encode(msg.sender));
     }
 
     /*===============================================================

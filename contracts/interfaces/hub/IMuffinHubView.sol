@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import "../../libraries/Tiers.sol";
 import "../../libraries/Ticks.sol";
 
-interface IEngineView {
+interface IMuffinHubView {
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
 
     function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee);

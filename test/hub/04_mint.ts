@@ -3,13 +3,13 @@ import { expect } from 'chai';
 import { utils } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
-import { engineWithPoolFixture } from '../shared/fixtures';
+import { hubWithPoolFixture } from '../shared/fixtures';
 import { bn, getEvent } from '../shared/utils';
 
-describe('engine mint', () => {
-  let engine: IMockEngine;
+describe('hub mint', () => {
+  let hub: IMockMuffinHub;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -18,7 +18,7 @@ describe('engine mint', () => {
 
   const getAccBalance = async (token: string, owner: string, accRefId: number) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   const mint = async (params?: Partial<Parameters<MockCaller['functions']['mint']>[0]>) => {
@@ -38,7 +38,7 @@ describe('engine mint', () => {
   };
 
   beforeEach(async () => {
-    ({ engine, caller, token0, token1, user, poolId } = await waffle.loadFixture(engineWithPoolFixture));
+    ({ hub, caller, token0, token1, user, poolId } = await waffle.loadFixture(hubWithPoolFixture));
   });
 
   it('invalid token order', async () => {
@@ -58,11 +58,11 @@ describe('engine mint', () => {
   });
 
   it('mint successfully using token transfer', async () => {
-    const reserve0Before = await token0.balanceOf(engine.address);
-    const reserve1Before = await token1.balanceOf(engine.address);
-    await expect(mint()).to.emit(engine, 'Mint').withArgs(poolId, user.address, 1, 0, MIN_TICK, MAX_TICK, 1, 256, 256);
-    expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(256);
-    expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(256);
+    const reserve0Before = await token0.balanceOf(hub.address);
+    const reserve1Before = await token1.balanceOf(hub.address);
+    await expect(mint()).to.emit(hub, 'Mint').withArgs(poolId, user.address, 1, 0, MIN_TICK, MAX_TICK, 1, 256, 256);
+    expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(256);
+    expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(256);
   });
 
   context('use internal account', () => {
@@ -75,27 +75,27 @@ describe('engine mint', () => {
       expect(await getAccBalance(token1.address, caller.address, 1)).eq(0);
 
       // add some internal balance
-      await engine.addAccountBalance(caller.address, 1, token0.address, internalBalance);
-      await engine.addAccountBalance(caller.address, 1, token1.address, internalBalance);
+      await hub.addAccountBalance(caller.address, 1, token0.address, internalBalance);
+      await hub.addAccountBalance(caller.address, 1, token1.address, internalBalance);
 
-      // get current token balances in engine
-      const reserve0Before = await token0.balanceOf(engine.address);
-      const reserve1Before = await token1.balanceOf(engine.address);
+      // get current token balances in hub
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
 
       // perform mint
       const noNeedCallback = internalBalance == 256;
       const tx = await mint({ senderAccRefId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
 
       // check amount of tokens "transfered" in
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(transferAmount);
-      expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(transferAmount);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(transferAmount);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(transferAmount);
 
       // check internal balances are used up
       expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
       expect(await getAccBalance(token1.address, caller.address, 1)).eq(0);
 
       // check event data and return values not affected by switching on/off internal account
-      const event = await getEvent(tx, engine, 'Mint');
+      const event = await getEvent(tx, hub, 'Mint');
       expect(event.amount0).eq(256);
       expect(event.amount1).eq(256);
     };

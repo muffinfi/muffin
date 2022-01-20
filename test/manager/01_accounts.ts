@@ -2,12 +2,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockMuffinHub, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, expectBalanceChanges } from '../shared/utils';
 
 describe('manager accounts', () => {
-  let engine: IMockEngine;
+  let hub: IMockMuffinHub;
   let manager: Manager;
   let token0: MockERC20;
   let weth: WETH9;
@@ -15,12 +15,12 @@ describe('manager accounts', () => {
   let other: SignerWithAddress;
 
   beforeEach(async () => {
-    ({ engine, manager, token0, weth, user, other } = await waffle.loadFixture(managerFixture));
+    ({ hub, manager, token0, weth, user, other } = await waffle.loadFixture(managerFixture));
   });
 
   const getAccBalance = async (token: string, userAddress: string) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [manager.address, bn(userAddress)]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   context('deposit', () => {
@@ -57,7 +57,7 @@ describe('manager accounts', () => {
     it('token', async () => {
       await expectBalanceChanges(
         [
-          { account: engine, token: token0, delta: -100 },
+          { account: hub, token: token0, delta: -100 },
           { account: user, token: token0, delta: 100 },
         ],
         async () => {
@@ -70,7 +70,7 @@ describe('manager accounts', () => {
     it('eth (multicall: unwrapWETH)', async () => {
       await expectBalanceChanges(
         [
-          { account: engine, token: weth, delta: -100 },
+          { account: hub, token: weth, delta: -100 },
           { account: user, token: 'ETH', delta: 100 },
           { account: manager, token: weth, delta: 0 },
           { account: manager, token: 'ETH', delta: 0 },
@@ -86,7 +86,7 @@ describe('manager accounts', () => {
     });
   });
 
-  it('depositCallback called by non-engine', async () => {
+  it('depositCallback called by non-hub', async () => {
     await expect(manager.depositCallback(token0.address, 1, [])).to.be.revertedWith('');
   });
 });

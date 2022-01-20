@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.0;
 
-interface IEngineGatedActions {
+interface IMuffinHubGatedActions {
     /// @notice                 Add a new tier to a pool
     /// @param token0           Address of token0 of the pool
     /// @param token1           Address of token1 of the pool

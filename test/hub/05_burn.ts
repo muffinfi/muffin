@@ -2,16 +2,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
+import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
-import { engineWithPoolFixture } from '../shared/fixtures';
+import { hubWithPoolFixture } from '../shared/fixtures';
 import { bn, wad } from '../shared/utils';
 
 const POSITION_REF_ID = 123;
 const ACC_REF_ID = 1;
 
-describe('engine burn', () => {
-  let engine: IMockEngine;
+describe('hub burn', () => {
+  let hub: IMockMuffinHub;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -20,7 +20,7 @@ describe('engine burn', () => {
 
   const getAccBalance = async (token: string, owner: string, accRefId: number) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   const mint = async (params?: Partial<Parameters<MockCaller['functions']['mint']>[0]>) => {
@@ -40,8 +40,8 @@ describe('engine burn', () => {
   };
 
   const burn = async (params?: Partial<Parameters<MockCaller['functions']['burn']>[0]>) => {
-    // note that engine.burn is called by "user"
-    return await engine.burn({
+    // note that hub.burn is called by "user"
+    return await hub.burn({
       token0: token0.address,
       token1: token1.address,
       tierId: 0,
@@ -56,9 +56,9 @@ describe('engine burn', () => {
   };
 
   beforeEach(async () => {
-    ({ engine, caller, token0, token1, user, poolId } = await waffle.loadFixture(engineWithPoolFixture));
+    ({ hub, caller, token0, token1, user, poolId } = await waffle.loadFixture(hubWithPoolFixture));
     await mint();
-    await engine.increaseFeeGrowthGlobal(poolId, wad(1), wad(1));
+    await hub.increaseFeeGrowthGlobal(poolId, wad(1), wad(1));
     expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(0);
     expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(0);
   });
@@ -73,7 +73,7 @@ describe('engine burn', () => {
 
   it('burn successfully', async () => {
     await expect(burn({ liquidityD8: 50, collectAllFees: false }))
-      .to.emit(engine, 'Burn')
+      .to.emit(hub, 'Burn')
       .withArgs(poolId, user.address, POSITION_REF_ID, 0, MIN_TICK, MAX_TICK, 50, 12799, 12799, 693, 693);
     expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(12799 + 693);
     expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(12799 + 693);

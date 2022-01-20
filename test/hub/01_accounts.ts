@@ -2,22 +2,22 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
-import { engineFixture } from '../shared/fixtures';
+import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
+import { hubFixture } from '../shared/fixtures';
 
-describe('engine accounts', () => {
-  let engine: IMockEngine;
+describe('hub accounts', () => {
+  let hub: IMockMuffinHub;
   let caller: MockCaller;
   let token0: MockERC20;
   let user: SignerWithAddress;
 
   beforeEach(async () => {
-    ({ engine, caller, token0, user } = await waffle.loadFixture(engineFixture));
+    ({ hub, caller, token0, user } = await waffle.loadFixture(hubFixture));
   });
 
   const getAccBalance = async (owner: string, accRefId: number) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
-    return await engine.accounts(token0.address, accHash);
+    return await hub.accounts(token0.address, accHash);
   };
 
   context('deposit', () => {
@@ -39,7 +39,7 @@ describe('engine accounts', () => {
     it('deposit successfully', async () => {
       expect(await getAccBalance(caller.address, 1)).eq(0);
       await expect(caller.deposit(caller.address, 1, token0.address, 100, ''))
-        .to.emit(engine, 'Deposit')
+        .to.emit(hub, 'Deposit')
         .withArgs(caller.address, 1, token0.address, 100);
       expect(await getAccBalance(caller.address, 1)).eq(100);
     });
@@ -47,20 +47,20 @@ describe('engine accounts', () => {
 
   context('withdraw', () => {
     beforeEach(async () => {
-      await engine.addAccountBalance(user.address, 2, token0.address, 100);
+      await hub.addAccountBalance(user.address, 2, token0.address, 100);
     });
 
     it('withdraw successfully', async () => {
-      const engineBalanceBefore = await token0.balanceOf(engine.address);
+      const hubBalanceBefore = await token0.balanceOf(hub.address);
       const callerBalanceBefore = await token0.balanceOf(caller.address);
       expect(await getAccBalance(user.address, 2)).eq(100);
 
-      await expect(engine.withdraw(caller.address, 2, token0.address, 100))
-        .to.emit(engine, 'Withdraw')
+      await expect(hub.withdraw(caller.address, 2, token0.address, 100))
+        .to.emit(hub, 'Withdraw')
         .withArgs(caller.address, 2, token0.address, 100);
 
       expect(await getAccBalance(user.address, 2)).eq(0);
-      expect((await token0.balanceOf(engine.address)).sub(engineBalanceBefore)).eq(-100);
+      expect((await token0.balanceOf(hub.address)).sub(hubBalanceBefore)).eq(-100);
       expect((await token0.balanceOf(caller.address)).sub(callerBalanceBefore)).eq(100);
     });
   });

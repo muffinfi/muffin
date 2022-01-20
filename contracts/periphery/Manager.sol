@@ -8,5 +8,5 @@ import "./base/Multicall.sol";
 import "./base/SelfPermit.sol";
 
 contract Manager is ManagerBase, SwapManager, PositionManager, Multicall, SelfPermit {
-    constructor(address _engine, address _WETH9) ManagerBase(_engine, _WETH9) {}
+    constructor(address _hub, address _WETH9) ManagerBase(_hub, _WETH9) {}
 }

@@ -3,12 +3,12 @@ import { expect } from 'chai';
 import { BigNumberish, constants, utils } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockEngine, MockERC20 } from '../../typechain';
-import { engineWithPoolFixture } from '../shared/fixtures';
+import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
+import { hubWithPoolFixture } from '../shared/fixtures';
 import { getEvent } from '../shared/utils';
 
-describe('engine swap', () => {
-  let engine: IMockEngine;
+describe('hub swap', () => {
+  let hub: IMockMuffinHub;
   let caller: MockCaller;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -17,7 +17,7 @@ describe('engine swap', () => {
 
   const getAccBalance = async (token: string, owner: string, accRefId: number) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   const swap = async (
@@ -45,7 +45,7 @@ describe('engine swap', () => {
   };
 
   beforeEach(async () => {
-    ({ engine, caller, token0, token1, user, poolId } = await waffle.loadFixture(engineWithPoolFixture));
+    ({ hub, caller, token0, token1, user, poolId } = await waffle.loadFixture(hubWithPoolFixture));
   });
 
   it('pool not exists', async () => {
@@ -58,16 +58,16 @@ describe('engine swap', () => {
   });
 
   it('exact input', async () => {
-    const reserve0Before = await token0.balanceOf(engine.address);
-    const reserve1Before = await token1.balanceOf(engine.address);
+    const reserve0Before = await token0.balanceOf(hub.address);
+    const reserve1Before = await token1.balanceOf(hub.address);
     const userBalance1Before = await token1.balanceOf(user.address);
-    const protocolFeeAmt0Before = (await engine.tokens(token0.address)).protocolFeeAmt;
+    const protocolFeeAmt0Before = (await hub.tokens(token0.address)).protocolFeeAmt;
 
     // perform swap
     const tx = await swap();
 
     // check event
-    const event = await getEvent(tx, engine, 'Swap');
+    const event = await getEvent(tx, hub, 'Swap');
     expect(event.poolId).eq(poolId);
     expect(event.sender).eq(caller.address);
     expect(event.recipient).eq(user.address);
@@ -79,25 +79,25 @@ describe('engine swap', () => {
     // check amounts of token transferred
     const amount0 = +event.amount0;
     const amount1 = +event.amount1;
-    expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-    expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+    expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+    expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
     expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(-amount1);
 
     // check protocol fee accrued
-    expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+    expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
   });
 
   it('exact output', async () => {
-    const reserve0Before = await token0.balanceOf(engine.address);
-    const reserve1Before = await token1.balanceOf(engine.address);
+    const reserve0Before = await token0.balanceOf(hub.address);
+    const reserve1Before = await token1.balanceOf(hub.address);
     const userBalance1Before = await token1.balanceOf(user.address);
-    const protocolFeeAmt0Before = (await engine.tokens(token0.address)).protocolFeeAmt;
+    const protocolFeeAmt0Before = (await hub.tokens(token0.address)).protocolFeeAmt;
 
     // perform swap
     const tx = await swap({ amountDesired: -10000 });
 
     // check event
-    const event = await getEvent(tx, engine, 'Swap');
+    const event = await getEvent(tx, hub, 'Swap');
     expect(event.poolId).eq(poolId);
     expect(event.sender).eq(caller.address);
     expect(event.recipient).eq(user.address);
@@ -109,37 +109,37 @@ describe('engine swap', () => {
     // check amounts of token transferred
     const amount0 = +event.amount0;
     const amount1 = +event.amount1;
-    expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(amount0);
-    expect((await token1.balanceOf(engine.address)).sub(reserve1Before)).eq(amount1);
+    expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+    expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(amount1);
     expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(-amount1);
 
     // check protocol fee accrued
-    expect((await engine.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+    expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
   });
 
   it('zero resulting input and output', async () => {
-    const reserve0Before = await token0.balanceOf(engine.address);
-    const reserve1Before = await token1.balanceOf(engine.address);
+    const reserve0Before = await token0.balanceOf(hub.address);
+    const reserve1Before = await token1.balanceOf(hub.address);
     const tx = await swap({ amountDesired: 1 });
 
     // check that the swap is too small so it is zero input ouput
-    const event = await getEvent(tx, engine, 'Swap');
+    const event = await getEvent(tx, hub, 'Swap');
     expect(event.amount0).eq(0);
     expect(event.amount1).eq(0);
 
     // check zero token transfered
-    expect(await token0.balanceOf(engine.address)).eq(reserve0Before);
-    expect(await token1.balanceOf(engine.address)).eq(reserve1Before);
+    expect(await token0.balanceOf(hub.address)).eq(reserve0Before);
+    expect(await token1.balanceOf(hub.address)).eq(reserve1Before);
   });
 
   it('to recipient internal account', async () => {
-    const reserve1Before = await token1.balanceOf(engine.address);
+    const reserve1Before = await token1.balanceOf(hub.address);
     const accBalance1Before = await getAccBalance(token1.address, user.address, 1);
 
     await swap({ amountDesired: -10000, recipient: user.address, recipientAccRefId: 1 });
 
     // check no token left the contract, and recipient internal balance increased
-    expect(await token1.balanceOf(engine.address)).eq(reserve1Before);
+    expect(await token1.balanceOf(hub.address)).eq(reserve1Before);
     expect(await getAccBalance(token1.address, user.address, 1)).eq(accBalance1Before.add(10000));
   });
 
@@ -153,18 +153,18 @@ describe('engine swap', () => {
       expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
 
       // add some internal balance
-      await engine.addAccountBalance(caller.address, 1, token0.address, internalBalance);
+      await hub.addAccountBalance(caller.address, 1, token0.address, internalBalance);
 
-      // get current token balances in engine
-      const reserve0Before = await token0.balanceOf(engine.address);
+      // get current token balances in hub
+      const reserve0Before = await token0.balanceOf(hub.address);
 
       // perform swap
       const tx = await swap({ amountDesired, senderAccRefId: 1 });
-      const event = await getEvent(tx, engine, 'Swap');
+      const event = await getEvent(tx, hub, 'Swap');
       expect(event.amount0).eq(amountDesired);
 
       // check amount of tokens "transfered" in
-      expect((await token0.balanceOf(engine.address)).sub(reserve0Before)).eq(transferAmount);
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(transferAmount);
 
       // check internal balances are used up
       expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);

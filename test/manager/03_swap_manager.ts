@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { Manager, IMockEngine, MockERC20, WETH9 } from '../../typechain';
+import { Manager, IMockMuffinHub, MockERC20, WETH9 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { bn, expectBalanceChanges, getEvent, getEvents } from '../shared/utils';
 
 const { MaxUint256 } = constants;
 
 describe('manager swap manager', () => {
-  let engine: IMockEngine;
+  let hub: IMockMuffinHub;
   let manager: Manager;
   let token0: MockERC20;
   let token1: MockERC20;
@@ -23,14 +23,14 @@ describe('manager swap manager', () => {
   let other: SignerWithAddress;
 
   beforeEach(async () => {
-    ({ engine, manager, token0, token1, token2, weth, poolId01, poolId12, poolId2E, user, other } = await waffle.loadFixture(
+    ({ hub, manager, token0, token1, token2, weth, poolId01, poolId12, poolId2E, user, other } = await waffle.loadFixture(
       managerFixture,
     ));
   });
 
   const getAccBalance = async (token: string, userAddress: string) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [manager.address, bn(userAddress)]));
-    return await engine.accounts(token, accHash);
+    return await hub.accounts(token, accHash);
   };
 
   const toPath = (tokens: (MockERC20 | WETH9)[]) => {
@@ -59,12 +59,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -3 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: token0, delta: 3 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: token0, delta: 3 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, false, false);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -78,8 +78,8 @@ describe('manager swap manager', () => {
           { account: user, token: 'ETH', delta: -3 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: token2, delta: 1 },
-          { account: engine, token: weth, delta: 3 },
-          { account: engine, token: token2, delta: -1 },
+          { account: hub, token: weth, delta: 3 },
+          { account: hub, token: token2, delta: -1 },
         ],
         async () => {
           const data = [
@@ -87,7 +87,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId2E);
           expect(event.amount0).eq(-1);
           expect(event.amount1).eq(3);
@@ -101,8 +101,8 @@ describe('manager swap manager', () => {
           { account: user, token: token2, delta: -3 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: 'ETH', delta: 1 },
-          { account: engine, token: token2, delta: 3 },
-          { account: engine, token: weth, delta: -1 },
+          { account: hub, token: token2, delta: 3 },
+          { account: hub, token: weth, delta: -1 },
         ],
         async () => {
           const data = [
@@ -110,7 +110,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId2E);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -119,20 +119,20 @@ describe('manager swap manager', () => {
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
       await expectBalanceChanges(
         [
           { account: user, token: token0, delta: 0 },
           { account: user, token: token1, delta: 0 },
-          { account: engine, token: token0, delta: 0 },
-          { account: engine, token: token1, delta: 0 },
+          { account: hub, token: token0, delta: 0 },
+          { account: hub, token: token1, delta: 0 },
         ],
         async () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
           const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, true, true);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -156,12 +156,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -3 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: token0, delta: 3 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: token0, delta: 3 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactIn(toPath([token0, token1]), 3, 0, user.address, false, false);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -174,12 +174,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -5 },
           { account: user, token: token2, delta: 1 },
-          { account: engine, token: token0, delta: 5 },
-          { account: engine, token: token2, delta: -1 },
+          { account: hub, token: token0, delta: 5 },
+          { account: hub, token: token2, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactIn(toPath([token0, token1, token2]), 5, 0, user.address, false, false);
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId01);
           expect(events[0].amount0).eq(5);
           expect(events[0].amount1).eq(-3);
@@ -197,8 +197,8 @@ describe('manager swap manager', () => {
           { account: user, token: 'ETH', delta: -5 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: weth, delta: 5 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: weth, delta: 5 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const data = [
@@ -206,7 +206,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId2E);
           expect(events[0].amount0).eq(-3);
           expect(events[0].amount1).eq(5);
@@ -224,8 +224,8 @@ describe('manager swap manager', () => {
           { account: user, token: token1, delta: -5 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: 'ETH', delta: 1 },
-          { account: engine, token: token1, delta: 5 },
-          { account: engine, token: weth, delta: -1 },
+          { account: hub, token: token1, delta: 5 },
+          { account: hub, token: weth, delta: -1 },
         ],
         async () => {
           const data = [
@@ -233,7 +233,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId12);
           expect(events[0].amount0).eq(5);
           expect(events[0].amount1).eq(-3);
@@ -246,13 +246,13 @@ describe('manager swap manager', () => {
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
       await expectBalanceChanges(
         [
           { account: user, token: token0, delta: 0 },
           { account: user, token: token2, delta: 0 },
-          { account: engine, token: token0, delta: 0 },
-          { account: engine, token: token2, delta: 0 },
+          { account: hub, token: token0, delta: 0 },
+          { account: hub, token: token2, delta: 0 },
         ],
         async () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
@@ -277,12 +277,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -3 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: token0, delta: 3 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: token0, delta: 3 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, false, false); // prettier-ignore
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -296,8 +296,8 @@ describe('manager swap manager', () => {
           { account: user, token: 'ETH', delta: -3 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: token2, delta: 1 },
-          { account: engine, token: weth, delta: 3 },
-          { account: engine, token: token2, delta: -1 },
+          { account: hub, token: weth, delta: 3 },
+          { account: hub, token: token2, delta: -1 },
         ],
         async () => {
           const data = [
@@ -305,7 +305,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId2E);
           expect(event.amount0).eq(-1);
           expect(event.amount1).eq(3);
@@ -319,8 +319,8 @@ describe('manager swap manager', () => {
           { account: user, token: token2, delta: -3 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: 'ETH', delta: 1 },
-          { account: engine, token: token2, delta: 3 },
-          { account: engine, token: weth, delta: -1 },
+          { account: hub, token: token2, delta: 3 },
+          { account: hub, token: weth, delta: -1 },
         ],
         async () => {
           const data = [
@@ -328,7 +328,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId2E);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -337,20 +337,20 @@ describe('manager swap manager', () => {
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
       await expectBalanceChanges(
         [
           { account: user, token: token0, delta: 0 },
           { account: user, token: token1, delta: 0 },
-          { account: engine, token: token0, delta: 0 },
-          { account: engine, token: token1, delta: 0 },
+          { account: hub, token: token0, delta: 0 },
+          { account: hub, token: token1, delta: 0 },
         ],
         async () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
           const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, true, true);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -374,12 +374,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -3 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: token0, delta: 3 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: token0, delta: 3 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, false, false);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);
@@ -392,12 +392,12 @@ describe('manager swap manager', () => {
         [
           { account: user, token: token0, delta: -105 },
           { account: user, token: token2, delta: 1 },
-          { account: engine, token: token0, delta: 105 },
-          { account: engine, token: token2, delta: -1 },
+          { account: hub, token: token0, delta: 105 },
+          { account: hub, token: token2, delta: -1 },
         ],
         async () => {
           const tx = await manager.exactOut(toPath([token2, token1, token0]), 1, MaxUint256, user.address, false, false);
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId12);
           expect(events[0].amount0).eq(3);
           expect(events[0].amount1).eq(-1);
@@ -415,8 +415,8 @@ describe('manager swap manager', () => {
           { account: user, token: 'ETH', delta: -105 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: token1, delta: 1 },
-          { account: engine, token: weth, delta: 105 },
-          { account: engine, token: token1, delta: -1 },
+          { account: hub, token: weth, delta: 105 },
+          { account: hub, token: token1, delta: -1 },
         ],
         async () => {
           const data = [
@@ -424,7 +424,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId12);
           expect(events[0].amount0).eq(-1);
           expect(events[0].amount1).eq(3);
@@ -442,8 +442,8 @@ describe('manager swap manager', () => {
           { account: user, token: token1, delta: -105 },
           { account: user, token: weth, delta: 0 },
           { account: user, token: 'ETH', delta: 1 },
-          { account: engine, token: token1, delta: 105 },
-          { account: engine, token: weth, delta: -1 },
+          { account: hub, token: token1, delta: 105 },
+          { account: hub, token: weth, delta: -1 },
         ],
         async () => {
           const data = [
@@ -451,7 +451,7 @@ describe('manager swap manager', () => {
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
-          const events = await getEvents(tx, engine, 'Swap');
+          const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId2E);
           expect(events[0].amount0).eq(3);
           expect(events[0].amount1).eq(-1);
@@ -464,20 +464,20 @@ describe('manager swap manager', () => {
     });
 
     it('use internal account', async () => {
-      await engine.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
       await expectBalanceChanges(
         [
           { account: user, token: token0, delta: 0 },
           { account: user, token: token1, delta: 0 },
-          { account: engine, token: token0, delta: 0 },
-          { account: engine, token: token1, delta: 0 },
+          { account: hub, token: token0, delta: 0 },
+          { account: hub, token: token1, delta: 0 },
         ],
         async () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
           const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, true, true);
-          const event = await getEvent(tx, engine, 'Swap');
+          const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
           expect(event.amount1).eq(-1);

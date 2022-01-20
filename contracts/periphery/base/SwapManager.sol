@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "../../interfaces/engine/IEngine.sol";
+import "../../interfaces/hub/IMuffinHub.sol";
 import "../../libraries/math/Math.sol";
 import "./ManagerBase.sol";
 
 abstract contract SwapManager is ManagerBase {
     using Math for uint256;
 
-    /// @dev Called by the engine contract
+    /// @dev Called by the hub contract
     function swapCallback(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
         bytes calldata data
-    ) external fromEngine {
-        if (amountIn > 0) payEngine(tokenIn, abi.decode(data, (address)), amountIn);
+    ) external fromHub {
+        if (amountIn > 0) payHub(tokenIn, abi.decode(data, (address)), amountIn);
         tokenOut; // shhh
         amountOut; // shhh
     }
@@ -43,7 +43,7 @@ abstract contract SwapManager is ManagerBase {
         bool fromAccount,
         bool toAccount
     ) external payable returns (uint256 amountOut) {
-        (, amountOut) = IEngine(engine).swap(
+        (, amountOut) = IMuffinHub(hub).swap(
             tokenIn,
             tokenOut,
             tierChoices,
@@ -74,8 +74,8 @@ abstract contract SwapManager is ManagerBase {
         bool fromAccount,
         bool toAccount
     ) external payable returns (uint256 amountOut) {
-        (, amountOut) = IEngine(engine).swapMultiHop(
-            IEngineActions.SwapMultiHopParams({
+        (, amountOut) = IMuffinHub(hub).swapMultiHop(
+            IMuffinHubActions.SwapMultiHopParams({
                 path: path,
                 amountDesired: amountIn.toInt256(),
                 recipient: toAccount ? address(this) : recipient,
@@ -109,7 +109,7 @@ abstract contract SwapManager is ManagerBase {
         bool fromAccount,
         bool toAccount
     ) external payable returns (uint256 amountIn) {
-        (amountIn, ) = IEngine(engine).swap(
+        (amountIn, ) = IMuffinHub(hub).swap(
             tokenIn,
             tokenOut,
             tierChoices,
@@ -140,8 +140,8 @@ abstract contract SwapManager is ManagerBase {
         bool fromAccount,
         bool toAccount
     ) external payable returns (uint256 amountIn) {
-        (amountIn, ) = IEngine(engine).swapMultiHop(
-            IEngineActions.SwapMultiHopParams({
+        (amountIn, ) = IMuffinHub(hub).swapMultiHop(
+            IMuffinHubActions.SwapMultiHopParams({
                 path: path,
                 amountDesired: -amountOut.toInt256(),
                 recipient: toAccount ? address(this) : recipient,

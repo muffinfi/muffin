@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "../../interfaces/engine/IEngine.sol";
-import "../../interfaces/engine/positions/IEnginePositions.sol";
+import "../../interfaces/hub/IMuffinHub.sol";
+import "../../interfaces/hub/positions/IMuffinHubPositions.sol";
 import "../../libraries/math/PoolMath.sol";
 import "../../libraries/math/TickMath.sol";
 import "../../libraries/Constants.sol";
@@ -68,11 +68,11 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         uint24 sqrtGamma,
         uint128 sqrtPrice
     ) external {
-        (uint8 tickSpacing, ) = IEngine(engine).getPoolParameters(keccak256(abi.encode(token0, token1)));
+        (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(keccak256(abi.encode(token0, token1)));
         if (tickSpacing == 0) {
             deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
             deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
-            IEngine(engine).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
+            IMuffinHub(hub).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
         }
         _cacheTokenPair(token0, token1);
     }
@@ -81,17 +81,17 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *                        ADD LIQUIDITY
      *==============================================================*/
 
-    /// @dev Called by engine contract
+    /// @dev Called by hub contract
     function mintCallback(
         address token0,
         address token1,
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
-    ) external fromEngine {
+    ) external fromHub {
         address payer = abi.decode(data, (address));
-        if (amount0 > 0) payEngine(token0, payer, amount0);
-        if (amount1 > 0) payEngine(token1, payer, amount1);
+        if (amount0 > 0) payHub(token0, payer, amount0);
+        if (amount1 > 0) payHub(token1, payer, amount1);
     }
 
     /**
@@ -229,14 +229,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         liquidityD8 = PoolMath.calcLiquidityForAmts(
-            IEngine(engine).getTier(keccak256(abi.encode(pair.token0, pair.token1)), info.tierId).sqrtPrice,
+            IMuffinHub(hub).getTier(keccak256(abi.encode(pair.token0, pair.token1)), info.tierId).sqrtPrice,
             TickMath.tickToSqrtPrice(info.tickLower),
             TickMath.tickToSqrtPrice(info.tickUpper),
             amount0Desired,
             amount1Desired
         );
-        (amount0, amount1) = IEnginePositions(engine).mint(
-            IEnginePositionsActions.MintParams({
+        (amount0, amount1) = IMuffinHubPositions(hub).mint(
+            IMuffinHubPositionsActions.MintParams({
                 token0: pair.token0,
                 token1: pair.token1,
                 tierId: info.tierId,
@@ -295,8 +295,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     {
         PositionInfo memory info = positionsByTokenId[params.tokenId];
         Pair memory pair = pairs[info.pairId];
-        (amount0, amount1, feeAmount0, feeAmount1) = IEnginePositions(engine).burn(
-            IEnginePositionsActions.BurnParams({
+        (amount0, amount1, feeAmount0, feeAmount1) = IMuffinHubPositions(hub).burn(
+            IMuffinHubPositionsActions.BurnParams({
                 token0: pair.token0,
                 token1: pair.token1,
                 tierId: info.tierId,
@@ -333,7 +333,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             // check if position is empty
             PositionInfo memory info = positionsByTokenId[tokenId];
             Pair memory pair = pairs[info.pairId];
-            Positions.Position memory position = IEnginePositions(engine).getPosition(
+            Positions.Position memory position = IMuffinHubPositions(hub).getPosition(
                 keccak256(abi.encode(pair.token0, pair.token1)),
                 address(this),
                 tokenId,
@@ -374,7 +374,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         Pair storage pair = pairs[info.pairId];
         (token0, token1) = (pair.token0, pair.token1);
 
-        position = IEnginePositions(engine).getPosition(
+        position = IMuffinHubPositions(hub).getPosition(
             keccak256(abi.encode(token0, token1)),
             address(this),
             tokenId,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.0;
 
-interface IEngineEvents {
+interface IMuffinHubEvents {
     /// @notice Emitted when user deposits tokens to an account
     event Deposit(address indexed recipient, uint256 indexed recipientAccRefId, address indexed token, uint256 amount);
 

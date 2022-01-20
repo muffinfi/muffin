@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.10;
 
-import "./interfaces/engine/IEngineBase.sol";
+import "./interfaces/hub/IMuffinHubBase.sol";
 import "./interfaces/common/IERC20.sol";
 import "./libraries/Pools.sol";
 
-abstract contract EngineBase is IEngineBase {
+abstract contract MuffinHubBase is IMuffinHubBase {
     error FailedBalanceOf();
     error NotEnoughTokenInput();
 
@@ -19,7 +19,7 @@ abstract contract EngineBase is IEngineBase {
         address token1;
     }
 
-    /// @inheritdoc IEngineBase
+    /// @inheritdoc IMuffinHubBase
     address public governance;
     /// @dev Default tick spacing of new pool
     uint8 internal defaultTickSpacing = 200;
@@ -28,11 +28,11 @@ abstract contract EngineBase is IEngineBase {
 
     /// @dev Mapping of poolId to pool state
     mapping(bytes32 => Pools.Pool) internal pools;
-    /// @inheritdoc IEngineBase
+    /// @inheritdoc IMuffinHubBase
     mapping(address => mapping(bytes32 => uint256)) public accounts;
-    /// @inheritdoc IEngineBase
+    /// @inheritdoc IMuffinHubBase
     mapping(address => TokenData) public tokens;
-    /// @inheritdoc IEngineBase
+    /// @inheritdoc IMuffinHubBase
     mapping(bytes32 => Pair) public underlyings;
 
     /// @dev Get token balance of this contract
