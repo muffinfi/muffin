@@ -20,9 +20,9 @@ library EMAMath {
      *  For t-second interval,
      *  -   a = 1 - ((N-1)/(N+1))^t
      *
-     *  We want to calculate the decay factor (i.e. 1-a) for a 80-min EMA.
-     *  Let N = 4800 sec,
-     *      u = (N-1)/(N+1) = 0.999583420121...
+     *  We want to calculate the decay factor (i.e. 1-a) for a 40-min EMA.
+     *  Let N = 2400 sec,
+     *      u = (N-1)/(N+1) = 0.99916701374...
      *      t = seconds elapsed since last EMA update
      *  Find d = u^t
      */
