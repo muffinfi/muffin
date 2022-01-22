@@ -264,6 +264,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      * @param amount1Min        Minimum token1 amount to collect
      * @param withdrawTo        Recipient of the withdrawn tokens. Set to zero for no withdrawal
      * @param collectAllFees    True to collect all remaining accrued fees in the position
+     * @param settled           True if the position is settled
      */
     struct RemoveLiquidityParams {
         uint256 tokenId;
@@ -272,6 +273,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         uint256 amount1Min;
         address withdrawTo;
         bool collectAllFees;
+        bool settled;
     }
 
     /**
@@ -295,19 +297,22 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     {
         PositionInfo memory info = positionsByTokenId[params.tokenId];
         Pair memory pair = pairs[info.pairId];
-        (amount0, amount1, feeAmount0, feeAmount1) = IMuffinHubPositions(hub).burn(
-            IMuffinHubPositionsActions.BurnParams({
-                token0: pair.token0,
-                token1: pair.token1,
-                tierId: info.tierId,
-                tickLower: info.tickLower,
-                tickUpper: info.tickUpper,
-                liquidityD8: params.liquidityD8,
-                positionRefId: params.tokenId,
-                accRefId: getAccRefId(info.owner),
-                collectAllFees: params.collectAllFees
-            })
-        );
+        IMuffinHubPositionsActions.BurnParams memory burnParams = IMuffinHubPositionsActions.BurnParams({
+            token0: pair.token0,
+            token1: pair.token1,
+            tierId: info.tierId,
+            tickLower: info.tickLower,
+            tickUpper: info.tickUpper,
+            liquidityD8: params.liquidityD8,
+            positionRefId: params.tokenId,
+            accRefId: getAccRefId(info.owner),
+            collectAllFees: params.collectAllFees
+        });
+
+        (amount0, amount1, feeAmount0, feeAmount1) = params.settled
+            ? IMuffinHubPositions(hub).collectSettled(burnParams)
+            : IMuffinHubPositions(hub).burn(burnParams);
+
         require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage");
 
         if (params.withdrawTo != address(0)) {
@@ -316,6 +321,27 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             if (sumAmt0 > 0) withdraw(params.withdrawTo, pair.token0, sumAmt0);
             if (sumAmt1 > 0) withdraw(params.withdrawTo, pair.token1, sumAmt1);
         }
+    }
+
+    /*===============================================================
+     *                         LIMIT ORDER
+     *==============================================================*/
+
+    /// @notice                 Set position's limit order type
+    /// @param tokenId          Id of the position NFT
+    /// @param limitOrderType   Direction of limit order (0: N/A, 1: zero->one, 2: one->zero)
+    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external checkApproved(tokenId) {
+        PositionInfo memory info = positionsByTokenId[tokenId];
+        Pair memory pair = pairs[info.pairId];
+        IMuffinHubPositions(hub).setLimitOrderType(
+            pair.token0,
+            pair.token1,
+            info.tierId,
+            info.tickLower,
+            info.tickUpper,
+            tokenId,
+            limitOrderType
+        );
     }
 
     /*===============================================================

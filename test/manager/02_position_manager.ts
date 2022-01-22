@@ -4,6 +4,7 @@ import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, waffle } from 'hardhat';
 import { Manager, IMockMuffinHub, MockERC20, WETH9 } from '../../typechain';
+import { LimitOrderType } from '../shared/constants';
 import { managerFixture } from '../shared/fixtures';
 import { bn, deploy, expectBalanceChanges, getEvent } from '../shared/utils';
 
@@ -385,6 +386,7 @@ describe('manager position manager', () => {
         amount1Min: 0,
         withdrawTo: constants.AddressZero,
         collectAllFees: false,
+        settled: false,
       };
     };
 
@@ -501,6 +503,53 @@ describe('manager position manager', () => {
         expect(event.amount0).eq(29999);
         expect(event.amount1).eq(29999);
       });
+    });
+  });
+
+  context('set limit order', () => {
+    const tokenId = FIRST_TOKEN_ID;
+    const liquidityD8 = 23497;
+
+    beforeEach(async () => {
+      await manager.mint({
+        tierId: 0,
+        token0: token0.address,
+        token1: token1.address,
+        tickLower: -100,
+        tickUpper: +100,
+        amount0Desired: 30000,
+        amount1Desired: 30000,
+        amount0Min: 0,
+        amount1Min: 0,
+        recipient: user.address,
+        useAccount: false,
+      });
+      await hub.setTierParameters(poolId01, 0, 99850, 200);
+      expect(await manager.ownerOf(tokenId)).eq(user.address);
+      expect((await manager.getPosition(tokenId)).position.liquidityD8).eq(liquidityD8);
+    });
+
+    it('non-existing token id', async () => {
+      await expect(manager.setLimitOrderType(123, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith(
+        'ERC721: approved query for nonexistent token',
+      );
+    });
+
+    it('not owner + not approved', async () => {
+      // check not approved
+      await expect(manager.connect(other).setLimitOrderType(tokenId, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith(
+        'NOT_APPROVED',
+      );
+
+      // check approved
+      await manager.approve(other.address, tokenId);
+      await manager.connect(other).setLimitOrderType(tokenId, LimitOrderType.ONE_FOR_ZERO);
+    });
+
+    it('set limit order successfully', async () => {
+      await expect(manager.setLimitOrderType(tokenId, LimitOrderType.ONE_FOR_ZERO))
+        .to.emit(hub, 'SetLimitOrderType')
+        .withArgs(poolId01, manager.address, tokenId, 0, -100, 100, LimitOrderType.ONE_FOR_ZERO);
     });
   });
 
