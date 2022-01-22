@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { BigNumberish } from 'ethers';
 import { waffle } from 'hardhat';
 import { MockPool } from '../../typechain';
-import { LimitOrderType, MAX_TICK, MIN_TICK } from '../shared/constants';
+import { BASE_LIQUIDITY, BASE_LIQUIDITY_D8, LimitOrderType, MAX_TICK, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn } from '../shared/utils';
 
@@ -32,26 +32,26 @@ describe('pool settle positions', () => {
     });
 
     it('no clear start, no clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickLower, 100);
-      await updateLiquidity(2, tickLower, tickUpper, 100);
-      await updateLiquidity(2, tickUpper, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickLower, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickLower, tickUpper, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickUpper, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Lower, false, false);
     });
 
     it('clear start, no clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickLower, 100);
-      await updateLiquidity(2, tickLower, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickLower, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickLower, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Lower, true, false);
     });
 
     it('no clear start, clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickUpper, 100);
-      await updateLiquidity(2, tickUpper, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickUpper, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickUpper, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Lower, false, true);
     });
 
     it('clear start, clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Lower, true, true);
     });
   });
@@ -63,26 +63,26 @@ describe('pool settle positions', () => {
     });
 
     it('no clear start, no clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickLower, 100);
-      await updateLiquidity(2, tickLower, tickUpper, 100);
-      await updateLiquidity(2, tickUpper, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickLower, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickLower, tickUpper, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickUpper, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Upper, false, false);
     });
 
     it('clear start, no clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickUpper, 100);
-      await updateLiquidity(2, tickUpper, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickUpper, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickUpper, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Upper, true, false);
     });
 
     it('no clear start, clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, tickLower, 100);
-      await updateLiquidity(2, tickLower, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, tickLower, BASE_LIQUIDITY_D8);
+      await updateLiquidity(2, tickLower, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Upper, false, true);
     });
 
     it('clear start, clear end', async () => {
-      await updateLiquidity(2, MIN_TICK, MAX_TICK, 100);
+      await updateLiquidity(2, MIN_TICK, MAX_TICK, BASE_LIQUIDITY_D8);
       await testSettle(TickKind.Upper, true, true);
     });
   });
@@ -101,12 +101,12 @@ describe('pool settle positions', () => {
     // make the tier go pass tick -1 or 1
     if (tickKind === TickKind.Lower) {
       await pool.swap(true, 300, 0x3f);
-      expect((await pool.getTier(0)).tick).lte(-1);
-      expect((await pool.getTier(0)).liquidity).eq(51200);
+      expect((await pool.getTier(0)).tick).lt(tickLower);
+      expect((await pool.getTier(0)).liquidity).eq(BASE_LIQUIDITY.mul(2));
     } else {
       await pool.swap(false, 300, 0x3f);
-      expect((await pool.getTier(0)).tick).gt(1);
-      expect((await pool.getTier(0)).liquidity).eq(51200);
+      expect((await pool.getTier(0)).tick).gte(tickUpper);
+      expect((await pool.getTier(0)).liquidity).eq(BASE_LIQUIDITY.mul(2));
     }
 
     // check needSettle flag on tick state
@@ -170,12 +170,12 @@ describe('pool settle positions', () => {
     // check if no liquidity change after swapping back
     if (tickKind === TickKind.Lower) {
       await pool.swap(true, -300, 0x3f);
-      expect((await pool.getTier(0)).tick).gt(-1);
-      expect((await pool.getTier(0)).liquidity).eq(51200);
+      expect((await pool.getTier(0)).tick).gt(tickLower);
+      expect((await pool.getTier(0)).liquidity).eq(BASE_LIQUIDITY.mul(2));
     } else {
       await pool.swap(false, -300, 0x3f);
-      expect((await pool.getTier(0)).tick).lte(1);
-      expect((await pool.getTier(0)).liquidity).eq(51200);
+      expect((await pool.getTier(0)).tick).lte(tickUpper);
+      expect((await pool.getTier(0)).liquidity).eq(BASE_LIQUIDITY.mul(2));
     }
   };
 });

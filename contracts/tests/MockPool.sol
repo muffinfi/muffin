@@ -24,6 +24,8 @@ contract MockPool {
         uint256[] tierData
     );
 
+    event CollectSettledReturns(uint256 amount0, uint256 amount1, uint256 feeAmtOut0, uint256 feeAmtOut1);
+
     modifier unlock() {
         _;
         pool.unlock();
@@ -144,6 +146,30 @@ contract MockPool {
         uint8 limitOrderType
     ) external {
         pool.setLimitOrderType(owner, positionRefId, tierId, tickLower, tickUpper, limitOrderType);
+    }
+
+    function collectSettled(
+        address owner,
+        uint256 positionRefId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper,
+        uint96 liquidityD8,
+        bool collectAllFees
+    ) external {
+        (uint256 amount0, uint256 amount1, uint256 feeAmtOut0, uint256 feeAmtOut1) = pool.collectSettled(
+            owner,
+            positionRefId,
+            tierId,
+            tickLower,
+            tickUpper,
+            liquidityD8,
+            collectAllFees
+        );
+        emit CollectSettledReturns(amount0, amount1, feeAmtOut0, feeAmtOut1);
+
+        reserve0 = reserve0 - amount0 - feeAmtOut0;
+        reserve1 = reserve1 - amount1 - feeAmtOut1;
     }
 
     // ---

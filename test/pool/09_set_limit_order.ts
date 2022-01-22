@@ -112,7 +112,28 @@ describe('pool set limit order', () => {
   });
 
   context('from a limit order', () => {
-    it('already settled'); // TODO:
+    it('already settled', async () => {
+      // turn position to limit order
+      await setLimitOrderType(tickLower, tickUpper, LimitOrderType.ONE_FOR_ZERO);
+
+      // cross tick and settle the position
+      await pool.swap(true, 300, 0x3f);
+      expect((await pool.getTier(0)).tick).lt(tickLower);
+
+      // note that we got panic error because we makes settlement.liquidityD8 underflow
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.ZERO_FOR_ONE)).to.be.revertedWith('reverted with panic code 0x11'); // prettier-ignore
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith('reverted with panic code 0x11'); // prettier-ignore
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.NOT_LIMIT_ORDER)).to.be.revertedWith('reverted with panic code 0x11'); // prettier-ignore
+
+      // add a limit order again for other owner
+      await pool.updateLiquidity(pool.address, 2, 0, tickLower, tickUpper, 100, false);
+      await pool.setLimitOrderType(pool.address, 2, 0, tickLower, tickUpper, LimitOrderType.ONE_FOR_ZERO);
+
+      // test the first position failed to set order type
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.ZERO_FOR_ONE)).to.be.revertedWith('PositionAlreadySettled()'); // prettier-ignore
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith('PositionAlreadySettled()'); // prettier-ignore
+      await expect(setLimitOrderType(tickLower, tickUpper, LimitOrderType.NOT_LIMIT_ORDER)).to.be.revertedWith('PositionAlreadySettled()'); // prettier-ignore
+    });
 
     it('(special case) tick spacing changed', async () => {
       await setLimitOrderType(tickLower, tickUpper, LimitOrderType.ONE_FOR_ZERO);
