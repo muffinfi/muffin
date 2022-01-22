@@ -128,6 +128,7 @@ async function main() {
       amount1Min: 0,
       withdrawTo: user.address,
       collectAllFees: true,
+      settled: false,
     }),
     'burn all liq in these ticks',
   );
