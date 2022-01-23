@@ -103,4 +103,36 @@ interface IMuffinHubPositionsActions {
         uint256 positionRefId,
         uint8 limitOrderType
     ) external;
+
+    /*===============================================================
+     *                         GOVERNANCE
+     *==============================================================*/
+
+    /// @notice Update the governance address
+    function setGovernance(address _governance) external;
+
+    /// @notice Update pool's default tick spacing and protocol fee
+    /// @param protocolFee Numerator of the % protocol fee (denominator is 255)
+    function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external;
+
+    /// @notice Update pool's tick spacing and protocol fee
+    /// @dev If setting a new tick spacing, the already initialized ticks that are not multiples of the new tick spacing
+    /// will become unable to be added liquidity. To prevent this UX issue, the new tick spacing should better be a
+    /// divisor of the old tick spacing.
+    function setPoolParameters(
+        bytes32 poolId,
+        uint8 tickSpacing,
+        uint8 protocolFee
+    ) external;
+
+    /// @notice Update a tier's swap fee and its tick spacing multiplier for limt orders
+    function setTierParameters(
+        bytes32 poolId,
+        uint8 tierId,
+        uint24 sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
+    ) external;
+
+    /// @notice Collect the protocol fee accrued
+    function collectProtocolFee(address token, address recipient) external;
 }

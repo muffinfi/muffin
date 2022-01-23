@@ -359,7 +359,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             // check if position is empty
             PositionInfo memory info = positionsByTokenId[tokenId];
             Pair memory pair = pairs[info.pairId];
-            Positions.Position memory position = IMuffinHubPositions(hub).getPosition(
+            Positions.Position memory position = IMuffinHub(hub).getPosition(
                 keccak256(abi.encode(pair.token0, pair.token1)),
                 address(this),
                 tokenId,
@@ -400,7 +400,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         Pair storage pair = pairs[info.pairId];
         (token0, token1) = (pair.token0, pair.token1);
 
-        position = IMuffinHubPositions(hub).getPosition(
+        position = IMuffinHub(hub).getPosition(
             keccak256(abi.encode(token0, token1)),
             address(this),
             tokenId,

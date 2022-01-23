@@ -60,4 +60,9 @@ abstract contract MuffinHubBase is IMuffinHubBase {
         require(accRefId != 0);
         return keccak256(abi.encode(owner, accRefId));
     }
+
+    modifier onlyGovernance() {
+        require(msg.sender == governance);
+        _;
+    }
 }

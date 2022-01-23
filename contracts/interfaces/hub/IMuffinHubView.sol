@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 import "../../libraries/Tiers.sol";
 import "../../libraries/Ticks.sol";
+import "../../libraries/Positions.sol";
 
 interface IMuffinHubView {
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
@@ -21,6 +22,15 @@ interface IMuffinHubView {
         int24 tick
     ) external view returns (Ticks.Tick memory);
 
+    function getPosition(
+        bytes32 poolId,
+        address owner,
+        uint256 positionRefId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (Positions.Position memory);
+
     function getTWAP(bytes32 poolId)
         external
         view
@@ -31,6 +41,4 @@ interface IMuffinHubView {
             int24 tickEma40,
             uint96 secondsPerLiquidityCumulative
         );
-
-    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
 }

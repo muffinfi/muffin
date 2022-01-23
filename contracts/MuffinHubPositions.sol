@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "./interfaces/hub/positions/IMuffinHubPositions.sol";
 import "./interfaces/IMuffinHubCallbacks.sol";
+import "./libraries/utils/SafeTransferLib.sol";
 import "./libraries/math/Math.sol";
 import "./libraries/Positions.sol";
 import "./libraries/Pools.sol";
@@ -10,8 +11,8 @@ import "./libraries/Settlement.sol";
 import "./MuffinHubBase.sol";
 
 /**
- * @dev "Implementation" contract for position-related functions and various view functions, called using DELEGATECALL.
- * Codes are offloaded from the primary contract to here for reducing the primary contract's bytecode size.
+ * @dev "Implementation" contract for position-related functions, governance functions and various view functions, called
+ * using DELEGATECALL. Codes are offloaded from the primary contract to here for reducing the primary contract's bytecode size.
  */
 contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     using Math for uint96;
@@ -222,6 +223,10 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         return settlement.snapshots[snapshotId];
     }
 
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory) {
+        return pools[poolId].limitOrderTickSpacingMultipliers;
+    }
+
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {
         return pools[poolId].tickMaps[tierId].blockmap;
     }
@@ -240,5 +245,50 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         uint256 wordIdx
     ) external view returns (uint256) {
         return pools[poolId].tickMaps[tierId].words[wordIdx];
+    }
+
+    /*===============================================================
+     *                          GOVERNANCE
+     *==============================================================*/
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setGovernance(address _governance) external onlyGovernance {
+        governance = _governance;
+        emit GovernanceUpdated(_governance);
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
+        defaultTickSpacing = tickSpacing;
+        defaultProtocolFee = protocolFee;
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setPoolParameters(
+        bytes32 poolId,
+        uint8 tickSpacing,
+        uint8 protocolFee
+    ) external onlyGovernance {
+        pools[poolId].setPoolParameters(tickSpacing, protocolFee);
+        emit UpdatePool(poolId, tickSpacing, protocolFee);
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setTierParameters(
+        bytes32 poolId,
+        uint8 tierId,
+        uint24 sqrtGamma,
+        uint8 limitOrderTickSpacingMultiplier
+    ) external onlyGovernance {
+        pools[poolId].setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+        emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function collectProtocolFee(address token, address recipient) external onlyGovernance {
+        uint248 amount = tokens[token].protocolFeeAmt;
+        tokens[token].protocolFeeAmt = 0;
+        SafeTransferLib.safeTransfer(token, recipient, amount);
+        emit CollectProtocol(recipient, token, amount);
     }
 }

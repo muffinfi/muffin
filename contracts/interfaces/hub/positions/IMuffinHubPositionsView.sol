@@ -1,19 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.0;
 
-import "../../../libraries/Positions.sol";
 import "../../../libraries/Settlement.sol";
 
 interface IMuffinHubPositionsView {
-    function getPosition(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (Positions.Position memory);
-
     function getPositionFeeGrowthInside(
         bytes32 poolId,
         address owner,
@@ -53,4 +43,6 @@ interface IMuffinHubPositionsView {
         bool isToken0LimitOrder,
         uint32 snapshotId
     ) external view returns (Settlement.Snapshot memory);
+
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
 }

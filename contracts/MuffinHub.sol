@@ -19,18 +19,13 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     error InvalidSwapPath();
     error NotEnoughIntermediateOutput();
 
-    /// @dev To reduce bytecode size of this contract, we offload position-related codes and various view functions
-    /// to a second contract (i.e. MuffinHubPositions.sol) and use delegatecall to call it.
+    /// @dev To reduce bytecode size of this contract, we offload position-related functions, governance functions and
+    /// various view functions to a second contract (i.e. MuffinHubPositions.sol) and use delegatecall to call it.
     address internal immutable positionController;
 
     constructor(address _positionController) {
         positionController = _positionController;
         governance = msg.sender;
-    }
-
-    modifier onlyGovernance() {
-        require(msg.sender == governance);
-        _;
     }
 
     /*===============================================================
@@ -241,51 +236,6 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     }
 
     /*===============================================================
-     *                          GOVERNANCE
-     *==============================================================*/
-
-    /// @inheritdoc IMuffinHubActions
-    function setGovernance(address _governance) external onlyGovernance {
-        governance = _governance;
-        emit GovernanceUpdated(_governance);
-    }
-
-    /// @inheritdoc IMuffinHubActions
-    function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
-        defaultTickSpacing = tickSpacing;
-        defaultProtocolFee = protocolFee;
-    }
-
-    /// @inheritdoc IMuffinHubActions
-    function setPoolParameters(
-        bytes32 poolId,
-        uint8 tickSpacing,
-        uint8 protocolFee
-    ) external onlyGovernance {
-        pools[poolId].setPoolParameters(tickSpacing, protocolFee);
-        emit UpdatePool(poolId, tickSpacing, protocolFee);
-    }
-
-    /// @inheritdoc IMuffinHubActions
-    function setTierParameters(
-        bytes32 poolId,
-        uint8 tierId,
-        uint24 sqrtGamma,
-        uint8 limitOrderTickSpacingMultiplier
-    ) external onlyGovernance {
-        pools[poolId].setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
-        emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
-    }
-
-    /// @inheritdoc IMuffinHubActions
-    function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint248 amount = tokens[token].protocolFeeAmt;
-        tokens[token].protocolFeeAmt = 0;
-        SafeTransferLib.safeTransfer(token, recipient, amount);
-        emit CollectProtocol(recipient, token, amount);
-    }
-
-    /*===============================================================
      *                         VIEW FUNCTIONS
      *==============================================================*/
 
@@ -317,6 +267,17 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         return pools[poolId].ticks[tierId][tick];
     }
 
+    function getPosition(
+        bytes32 poolId,
+        address owner,
+        uint256 positionRefId,
+        uint8 tierId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external view returns (Positions.Position memory) {
+        return Positions.get(pools[poolId].positions, owner, positionRefId, tierId, tickLower, tickUpper);
+    }
+
     function getTWAP(bytes32 poolId)
         external
         view
@@ -330,10 +291,6 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     {
         Pools.Pool storage pool = pools[poolId];
         return (pool.tickLastUpdate, pool.tickCumulative, pool.tickEma20, pool.tickEma40, pool.secondsPerLiquidityCumulative);
-    }
-
-    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory) {
-        return pools[poolId].limitOrderTickSpacingMultipliers;
     }
 
     /*===============================================================
