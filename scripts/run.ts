@@ -50,7 +50,8 @@ async function main() {
   await hub.addTier(token0.address, token1.address, 99990, 1); // add tier  2 bps
 
   const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
-  await hub.setPoolParameters(poolId, 1, Math.floor(0.15 * 255));
+  const _hub = (await ethers.getContractAt('MuffinHubPositions', hub.address)) as MuffinHubPositions;
+  await _hub.setPoolParameters(poolId, 1, Math.floor(0.15 * 255));
 
   // ===== add liquidity =====
   const mintArgs = {
