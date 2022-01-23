@@ -54,8 +54,8 @@ library EMAMath {
             if (t & 0x4000 > 0) r = (r * 0x13bb2c22a51db0a9a83ae6b594c4) >> 128;
             // stop here since t < 0x8000
 
-            d40 = r >> 64; // UQ0.64
-            d20 = (r * r) >> 192; // UQ0.64
+            d40 = r >> 64;
+            d20 = (r * r) >> 192; // approximation
         }
     }
 }

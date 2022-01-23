@@ -15,9 +15,9 @@
     },
     {
       "files": [
-        "Engine.sol",
-        "EngineBase.sol",
-        "EnginePositions.sol",
+        "MuffinHub.sol",
+        "MuffinHubBase.sol",
+        "MuffinHubPositions.sol",
         "PositionManager.sol"
       ],
       "options": {

@@ -104,7 +104,7 @@ library SwapMath {
             // repeat until all output amts are non-positive
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
-                    if ((amts[i] = _ceilMulDiv(denom, lsg[i], num).sub(int256(res[i]))) > 0) { // TODO: gas optim?
+                    if ((amts[i] = _ceilMulDiv(denom, lsg[i], num).sub(int256(res[i]))) > 0) {
                         amts[i] = REJECTED;
                         num -= lsg[i];
                         denom -= int256(res[i]);

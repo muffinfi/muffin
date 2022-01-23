@@ -28,8 +28,6 @@ library Pools {
     error PositionNotSettled();
 
     uint256 internal constant MAX_TIERS = 6;
-    uint256 internal constant FEE_GROWTH_RESOLUTION = 64;
-    uint256 internal constant SECONDS_PER_LIQUIDITY_RESOLUTION = 80;
     int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between desired and actual swap amounts
 
     /// @param unlocked     Reentrancy lock
@@ -63,7 +61,6 @@ library Pools {
         uint8[MAX_TIERS] limitOrderTickSpacingMultipliers;
     }
 
-    // TODO: since hub locks "input token", is it needed to lock the pool?
     function lock(Pool storage pool) internal {
         require(pool.unlocked);
         pool.unlocked = false;
@@ -95,7 +92,7 @@ library Pools {
     ) internal returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
-        require(sqrtGamma == 99850 || sqrtGamma == 99975); // TODO:
+        require(sqrtGamma == 99850 || sqrtGamma == 99975); // mandatory 30bps or 5bps as initial fee
 
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;
@@ -219,7 +216,7 @@ library Pools {
                 sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
             }
             tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
-            secsPerLiqCumulative += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+            secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
 
             // calculate tick ema
             (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
@@ -369,7 +366,7 @@ library Pools {
             feeAmtStep -= protocolFeeAmt;
 
             // update fee growth (locally) (realistically assume feeAmtStep < 2**192)
-            uint80 feeGrowth = uint80((feeAmtStep << FEE_GROWTH_RESOLUTION) / tier.liquidity);
+            uint80 feeGrowth = uint80((feeAmtStep << 64) / tier.liquidity);
             if (cache.zeroForOne) {
                 tier.feeGrowthGlobal0 += feeGrowth;
             } else {
@@ -910,7 +907,7 @@ library Pools {
                 if (secs != 0) {
                     uint256 sumL;
                     for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
-                    secsPerLiqCumulative += uint96((uint256(secs) << SECONDS_PER_LIQUIDITY_RESOLUTION) / sumL);
+                    secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
                 }
                 secondsPerLiquidityInside =
                     secsPerLiqCumulative -
