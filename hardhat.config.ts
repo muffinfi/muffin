@@ -23,10 +23,10 @@ const basicCompiler = {
   },
 };
 
-const hubCompiler = {
+const managerCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 9999 },
+    optimizer: { enabled: true, runs: 4800 },
     metadata: { bytecodeHash: 'none' },
   },
 };
@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [basicCompiler],
     overrides: {
-      'contracts/MuffinHub.sol': hubCompiler,
+      'contracts/periphery/Manager.sol': managerCompiler,
       'contracts/tests/MockPool.sol': testCompiler,
       'contracts/tests/MockMuffinHub.sol': testCompiler,
     },
