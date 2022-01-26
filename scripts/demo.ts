@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
 import { Manager, MockERC20, MuffinHub, MuffinHubPositions, WETH9 } from '../typechain';
@@ -32,8 +32,8 @@ async function main() {
   // 4. mint and approve tokens
   await logTx(usdc.mint(wad(10000)), 'mint usdc');
   await logTx(wbtc.mint(wad(10000)), 'mint wbtc');
-  await logTx(usdc.approve(manager.address, ethers.constants.MaxUint256), 'approve usdc');
-  await logTx(wbtc.approve(manager.address, ethers.constants.MaxUint256), 'approve wbtc');
+  await logTx(usdc.approve(manager.address, ethers.constants.MaxUint256), 'approve usdc to manager');
+  await logTx(wbtc.approve(manager.address, ethers.constants.MaxUint256), 'approve wbtc to manager');
 
   // 5. deposit tokens for creating pool
   await logTx(manager.deposit(user.address, wbtc.address, wad(1)), 'deposit wbtc');
@@ -101,6 +101,22 @@ async function main() {
 
   // 14. set position to limit order
   await logTx(manager.setLimitOrderType(tokenId, 1), 'set limit order'); // 1 means zero for one
+
+  // 15. create a weth-usdc pool (for subgraph)
+  {
+    const ethUsdPrice = bn(2500).shl(144);
+    const [token0, token1, price] =
+      weth.address.toLowerCase() < usdc.address.toLowerCase()
+        ? [weth, usdc, ethUsdPrice]
+        : [usdc, weth, bn(1).shl(288).div(ethUsdPrice)];
+
+    await logTx(weth.deposit({ value: 1e8 }), 'mint weth');
+    await logTx(weth.approve(hub.address, constants.MaxUint256), 'approve weth to manager');
+    await logTx(
+      manager.createPool(token0.address, token1.address, 99850, sqrt(price), { gasLimit: 600_000 }),
+      'create weth-usdc pool',
+    );
+  }
 }
 
 main()
