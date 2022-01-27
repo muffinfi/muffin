@@ -3,6 +3,8 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/hub/IMuffinHub.sol";
 
+import "hardhat/console.sol";
+
 contract Quoter {
     address public immutable hub;
 
@@ -49,7 +51,7 @@ contract Quoter {
         try
             IMuffinHub(hub).swap(tokenIn, tokenOut, tierChoices, amountDesired, address(this), 0, 0, new bytes(0))
         {} catch (bytes memory reason) {
-            gasUsed = gasleft() - gasBefore;
+            gasUsed = gasBefore - gasleft();
             (amountIn, amountOut) = _parseRevertReason(reason);
         }
     }
@@ -75,7 +77,7 @@ contract Quoter {
                 })
             )
         {} catch (bytes memory reason) {
-            gasUsed = gasleft() - gasBefore;
+            gasUsed = gasBefore - gasleft();
             (amountIn, amountOut) = _parseRevertReason(reason);
         }
     }
