@@ -117,6 +117,9 @@ async function main() {
       'create weth-usdc pool',
     );
   }
+
+  // 16. perform a swap
+  await manager.exactInSingle(usdc.address, wbtc.address, 0x3f, 100, 0, user.address, false, true);
 }
 
 main()
