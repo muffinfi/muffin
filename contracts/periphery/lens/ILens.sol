@@ -28,9 +28,11 @@ interface ILens {
         returns (
             PositionInfo memory info,
             Positions.Position memory position,
+            bool settled,
+            uint256 amount0,
+            uint256 amount1,
             uint256 feeAmount0,
-            uint256 feeAmount1,
-            bool settled
+            uint256 feeAmount1
         );
 
     function getFeeAmounts(PositionInfo memory info, Positions.Position memory position)
@@ -42,4 +44,10 @@ interface ILens {
         external
         view
         returns (bool settled);
+
+    function getUnderlyingAmounts(
+        PositionInfo memory info,
+        Positions.Position memory position,
+        bool settled
+    ) external view returns (uint256 amount0, uint256 amount1);
 }

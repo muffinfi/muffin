@@ -2,6 +2,9 @@
 pragma solidity 0.8.10;
 
 import "../../interfaces/hub/positions/IMuffinHubPositions.sol";
+import "../../interfaces/hub/IMuffinHub.sol";
+import "../../libraries/math/PoolMath.sol";
+import "../../libraries/math/TickMath.sol";
 import "./ILens.sol";
 
 interface IPositionManager {
@@ -52,14 +55,17 @@ contract Lens is ILens {
         returns (
             PositionInfo memory info,
             Positions.Position memory position,
+            bool settled,
+            uint256 amount0,
+            uint256 amount1,
             uint256 feeAmount0,
-            uint256 feeAmount1,
-            bool settled
+            uint256 feeAmount1
         )
     {
         (info, position) = getPosition(tokenId);
-        (feeAmount0, feeAmount1) = getFeeAmounts(info, position);
         settled = isSettled(info, position);
+        (amount0, amount1) = getUnderlyingAmounts(info, position, settled);
+        (feeAmount0, feeAmount1) = getFeeAmounts(info, position);
     }
 
     function getFeeAmounts(PositionInfo memory info, Positions.Position memory position)
@@ -97,6 +103,35 @@ contract Lens is ILens {
                 zeroForOne
             );
             settled = position.settlementSnapshotId < nextSnapshotId;
+        }
+    }
+
+    uint96 internal constant MAX_INT96 = uint96(type(int96).max);
+
+    function getUnderlyingAmounts(
+        PositionInfo memory info,
+        Positions.Position memory position,
+        bool settled
+    ) public view returns (uint256 amount0, uint256 amount1) {
+        uint128 sqrtPriceLower = TickMath.tickToSqrtPrice(info.tickLower);
+        uint128 sqrtPriceUpper = TickMath.tickToSqrtPrice(info.tickUpper);
+
+        uint128 sqrtPrice = settled
+            ? position.limitOrderType == Positions.ZERO_FOR_ONE ? sqrtPriceUpper : sqrtPriceLower
+            : IMuffinHub(hub).getTier(keccak256(abi.encode(info.token0, info.token1)), info.tierId).sqrtPrice;
+
+        uint96 remaining = position.liquidityD8;
+        while (remaining > 0) {
+            uint96 liquidityD8Step;
+            (liquidityD8Step, remaining) = remaining > MAX_INT96 ? (MAX_INT96, remaining - MAX_INT96) : (remaining, 0);
+            (uint256 amount0Step, uint256 amount1Step) = PoolMath.calcAmtsForLiquidity(
+                sqrtPrice,
+                sqrtPriceLower,
+                sqrtPriceUpper,
+                -int96(liquidityD8Step)
+            );
+            amount0 += amount0Step;
+            amount1 += amount1Step;
         }
     }
 }
