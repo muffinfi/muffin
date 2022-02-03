@@ -5,7 +5,7 @@ import { IMockMuffinHub, IQuoter, MockERC20 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { deploy } from '../shared/utils';
 
-describe('swap quoter v1', () => {
+describe('quoter quotes swap', () => {
   let token0: MockERC20;
   let token1: MockERC20;
   let quoter: IQuoter;

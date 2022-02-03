@@ -1,19 +1,20 @@
 import { expect } from 'chai';
 import { solidityPack } from 'ethers/lib/utils';
-import { waffle } from 'hardhat';
-import { IMockMuffinHub, MockERC20, QuoterV2 } from '../../typechain';
+import { ethers, waffle } from 'hardhat';
+import { IMockMuffinHub, IQuoter, MockERC20 } from '../../typechain';
 import { managerFixture } from '../shared/fixtures';
 import { deploy } from '../shared/utils';
 
-describe('swap quoter v2', () => {
+describe('quoter simulates swap', () => {
   let token0: MockERC20;
   let token1: MockERC20;
-  let quoter: QuoterV2;
+  let quoter: IQuoter;
 
   beforeEach(async () => {
     let hub: IMockMuffinHub;
     ({ hub, token0, token1 } = await waffle.loadFixture(managerFixture));
-    quoter = (await deploy('QuoterV2', hub.address)) as QuoterV2;
+    const _quoter = await deploy('Quoter', hub.address);
+    quoter = (await ethers.getContractAt('IQuoter', _quoter.address)) as IQuoter;
   });
 
   context('simulateSingle', async () => {
