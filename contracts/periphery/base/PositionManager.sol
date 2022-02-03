@@ -32,7 +32,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     /// @notice Mapping of pool id to pair id
     mapping(bytes32 => uint40) public pairIdsByPoolId;
 
-    constructor() ERC721Extended("Deliswap Position", "DELI-POS") {}
+    constructor() ERC721Extended("Muffin Position", "MUFFIN-POS") {}
 
     modifier checkApproved(uint256 tokenId) {
         _checkApproved(tokenId);
