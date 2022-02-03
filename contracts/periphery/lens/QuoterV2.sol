@@ -5,15 +5,12 @@ import "../../interfaces/hub/IMuffinHub.sol";
 import "../../libraries/utils/PathLib.sol";
 import "../../libraries/Pools.sol";
 import "../../MuffinHub.sol";
+import "./Quoter.sol";
 
-contract QuoterV2 {
+contract QuoterV2 is Quoter {
     using PathLib for bytes;
 
-    IMuffinHub public immutable hub;
-
-    constructor(address _hub) {
-        hub = IMuffinHub(_hub);
-    }
+    constructor(address _hub) Quoter(_hub) {}
 
     struct Hop {
         uint256 amountIn;
@@ -23,7 +20,7 @@ contract QuoterV2 {
         uint256[] tierData;
     }
 
-    function quoteSingle(
+    function simulateSingle(
         address tokenIn,
         address tokenOut,
         uint256 tierChoices,
@@ -35,7 +32,7 @@ contract QuoterV2 {
         return _swap(poolId, (amountDesired > 0) == (tokenIn < tokenOut), amountDesired, tierChoices);
     }
 
-    function quote(bytes memory path, int256 amountDesired)
+    function simulate(bytes calldata path, int256 amountDesired)
         external
         view
         returns (
@@ -87,19 +84,6 @@ contract QuoterV2 {
         }
         // emulate pool locks
         require(!QuickSort.sortAndHasDuplicate(poolIds), "POOL_REPEATED");
-    }
-
-    struct Result {
-        bool success;
-        bytes returnData;
-    }
-
-    function batch(bytes[] calldata data) external returns (uint256 blockNumber, Result[] memory results) {
-        blockNumber = block.number;
-        results = new Result[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            (results[i].success, results[i].returnData) = address(this).delegatecall(data[i]);
-        }
     }
 
     ////////////////////////////////////////////////////////////////////////

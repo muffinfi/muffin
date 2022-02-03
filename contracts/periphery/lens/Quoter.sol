@@ -3,13 +3,11 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/hub/IMuffinHub.sol";
 
-import "hardhat/console.sol";
-
 contract Quoter {
-    address public immutable hub;
+    IMuffinHub public immutable hub;
 
     constructor(address _hub) {
-        hub = _hub;
+        hub = IMuffinHub(_hub);
     }
 
     function swapCallback(
@@ -48,9 +46,9 @@ contract Quoter {
         )
     {
         uint256 gasBefore = gasleft();
-        try
-            IMuffinHub(hub).swap(tokenIn, tokenOut, tierChoices, amountDesired, address(this), 0, 0, new bytes(0))
-        {} catch (bytes memory reason) {
+        try hub.swap(tokenIn, tokenOut, tierChoices, amountDesired, address(this), 0, 0, new bytes(0)) {} catch (
+            bytes memory reason
+        ) {
             gasUsed = gasBefore - gasleft();
             (amountIn, amountOut) = _parseRevertReason(reason);
         }
@@ -66,7 +64,7 @@ contract Quoter {
     {
         uint256 gasBefore = gasleft();
         try
-            IMuffinHub(hub).swapMultiHop(
+            hub.swapMultiHop(
                 IMuffinHubActions.SwapMultiHopParams({
                     path: path,
                     amountDesired: amountDesired,
