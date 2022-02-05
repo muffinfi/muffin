@@ -12,6 +12,8 @@ main()
     process.exit(1);
   });
 
+const { MaxUint256 } = constants;
+
 async function main() {
   console.log(chalk.cyan.bold('\n=============== main ==============='));
   const [user] = await ethers.getSigners();
@@ -97,8 +99,8 @@ async function main() {
     await wait();
     await logTxGas(
       amountDesired >= 0
-        ? manager.exactInSingle(tokenIn, tokenOut, 0b111111, amountDesired, 0, user.address, false, false)
-        : manager.exactOutSingle(tokenIn, tokenOut, 0b111111, amountDesired, constants.MaxUint256, user.address, false, false),
+        ? manager.exactInSingle(tokenIn, tokenOut, 0b111111, amountDesired, 0, user.address, false, false, MaxUint256)
+        : manager.exactOutSingle(tokenIn, tokenOut, 0b111111, amountDesired, constants.MaxUint256, user.address, false, false, MaxUint256), // prettier-ignore
       notes,
     );
     // await logTxGas(

@@ -50,7 +50,7 @@ describe('manager swap manager', () => {
   context('exactInSingle', () => {
     it('too little received', async () => {
       await expect(
-        manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 2, user.address, false, false),
+        manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 2, user.address, false, false, MaxUint256),
       ).to.be.revertedWith('TOO_LITTLE_RECEIVED');
     });
 
@@ -63,7 +63,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token1, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, false, false);
+          const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, false, false, MaxUint256); // prettier-ignore
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -83,7 +83,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactInSingle', [weth.address, token2.address, 0x3f, 3, 0, user.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactInSingle', [weth.address, token2.address, 0x3f, 3, 0, user.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
@@ -106,7 +106,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactInSingle', [token2.address, weth.address, 0x3f, 3, 0, manager.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactInSingle', [token2.address, weth.address, 0x3f, 3, 0, manager.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
@@ -131,7 +131,7 @@ describe('manager swap manager', () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
-          const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, true, true);
+          const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, true, true, MaxUint256); // prettier-ignore
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -146,7 +146,7 @@ describe('manager swap manager', () => {
 
   context('exactIn', () => {
     it('too little received', async () => {
-      await expect(manager.exactIn(toPath([token0, token1]), 3, 2, user.address, false, false)).to.be.revertedWith(
+      await expect(manager.exactIn(toPath([token0, token1]), 3, 2, user.address, false, false, MaxUint256)).to.be.revertedWith(
         'TOO_LITTLE_RECEIVED',
       );
     });
@@ -160,7 +160,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token1, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactIn(toPath([token0, token1]), 3, 0, user.address, false, false);
+          const tx = await manager.exactIn(toPath([token0, token1]), 3, 0, user.address, false, false, MaxUint256);
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -178,7 +178,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token2, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactIn(toPath([token0, token1, token2]), 5, 0, user.address, false, false);
+          const tx = await manager.exactIn(toPath([token0, token1, token2]), 5, 0, user.address, false, false, MaxUint256); // prettier-ignore
           const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId01);
           expect(events[0].amount0).eq(5);
@@ -202,7 +202,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactIn', [toPath([weth, token2, token1]), 5, 0, user.address, false, false]),
+            manager.interface.encodeFunctionData('exactIn', [toPath([weth, token2, token1]), 5, 0, user.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
@@ -229,7 +229,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactIn', [toPath([token1, token2, weth]), 5, 0, manager.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactIn', [toPath([token1, token2, weth]), 5, 0, manager.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
@@ -257,7 +257,7 @@ describe('manager swap manager', () => {
         async () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
-          await manager.exactIn(toPath([token0, token1]), 3, 0, user.address, true, true);
+          await manager.exactIn(toPath([token0, token1]), 3, 0, user.address, true, true, MaxUint256);
           expect((await getAccBalance(token0.address, user.address)).sub(accBalance0Before)).eq(-3);
           expect((await getAccBalance(token1.address, user.address)).sub(accBalance1Before)).eq(+1);
         },
@@ -268,7 +268,7 @@ describe('manager swap manager', () => {
   context('exactOutSingle', () => {
     it('too much requested', async () => {
       await expect(
-        manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, 2, user.address, false, false),
+        manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, 2, user.address, false, false, MaxUint256),
       ).to.be.revertedWith('TOO_MUCH_REQUESTED');
     });
 
@@ -281,7 +281,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token1, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, false, false); // prettier-ignore
+          const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, false, false, MaxUint256); // prettier-ignore
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -301,7 +301,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactOutSingle', [weth.address, token2.address, 0x3f, 1, MaxUint256, user.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactOutSingle', [weth.address, token2.address, 0x3f, 1, MaxUint256, user.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
@@ -324,7 +324,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactOutSingle', [token2.address, weth.address, 0x3f, 1, MaxUint256, manager.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactOutSingle', [token2.address, weth.address, 0x3f, 1, MaxUint256, manager.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
@@ -349,7 +349,7 @@ describe('manager swap manager', () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
-          const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, true, true);
+          const tx = await manager.exactOutSingle(token0.address, token1.address, 0x3f, 1, MaxUint256, user.address, true, true, MaxUint256); // prettier-ignore
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -364,7 +364,7 @@ describe('manager swap manager', () => {
 
   context('exactOut', () => {
     it('too little received', async () => {
-      await expect(manager.exactOut(toPath([token0, token1]), 1, 2, user.address, false, false)).to.be.revertedWith(
+      await expect(manager.exactOut(toPath([token0, token1]), 1, 2, user.address, false, false, MaxUint256)).to.be.revertedWith(
         'TOO_MUCH_REQUESTED',
       );
     });
@@ -378,7 +378,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token1, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, false, false);
+          const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, false, false, MaxUint256);
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
@@ -396,7 +396,7 @@ describe('manager swap manager', () => {
           { account: hub, token: token2, delta: -1 },
         ],
         async () => {
-          const tx = await manager.exactOut(toPath([token2, token1, token0]), 1, MaxUint256, user.address, false, false);
+          const tx = await manager.exactOut(toPath([token2, token1, token0]), 1, MaxUint256, user.address, false, false, MaxUint256); // prettier-ignore
           const events = await getEvents(tx, hub, 'Swap');
           expect(events[0].poolId).eq(poolId12);
           expect(events[0].amount0).eq(3);
@@ -420,7 +420,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactOut', [toPath([token1, token2, weth]), 1, MaxUint256, user.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactOut', [toPath([token1, token2, weth]), 1, MaxUint256, user.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('refundETH'),
           ];
           const tx = await manager.multicall(data, { value: 99999 });
@@ -447,7 +447,7 @@ describe('manager swap manager', () => {
         ],
         async () => {
           const data = [
-            manager.interface.encodeFunctionData('exactOut', [toPath([weth, token2, token1]), 1, MaxUint256, manager.address, false, false]), // prettier-ignore
+            manager.interface.encodeFunctionData('exactOut', [toPath([weth, token2, token1]), 1, MaxUint256, manager.address, false, false, MaxUint256]), // prettier-ignore
             manager.interface.encodeFunctionData('unwrapWETH', [1, user.address]),
           ];
           const tx = await manager.multicall(data);
@@ -476,7 +476,7 @@ describe('manager swap manager', () => {
           const accBalance0Before = await getAccBalance(token0.address, user.address);
           const accBalance1Before = await getAccBalance(token1.address, user.address);
 
-          const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, true, true);
+          const tx = await manager.exactOut(toPath([token1, token0]), 1, MaxUint256, user.address, true, true, MaxUint256);
           const event = await getEvent(tx, hub, 'Swap');
           expect(event.poolId).eq(poolId01);
           expect(event.amount0).eq(3);
