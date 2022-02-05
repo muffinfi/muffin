@@ -8,6 +8,18 @@ import "./ManagerBase.sol";
 abstract contract SwapManager is ManagerBase {
     using Math for uint256;
 
+    error DeadlinePassed();
+
+    modifier checkDeadline(uint256 deadline) {
+        _checkDeadline(deadline);
+        _;
+    }
+
+    /// @dev Reverts if the transaction deadline has passed
+    function _checkDeadline(uint256 deadline) internal view {
+        if (block.timestamp > deadline) revert DeadlinePassed();
+    }
+
     /// @dev Called by the hub contract
     function swapCallback(
         address tokenIn,
@@ -31,6 +43,7 @@ abstract contract SwapManager is ManagerBase {
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
+     * @param deadline          Transaction reverts if it's processed after deadline
      * @return amountOut        Output amount of the swap
      */
     function exactInSingle(
@@ -41,8 +54,9 @@ abstract contract SwapManager is ManagerBase {
         uint256 amountOutMinimum,
         address recipient,
         bool fromAccount,
-        bool toAccount
-    ) external payable returns (uint256 amountOut) {
+        bool toAccount,
+        uint256 deadline
+    ) external payable checkDeadline(deadline) returns (uint256 amountOut) {
         (, amountOut) = IMuffinHub(hub).swap(
             tokenIn,
             tokenOut,
@@ -64,6 +78,7 @@ abstract contract SwapManager is ManagerBase {
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
+     * @param deadline          Transaction reverts if it's processed after deadline
      * @return amountOut        Output amount of the swap
      */
     function exactIn(
@@ -72,8 +87,9 @@ abstract contract SwapManager is ManagerBase {
         uint256 amountOutMinimum,
         address recipient,
         bool fromAccount,
-        bool toAccount
-    ) external payable returns (uint256 amountOut) {
+        bool toAccount,
+        uint256 deadline
+    ) external payable checkDeadline(deadline) returns (uint256 amountOut) {
         (, amountOut) = IMuffinHub(hub).swapMultiHop(
             IMuffinHubActions.SwapMultiHopParams({
                 path: path,
@@ -97,6 +113,7 @@ abstract contract SwapManager is ManagerBase {
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
+     * @param deadline          Transaction reverts if it's processed after deadline
      * @return amountIn         Input amount of the swap
      */
     function exactOutSingle(
@@ -107,8 +124,9 @@ abstract contract SwapManager is ManagerBase {
         uint256 amountInMaximum,
         address recipient,
         bool fromAccount,
-        bool toAccount
-    ) external payable returns (uint256 amountIn) {
+        bool toAccount,
+        uint256 deadline
+    ) external payable checkDeadline(deadline) returns (uint256 amountIn) {
         (amountIn, ) = IMuffinHub(hub).swap(
             tokenIn,
             tokenOut,
@@ -130,6 +148,7 @@ abstract contract SwapManager is ManagerBase {
      * @param recipient         Address of the recipient of the output token
      * @param fromAccount       True for using sender's internal account to pay
      * @param toAccount         True for storing output tokens in recipient's internal account
+     * @param deadline          Transaction reverts if it's processed after deadline
      * @return amountIn         Input amount of the swap
      */
     function exactOut(
@@ -138,8 +157,9 @@ abstract contract SwapManager is ManagerBase {
         uint256 amountInMaximum,
         address recipient,
         bool fromAccount,
-        bool toAccount
-    ) external payable returns (uint256 amountIn) {
+        bool toAccount,
+        uint256 deadline
+    ) external payable checkDeadline(deadline) returns (uint256 amountIn) {
         (amountIn, ) = IMuffinHub(hub).swapMultiHop(
             IMuffinHubActions.SwapMultiHopParams({
                 path: path,
