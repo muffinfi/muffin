@@ -85,7 +85,10 @@ async function main() {
   console.log('');
 
   // 12. swap (exact in)
-  await logTx(manager.exactInSingle(token0.address, token1.address, 0b111111, 1e8, 0, user.address, false, false), 'swap');
+  await logTx(
+    manager.exactInSingle(token0.address, token1.address, 0b111111, 1e8, 0, user.address, false, false, constants.MaxUint256),
+    'swap',
+  );
 
   // 13. remove liquidity
   promise = manager.removeLiquidity({
@@ -119,7 +122,7 @@ async function main() {
   }
 
   // 16. perform a swap
-  await manager.exactInSingle(usdc.address, wbtc.address, 0x3f, 100, 0, user.address, false, true);
+  await manager.exactInSingle(usdc.address, wbtc.address, 0x3f, 100, 0, user.address, false, true, constants.MaxUint256);
 }
 
 main()

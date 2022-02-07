@@ -1,14 +1,12 @@
 {
-  "name": "mtpool",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "@muffinfi/muffin-contract",
+  "version": "1.0.2",
+  "description": "Smart contracts of Muffin AMM",
+  "repository": "https://github.com/deliswap/muffin.git",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",

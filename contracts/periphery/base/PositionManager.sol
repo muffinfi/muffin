@@ -67,7 +67,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         address token1,
         uint24 sqrtGamma,
         uint128 sqrtPrice
-    ) external {
+    ) external payable {
         (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(keccak256(abi.encode(token0, token1)));
         if (tickSpacing == 0) {
             deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
@@ -330,7 +330,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     /// @notice                 Set position's limit order type
     /// @param tokenId          Id of the position NFT
     /// @param limitOrderType   Direction of limit order (0: N/A, 1: zero->one, 2: one->zero)
-    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external checkApproved(tokenId) {
+    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external payable checkApproved(tokenId) {
         PositionInfo memory info = positionsByTokenId[tokenId];
         Pair memory pair = pairs[info.pairId];
         IMuffinHubPositions(hub).setLimitOrderType(

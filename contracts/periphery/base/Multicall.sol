@@ -14,12 +14,10 @@ abstract contract Multicall is IMulticall {
                 (bool success, bytes memory result) = address(this).delegatecall(data[i]);
 
                 if (!success) {
-                    // Next 5 lines from https://ethereum.stackexchange.com/a/83577
-                    if (result.length < 68) revert();
+                    if (result.length == 0) revert();
                     assembly {
-                        result := add(result, 0x04)
+                        revert(add(32, result), mload(result))
                     }
-                    revert(abi.decode(result, (string)));
                 }
 
                 results[i] = result;
