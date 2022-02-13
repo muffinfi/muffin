@@ -34,7 +34,7 @@ abstract contract ManagerBase {
             IWETH(WETH9).deposit{value: amount}(); // wrap only what is needed to pay
             IWETH(WETH9).transfer(hub, amount);
         } else if (payer == address(this)) {
-            // pay with tokens already in the contract (for the exact input multihop case)
+            // pay with tokens already in the contract
             SafeTransferLib.safeTransfer(token, hub, amount);
         } else {
             // pull payment
