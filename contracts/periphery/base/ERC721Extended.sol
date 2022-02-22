@@ -18,6 +18,7 @@ abstract contract ERC721Extended is ERC721 {
 
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
         nameHash = keccak256(bytes(name_));
+        tokenDescriptorSetter = msg.sender;
     }
 
     /*=====================================================================
