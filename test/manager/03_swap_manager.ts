@@ -488,4 +488,10 @@ describe('manager swap manager', () => {
       );
     });
   });
+
+  it('sending to zero address to internal account', async () => {
+    await expect(
+      manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, constants.AddressZero, false, true, MaxUint256),
+    ).to.be.revertedWith('ZERO_ACC_REF_ID');
+  });
 });

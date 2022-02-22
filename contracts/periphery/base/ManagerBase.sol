@@ -22,6 +22,7 @@ abstract contract ManagerBase {
     /// @dev Transform an user address into account id
     function getAccRefId(address user) internal pure returns (uint256 accRefId) {
         accRefId = uint256(uint160(user));
+        require(accRefId != 0, "ZERO_ACC_REF_ID");
     }
 
     function payHub(
