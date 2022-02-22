@@ -96,6 +96,8 @@ abstract contract ManagerBase {
 
     /// @notice Unwraps the contract's WETH balance and sends it to recipient as ETH.
     /// @dev The amountMinimum parameter prevents malicious contracts from stealing WETH from users.
+    /// @dev This function should be an intermediate function of an atomic transaction. Do not leave WETH inside this
+    /// contract accross transactions.
     function unwrapWETH(uint256 amountMinimum, address recipient) external payable {
         uint256 balanceWETH = IWETH(WETH9).balanceOf(address(this));
         require(balanceWETH >= amountMinimum, "Insufficient WETH");
@@ -109,6 +111,8 @@ abstract contract ManagerBase {
     /// @notice Refunds any ETH balance held by this contract to the `msg.sender`
     /// @dev Useful for bundling with mint or increase liquidity that uses ether, or exact output swaps
     /// that use ether for the input amount
+    /// @dev This function should be an intermediate function of an atomic transaction. Do not leave ETH inside this
+    /// contract accross transactions.
     function refundETH() external payable {
         if (address(this).balance > 0) SafeTransferLib.safeTransferETH(msg.sender, address(this).balance);
     }
