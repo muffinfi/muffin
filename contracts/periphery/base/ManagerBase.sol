@@ -33,9 +33,6 @@ abstract contract ManagerBase {
             // pay with WETH9
             IWETH(WETH9).deposit{value: amount}(); // wrap only what is needed to pay
             IWETH(WETH9).transfer(hub, amount);
-        } else if (payer == address(this)) {
-            // pay with tokens already in the contract
-            SafeTransferLib.safeTransfer(token, hub, amount);
         } else {
             // pull payment
             SafeTransferLib.safeTransferFrom(token, payer, hub, amount);
