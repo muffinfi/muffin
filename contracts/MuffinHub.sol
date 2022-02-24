@@ -71,10 +71,11 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         uint24 sqrtGamma,
         uint128 sqrtPrice,
         uint256 senderAccRefId
-    ) external {
+    ) external returns (bytes32 poolId) {
         if (token0 >= token1 || token0 == address(0)) revert InvalidTokenOrder();
 
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
+        Pools.Pool storage pool;
+        (pool, poolId) = pools.getPoolAndId(token0, token1);
         (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
