@@ -54,6 +54,7 @@ abstract contract ManagerBase {
     }
 
     /// @notice             Deposit tokens into hub's internal account
+    /// @dev                DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param recipient    Recipient of the token deposit
     /// @param token        Token address
     /// @param amount       Amount to deposit
@@ -78,7 +79,7 @@ abstract contract ManagerBase {
     }
 
     /// @notice             Deposit tokens into hub's internal account managed by other address
-    /// @dev                Rarely used
+    /// @dev                DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param recipient    Recipient of the token deposit
     /// @param token        Token address
     /// @param amount       Amount to deposit

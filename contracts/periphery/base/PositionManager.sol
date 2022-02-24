@@ -58,6 +58,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *==============================================================*/
 
     /// @notice             Create a pool
+    /// @dev                DO NOT create pool with rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param token0       Address of token0 of the pool
     /// @param token1       Address of token1 of the pool
     /// @param sqrtGamma    Sqrt of (1 - percentage swap fee of the 1st tier)

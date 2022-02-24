@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 interface IMuffinHubActions {
     /// @notice                 Deposit token into recipient's account
+    /// @dev                    DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param recipient        Recipient's address
     /// @param recipientAccRefId Recipient's account id
     /// @param token            Address of the token to deposit
@@ -29,6 +30,7 @@ interface IMuffinHubActions {
     ) external;
 
     /// @notice                 Create pool
+    /// @dev                    DO NOT create pool with rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param token0           Address of token0 of the pool
     /// @param token1           Address of token1 of the pool
     /// @param sqrtGamma        Sqrt (1 - percentage swap fee of the tier) (precision: 1e5)
