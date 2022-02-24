@@ -9,6 +9,8 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     error FailedBalanceOf();
     error NotEnoughTokenInput();
 
+    /// @param locked           1 means locked. 0 or 2 means unlocked.
+    /// @param protocolFeeAmt   Amount of token accrued as the protocol fee
     struct TokenData {
         uint8 locked;
         uint248 protocolFeeAmt;
