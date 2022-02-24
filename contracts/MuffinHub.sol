@@ -247,7 +247,8 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     }
 
     function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
-        return (pools[poolId].tickSpacing, pools[poolId].protocolFee);
+        Pools.Pool storage pool = pools[poolId];
+        return (pool.tickSpacing, pool.protocolFee);
     }
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory) {
