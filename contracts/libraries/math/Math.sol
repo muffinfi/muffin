@@ -33,7 +33,8 @@ library Math {
         z = x > y ? x : y;
     }
 
-    /// @dev Compute z = max(x - y, 0) and r = x - z
+    /// @dev Subtract an amount from x until the amount reaches y or all x is subtracted (i.e. the result reches zero).
+    /// Return the subtraction result and the remaining amount to subtract (if there's any)
     function subUntilZero(uint256 x, uint256 y) internal pure returns (uint256 z, uint256 r) {
         unchecked {
             if (x >= y) z = x - y;
