@@ -44,8 +44,9 @@ abstract contract MuffinHubBase is IMuffinHubBase {
 
     /// @dev "Lock" the token so the token cannot be used as input token again until unlocked
     function getBalanceAndLock(address token) internal returns (uint256) {
-        require(tokens[token].locked != 1); // 1 means locked
-        tokens[token].locked = 1;
+        TokenData storage tokenData = tokens[token];
+        require(tokenData.locked != 1); // 1 means locked
+        tokenData.locked = 1;
         return getBalance(token);
     }
 
