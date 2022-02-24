@@ -176,7 +176,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address tokenIn,
         address tokenOut,
         uint256 tierChoices,
-        int256 amountDesired,
+        int256 amountDesired, // Desired swap amount (positive: exact input, negative: exact output)
         address recipient
     )
         internal
