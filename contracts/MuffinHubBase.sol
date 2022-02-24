@@ -2,7 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./interfaces/hub/IMuffinHubBase.sol";
-import "./interfaces/common/IERC20.sol";
+import "./interfaces/common/IERC20Minimal.sol";
 import "./libraries/Pools.sol";
 
 abstract contract MuffinHubBase is IMuffinHubBase {
@@ -39,7 +39,9 @@ abstract contract MuffinHubBase is IMuffinHubBase {
 
     /// @dev Get token balance of this contract
     function getBalance(address token) private view returns (uint256) {
-        (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
+        (bool success, bytes memory data) = token.staticcall(
+            abi.encodeWithSelector(IERC20Minimal.balanceOf.selector, address(this))
+        );
         if (!success || data.length != 32) revert FailedBalanceOf();
         return abi.decode(data, (uint256));
     }
