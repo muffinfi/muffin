@@ -138,7 +138,8 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
                 // For an "exact output" swap, it's possible to not receive the full desired output amount. therefore, in
                 // the 2nd (and following) swaps, we request more token output so as to ensure we get enough tokens to pay
-                // for the previous swap. The extra token is not refunded and thus results in a very small extra cost.
+                // for the previous swap. The extra token is not refunded and thus results in an extra cost (small in common
+                // token pairs).
                 uint256 amtIn;
                 uint256 amtOut;
                 (, poolIds[i], amtIn, amtOut) = _computeSwap(
