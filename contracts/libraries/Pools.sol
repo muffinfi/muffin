@@ -29,6 +29,7 @@ library Pools {
 
     uint256 internal constant MAX_TIERS = 6;
     int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between desired and actual swap amounts
+    uint24 internal constant MAX_SQRT_GAMMA = 100_000;
 
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
@@ -123,7 +124,7 @@ library Pools {
     ) internal returns (uint256 amount0, uint256 amount1) {
         uint256 tierId = pool.tiers.length;
         require(tierId < MAX_TIERS);
-        require(sqrtGamma <= 100000);
+        require(sqrtGamma <= MAX_SQRT_GAMMA);
 
         // initialize tier
         pool.tiers.push(
@@ -185,7 +186,7 @@ library Pools {
     ) internal {
         require(pool.unlocked);
         require(tierId < pool.tiers.length);
-        require(sqrtGamma <= 100000);
+        require(sqrtGamma <= MAX_SQRT_GAMMA);
         pool.tiers[tierId].sqrtGamma = sqrtGamma;
         pool.limitOrderTickSpacingMultipliers[tierId] = limitOrderTickSpacingMultiplier;
     }
