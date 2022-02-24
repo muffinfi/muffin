@@ -201,6 +201,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDistribution, tierData);
         }
         unchecked {
+            // overflow is acceptable and protocol is expected to collect protocol fee before overflow
             if (protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(protocolFeeAmt);
             (amountIn, amountOut) = tokenIn < tokenOut
                 ? (uint256(amount0), uint256(-amount1))
