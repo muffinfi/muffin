@@ -64,24 +64,23 @@ library Positions {
             uint80 feeGrowthDelta0 = feeGrowthInside0 - self.feeGrowthInside0Last;
             uint80 feeGrowthDelta1 = feeGrowthInside1 - self.feeGrowthInside1Last;
 
+            self.liquidityD8 = liquidityD8New;
+
             if (collectAllFees) {
                 feeAmtOut0 = (uint256(liquidityD8) * feeGrowthDelta0) >> 56;
                 feeAmtOut1 = (uint256(liquidityD8) * feeGrowthDelta1) >> 56;
-                self.liquidityD8 = liquidityD8New;
                 self.feeGrowthInside0Last = feeGrowthInside0;
                 self.feeGrowthInside1Last = feeGrowthInside1;
                 //
             } else if (liquidityDeltaD8 > 0) {
                 feeGrowthInside0 -= uint80((uint256(liquidityD8) * feeGrowthDelta0) / liquidityD8New);
                 feeGrowthInside1 -= uint80((uint256(liquidityD8) * feeGrowthDelta1) / liquidityD8New);
-                self.liquidityD8 = liquidityD8New;
                 self.feeGrowthInside0Last = feeGrowthInside0;
                 self.feeGrowthInside1Last = feeGrowthInside1;
                 //
             } else if (liquidityDeltaD8 < 0) {
                 feeAmtOut0 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta0) >> 56;
                 feeAmtOut1 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta1) >> 56;
-                self.liquidityD8 = liquidityD8New;
             }
         }
     }
