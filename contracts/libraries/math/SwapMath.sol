@@ -188,7 +188,7 @@ library SwapMath {
                 // calculate input amt excluding fee
                 amtInExclFee = amtA < MAX_UINT_DIV_1E10
                     ? int256((uint256(amtA) * gamma) / 1e10)
-                    : int256(FullMath.mulDiv(uint256(amtA), gamma, 1e10));
+                    : int256((uint256(amtA) / 1e10) * gamma);
 
                 // check if crossing tick
                 if (amtInExclFee < amtTick) {
@@ -202,9 +202,9 @@ library SwapMath {
                     amtInExclFee = amtTick;
 
                     // re-calculate input amt _including_ fee
-                    amtA = amtInExclFee < MAX_UINT_DIV_1E10
-                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma).toInt256()
-                        : FullMath.mulDivRoundingUp(uint256(amtInExclFee), 1e10, gamma).toInt256();
+                    amtA = (amtInExclFee < MAX_UINT_DIV_1E10
+                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                        : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10).toInt256();
                 }
 
                 // calculate output amt
@@ -236,9 +236,9 @@ library SwapMath {
                     : PoolMath.calcAmt0FromSqrtP(sqrtP, sqrtPNew, liquidity);
 
                 // calculate input amt
-                amtB = amtInExclFee < MAX_UINT_DIV_1E10
-                    ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma).toInt256()
-                    : FullMath.mulDivRoundingUp(uint256(amtInExclFee), 1e10, gamma).toInt256();
+                amtB = (amtInExclFee < MAX_UINT_DIV_1E10
+                    ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                    : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10).toInt256();
 
                 // calculate fee amt
                 feeAmt = uint256(amtB - amtInExclFee);
