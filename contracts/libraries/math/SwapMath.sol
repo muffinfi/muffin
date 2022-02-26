@@ -59,9 +59,9 @@ library SwapMath {
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
                     if (
-                        (amts[i] = wontOverflow
-                            ? int256((denom * lsg[i]) / num).sub(int256(res[i]))
-                            : FullMath.mulDiv(denom, lsg[i], num).toInt256().sub(int256(res[i]))) < 0
+                        (amts[i] = (wontOverflow
+                            ? int256((denom * lsg[i]) / num)
+                            : FullMath.mulDiv(denom, lsg[i], num).toInt256()).sub(int256(res[i]))) < 0
                     ) {
                         amts[i] = REJECTED;
                         num -= lsg[i];
