@@ -15,7 +15,12 @@ library SwapMath {
     int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
 
-    /// @dev calculate the optimized input amount for each tier using lagragian multiplier.
+    /// @notice Given a set of tiers and the desired input amount, calculate the optimized input amount for each tier
+    /// @param tiers        List of tiers
+    /// @param isToken0     True if "amount" refers to token0
+    /// @param amount       Desired input amount of the swap (must be positive)
+    /// @param tierChoices  Bitmap to allow which tiers to swap
+    /// @return amts        Optimized input amounts for tiers
     function calcTierAmtsIn(
         Tiers.Tier[] memory tiers,
         bool isToken0,
@@ -70,7 +75,12 @@ library SwapMath {
         }
     }
 
-    /// @dev calculate the optimized output amount for each tier using lagragian multiplier.
+    /// @notice Given a set of tiers and the desired output amount, calculate the optimized output amount for each tier
+    /// @param tiers        List of tiers
+    /// @param isToken0     True if "amount" refers to token0
+    /// @param amount       Desired output amount of the swap (must be negative)
+    /// @param tierChoices  Bitmap to allow which tiers to swap
+    /// @return amts        Optimized output amounts for tiers
     function calcTierAmtsOut(
         Tiers.Tier[] memory tiers,
         bool isToken0,
