@@ -8,12 +8,6 @@
       }
     },
     {
-      "files": ["PoolMath.sol"],
-      "options": {
-        "explicitTypes": "preserve"
-      }
-    },
-    {
       "files": [
         "MuffinHub.sol",
         "MuffinHubBase.sol",
