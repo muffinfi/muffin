@@ -5,6 +5,7 @@ import "../../interfaces/hub/IMuffinHub.sol";
 import "../../interfaces/hub/positions/IMuffinHubPositions.sol";
 import "../../libraries/math/PoolMath.sol";
 import "../../libraries/math/TickMath.sol";
+import "../../libraries/math/UnsafeMath.sol";
 import "../../libraries/Constants.sol";
 import "../../libraries/Positions.sol";
 import "./ManagerBase.sol";

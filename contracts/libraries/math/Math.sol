@@ -1,15 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
-library UnsafeMath {
-    /// @dev Division by 0 has unspecified behavior, and must be checked externally.
-    function ceilDiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        assembly {
-            z := add(div(x, y), gt(mod(x, y), 0))
-        }
-    }
-}
-
 library Math {
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 96-bit unsigned integer
     function addInt96(uint96 x, int96 y) internal pure returns (uint96 z) {

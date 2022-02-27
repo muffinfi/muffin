@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "./math/TickMath.sol";
 import "./math/SwapMath.sol";
 import "./math/EMAMath.sol";
+import "./math/UnsafeMath.sol";
 import "./math/Math.sol";
 import "./Tiers.sol";
 import "./Ticks.sol";

@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./Math.sol";
+import "./UnsafeMath.sol";
 import "./FullMath.sol";
 
 library PoolMath {
