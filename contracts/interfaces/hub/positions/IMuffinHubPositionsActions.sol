@@ -134,5 +134,5 @@ interface IMuffinHubPositionsActions {
     ) external;
 
     /// @notice Collect the protocol fee accrued
-    function collectProtocolFee(address token, address recipient) external;
+    function collectProtocolFee(address token, address recipient) external returns (uint256 amount);
 }

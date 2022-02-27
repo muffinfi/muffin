@@ -28,6 +28,9 @@ interface IMuffinHubEvents {
     /// @notice Emitted when governance address is updated
     event GovernanceUpdated(address governance);
 
+    /// @notice Emitted when default parameters are updated
+    event UpdateDefaultParameters(uint8 tickSpacing, uint8 protocolFee);
+
     /// @notice Emitted when liquidity is minted for a given position
     event Mint(
         bytes32 indexed poolId,

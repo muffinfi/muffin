@@ -259,8 +259,11 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
 
     /// @inheritdoc IMuffinHubPositionsActions
     function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
+        require(tickSpacing > 0);
+        require(protocolFee < 100000);
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
+        emit UpdateDefaultParameters(tickSpacing, protocolFee);
     }
 
     /// @inheritdoc IMuffinHubPositionsActions
@@ -285,8 +288,8 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     /// @inheritdoc IMuffinHubPositionsActions
-    function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint248 amount = tokens[token].protocolFeeAmt;
+    function collectProtocolFee(address token, address recipient) external onlyGovernance returns (uint256 amount) {
+        amount = tokens[token].protocolFeeAmt;
         tokens[token].protocolFeeAmt = 0;
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit CollectProtocol(recipient, token, amount);
