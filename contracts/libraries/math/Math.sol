@@ -5,18 +5,18 @@ library Math {
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 96-bit unsigned integer
     function addInt96(uint96 x, int96 y) internal pure returns (uint96 z) {
         unchecked {
-            int256 s = int256(uint256(x)) + int256(y);
-            assert(s >= 0 && s <= int256(uint256(type(uint96).max)));
-            z = uint96(uint256(s));
+            uint256 s = x + uint256(int256(y)); // overflow is fine here
+            assert(s <= type(uint96).max);
+            z = uint96(s);
         }
     }
 
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 128-bit unsigned integer
     function addInt128(uint128 x, int128 y) internal pure returns (uint128 z) {
         unchecked {
-            int256 s = int256(uint256(x)) + y; // won't overflow
-            assert(s >= 0 && s <= int256(uint256(type(uint128).max)));
-            z = uint128(uint256(s));
+            uint256 s = x + uint256(int256(y)); // overflow is fine here
+            assert(s <= type(uint128).max);
+            z = uint128(s);
         }
     }
 
