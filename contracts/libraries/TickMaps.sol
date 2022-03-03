@@ -5,7 +5,7 @@ import "./Constants.sol";
 
 library TickMaps {
     struct TickMap {
-        uint256 blockmap; //                    stores which blocks are initialized
+        uint256 blockMap; //                    stores which blocks are initialized
         mapping(uint256 => uint256) blocks; //  stores which words are initialized
         mapping(uint256 => uint256) words; //   stores which ticks are initialized
     }
@@ -41,7 +41,7 @@ library TickMaps {
 
         self.words[wordIdx] |= 1 << (compressed & 0xFF);
         self.blocks[blockIdx] |= 1 << (wordIdx & 0xFF);
-        self.blockmap |= 1 << blockIdx;
+        self.blockMap |= 1 << blockIdx;
     }
 
     function unset(TickMap storage self, int24 tick) internal {
@@ -51,7 +51,7 @@ library TickMaps {
         if (self.words[wordIdx] == 0) {
             self.blocks[blockIdx] &= ~(1 << (wordIdx & 0xFF));
             if (self.blocks[blockIdx] == 0) {
-                self.blockmap &= ~(1 << blockIdx);
+                self.blockMap &= ~(1 << blockIdx);
             }
         }
     }
@@ -75,10 +75,10 @@ library TickMaps {
             if (word == 0) {
                 uint256 block_ = self.blocks[blockIdx] & ((1 << (wordIdx & 0xFF)) - 1);
                 if (block_ == 0) {
-                    uint256 blockmap = self.blockmap & ((1 << blockIdx) - 1);
-                    assert(blockmap != 0);
+                    uint256 blockMap = self.blockMap & ((1 << blockIdx) - 1);
+                    assert(blockMap != 0);
 
-                    blockIdx = _msb(blockmap);
+                    blockIdx = _msb(blockMap);
                     block_ = self.blocks[blockIdx];
                 }
                 wordIdx = (blockIdx << 8) | _msb(block_);

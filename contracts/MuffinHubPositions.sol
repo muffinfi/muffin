@@ -228,7 +228,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {
-        return pools[poolId].tickMaps[tierId].blockmap;
+        return pools[poolId].tickMaps[tierId].blockMap;
     }
 
     function getTickMapBlock(
