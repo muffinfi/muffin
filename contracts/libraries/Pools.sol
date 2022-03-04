@@ -93,7 +93,7 @@ library Pools {
         uint8 protocolFee // assume checked
     ) internal returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
-        require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice < Constants.MAX_SQRT_P);
+        require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice <= Constants.MAX_SQRT_P);
         require(sqrtGamma == 99850 || sqrtGamma == 99975); // mandatory 30bps or 5bps as initial fee
 
         pool.tickSpacing = tickSpacing;
@@ -128,18 +128,18 @@ library Pools {
         require(sqrtGamma <= MAX_SQRT_GAMMA);
 
         // initialize tier
-        pool.tiers.push(
-            Tiers.Tier({
-                liquidity: uint128(Constants.BASE_LIQUIDITY_D8) << 8,
-                sqrtPrice: sqrtPrice,
-                sqrtGamma: sqrtGamma,
-                tick: TickMath.sqrtPriceToTick(sqrtPrice),
-                nextTickBelow: Constants.MIN_TICK,
-                nextTickAbove: Constants.MAX_TICK,
-                feeGrowthGlobal0: 0,
-                feeGrowthGlobal1: 0
-            })
-        );
+        Tiers.Tier memory tier = Tiers.Tier({
+            liquidity: uint128(Constants.BASE_LIQUIDITY_D8) << 8,
+            sqrtPrice: sqrtPrice,
+            sqrtGamma: sqrtGamma,
+            tick: TickMath.sqrtPriceToTick(sqrtPrice),
+            nextTickBelow: Constants.MIN_TICK,
+            nextTickAbove: Constants.MAX_TICK,
+            feeGrowthGlobal0: 0,
+            feeGrowthGlobal1: 0
+        });
+        if (sqrtPrice == Constants.MAX_SQRT_P) tier.tick--; // max tick is never crossed
+        pool.tiers.push(tier);
 
         // initialize min tick & max tick
         Ticks.Tick storage lower = pool.ticks[tierId][Constants.MIN_TICK];

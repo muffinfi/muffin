@@ -21,7 +21,7 @@ describe('pool initialize', () => {
 
   it('invalid sqrt price', async () => {
     await expect(pool.initialize(SQRT_GAMMA, MIN_SQRT_P.sub(1), 1, 0)).to.be.reverted;
-    await expect(pool.initialize(SQRT_GAMMA, MAX_SQRT_P, 1, 0)).to.be.reverted;
+    await expect(pool.initialize(SQRT_GAMMA, MAX_SQRT_P.add(1), 1, 0)).to.be.reverted;
   });
 
   it('initialize pool successfully', async () => {

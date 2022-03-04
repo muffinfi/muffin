@@ -24,12 +24,7 @@ describe('pool swap', () => {
     }
   };
 
-  const updateLiquidity = async (
-    tierId: number,
-    tickLower: number,
-    tickUpper: number,
-    liquidityDeltaD8: BigNumberish,
-  ) => {
+  const updateLiquidity = async (tierId: number, tickLower: number, tickUpper: number, liquidityDeltaD8: BigNumberish) => {
     return await pool.updateLiquidity(pool.address, 1, tierId, tickLower, tickUpper, liquidityDeltaD8, false);
   };
 
@@ -242,7 +237,7 @@ describe('pool swap', () => {
     });
 
     it('high sqrt price + large liquidity + token1 in', async () => {
-      await initialize(99850, MAX_SQRT_P.sub(1));
+      await initialize(99850, MAX_SQRT_P);
       await updateLiquidity(0, 0, MAX_TICK, MaxInt96);
 
       // if res + amt > constants.MaxInt256, tx overflows and reverts

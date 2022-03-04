@@ -86,8 +86,10 @@ describe('pool cross tick', () => {
   });
 
   it('never cross max tick', async () => {
-    await pool.initialize(99850, MAX_SQRT_P.sub(1), 1, 25);
+    await pool.initialize(99850, MAX_SQRT_P, 1, 25);
+    await pool.addTier(99975);
     expect((await pool.getTier(0)).tick).eq(MAX_TICK - 1);
+    expect((await pool.getTier(1)).tick).eq(MAX_TICK - 1);
 
     // perform two swaps and last swap should be zero input output since reached the max price
     await pool.swap(false, 1e8, 0x3f);
@@ -97,14 +99,18 @@ describe('pool cross tick', () => {
     expect(event.amount1).eq(0);
 
     // even though tier's price is max price, tier's tick will never be max tick
-    const tier = await pool.getTier(0);
-    expect(tier.sqrtPrice).eq(MAX_SQRT_P);
-    expect(tier.tick).eq(MAX_TICK - 1);
+    for (const i of [0, 1]) {
+      const tier = await pool.getTier(i);
+      expect(tier.sqrtPrice).eq(MAX_SQRT_P);
+      expect(tier.tick).eq(MAX_TICK - 1);
+    }
   });
 
   it('never cross min tick', async () => {
     await pool.initialize(99850, MIN_SQRT_P, 1, 25);
+    await pool.addTier(99975);
     expect((await pool.getTier(0)).tick).eq(MIN_TICK);
+    expect((await pool.getTier(1)).tick).eq(MIN_TICK);
 
     // perform a swap and it should be zero input output since reached the max price
     const tx = await pool.swap(true, 1e8, 0x3f);
@@ -113,8 +119,10 @@ describe('pool cross tick', () => {
     expect(event.amount1).eq(0);
 
     // even though tier's price is max price, tier's tick will never be max tick
-    const tier = await pool.getTier(0);
-    expect(tier.sqrtPrice).eq(MIN_SQRT_P);
-    expect(tier.tick).eq(MIN_TICK);
+    for (const i of [0, 1]) {
+      const tier = await pool.getTier(i);
+      expect(tier.sqrtPrice).eq(MIN_SQRT_P);
+      expect(tier.tick).eq(MIN_TICK);
+    }
   });
 });
