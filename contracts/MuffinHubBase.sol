@@ -35,6 +35,10 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     /// @inheritdoc IMuffinHubBase
     mapping(bytes32 => Pair) public underlyings;
 
+    /// @dev We blacklist TUSD legacy address on Ethereum to prevent TUSD from getting exploited here.
+    /// In general, tokens with multiple addresses are not supported here and will cost losts of fund.
+    address internal constant TUSD_LEGACY_ADDRESS = 0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E;
+
     /// @dev Get token balance of this contract
     function getBalance(address token) private view returns (uint256) {
         (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
@@ -44,6 +48,8 @@ abstract contract MuffinHubBase is IMuffinHubBase {
 
     /// @dev "Lock" the token so the token cannot be used as input token again until unlocked
     function getBalanceAndLock(address token) internal returns (uint256) {
+        require(token != TUSD_LEGACY_ADDRESS);
+
         require(tokens[token].locked != 1); // 1 means locked
         tokens[token].locked = 1;
         return getBalance(token);
