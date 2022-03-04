@@ -29,7 +29,7 @@ library TickMaps {
         }
     }
 
-    /// @dev Convert the unsigned integer back to a tick
+    /// @dev Convert the unsigned integer back to a tick. Assume "compressed" is a valid value, computed by _indices function.
     function _decompress(uint256 compressed) internal pure returns (int24 tick) {
         unchecked {
             tick = int24(int256(compressed) * Constants.MIN_TICK_SPACING + Constants.MIN_TICK);
