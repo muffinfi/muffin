@@ -160,8 +160,8 @@ library Pools {
         pool.tickMaps[tierId].set(Constants.MAX_TICK);
 
         // calculate tokens to take for full-range base liquidity
-        amount0 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice);
-        amount1 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64);
+        amount0 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice);
+        amount1 = UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8));
     }
 
     /*===============================================================
