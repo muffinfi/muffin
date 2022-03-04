@@ -612,6 +612,7 @@ library Pools {
         Ticks.Tick storage obj = ticks[tick];
 
         if (obj.liquidityLowerD8 == 0 && obj.liquidityUpperD8 == 0) {
+            assert(tick != Constants.MIN_TICK && tick != Constants.MAX_TICK);
             int24 below = obj.nextBelow;
             int24 above = obj.nextAbove;
             ticks[below].nextAbove = above;
