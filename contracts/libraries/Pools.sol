@@ -245,7 +245,7 @@ library Pools {
         bool exactIn;
         uint8 protocolFee;
         uint256 protocolFeeAmt;
-        uint256 priceBoundReached;
+        uint256 tierChoices;
         TickMath.Cache tmCache;
         int256[MAX_TIERS] amounts;
     }
@@ -296,7 +296,7 @@ library Pools {
             exactIn: amtDesired > 0,
             protocolFee: pool.protocolFee,
             protocolFeeAmt: 0,
-            priceBoundReached: 0,
+            tierChoices: tierChoices & ((1 << tiers.length) - 1),
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
             amounts: [int256(0), 0, 0, 0, 0, 0]
         });
@@ -304,8 +304,8 @@ library Pools {
         while (true) {
             // calculate the swap amount for each tier
             cache.amounts = amtDesired > 0
-                ? SwapMath.calcTierAmtsIn(tiers, isToken0, amtDesired - amountA, tierChoices)
-                : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired - amountA, tierChoices);
+                ? SwapMath.calcTierAmtsIn(tiers, isToken0, amtDesired - amountA, cache.tierChoices)
+                : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired - amountA, cache.tierChoices);
 
             // compute the swap for each tier
             for (uint256 i; i < tiers.length; i++) {
@@ -319,7 +319,7 @@ library Pools {
             unchecked {
                 if (
                     (amtDesired > 0 ? amtRemaining <= SWAP_AMOUNT_TOLERANCE : amtRemaining >= -SWAP_AMOUNT_TOLERANCE) ||
-                    cache.priceBoundReached == tierChoices & ((1 << tiers.length) - 1)
+                    cache.tierChoices == 0
                 ) break;
             }
         }
@@ -382,7 +382,7 @@ library Pools {
 
             // skip crossing tick if reaches the end of the supported price range
             if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
-                cache.priceBoundReached |= 1 << tierId;
+                cache.tierChoices &= ~(1 << tierId);
                 return (amtAStep, amtBStep);
             }
 
