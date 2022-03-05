@@ -238,7 +238,6 @@ library Pools {
      *==============================================================*/
 
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
-    int256 private constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
 
     struct SwapCache {
         bool zeroForOne;
@@ -285,7 +284,7 @@ library Pools {
         Tiers.Tier[] memory tiers = pool.tiers;
         TierState[MAX_TIERS] memory states;
         unchecked {
-            if (amtDesired == 0 || amtDesired == REJECTED) revert InvalidAmount();
+            if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
             if (tierChoices > 0x3F || tierChoices & ((1 << tiers.length) - 1) == 0) revert InvalidTierChoices();
         }
 
@@ -336,7 +335,7 @@ library Pools {
         Tiers.Tier memory tier,
         uint256 tierId
     ) internal returns (int256 amtAStep, int256 amtBStep) {
-        if (cache.amounts[tierId] == REJECTED) return (0, 0);
+        if (cache.amounts[tierId] == SwapMath.REJECTED) return (0, 0);
 
         // calculate sqrt price of the next tick
         if (state.sqrtPTick == 0)
@@ -357,7 +356,7 @@ library Pools {
                 tier.liquidity,
                 tier.sqrtGamma
             );
-            if (amtAStep == REJECTED) return (0, 0);
+            if (amtAStep == SwapMath.REJECTED) return (0, 0);
 
             // cache input amount for later event logging (locally)
             state.amountIn += uint256(cache.exactIn ? amtAStep : amtBStep);

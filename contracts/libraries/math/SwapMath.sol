@@ -12,7 +12,7 @@ library SwapMath {
     using Math for int256;
 
     uint256 internal constant MAX_TIERS = 6;
-    int256 private constant REJECTED = type(int256).max;
+    int256 internal constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
     int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
 
@@ -60,9 +60,11 @@ library SwapMath {
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
                     if (
-                        (amts[i] = (wontOverflow
-                            ? int256((denom * lsg[i]) / num)
-                            : FullMath.mulDiv(denom, lsg[i], num).toInt256()).sub(int256(res[i]))) < 0
+                        (amts[i] = (
+                            wontOverflow
+                                ? int256((denom * lsg[i]) / num)
+                                : FullMath.mulDiv(denom, lsg[i], num).toInt256()
+                        ).sub(int256(res[i]))) < 0
                     ) {
                         amts[i] = REJECTED;
                         num -= lsg[i];
@@ -203,9 +205,11 @@ library SwapMath {
                     amtInExclFee = amtTick;
 
                     // re-calculate input amt _including_ fee
-                    amtA = (amtInExclFee < MAX_UINT_DIV_1E10
-                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
-                        : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10).toInt256();
+                    amtA = (
+                        amtInExclFee < MAX_UINT_DIV_1E10
+                            ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                            : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10
+                    ).toInt256();
                 }
 
                 // calculate output amt
@@ -237,9 +241,11 @@ library SwapMath {
                     : PoolMath.calcAmt0FromSqrtP(sqrtP, sqrtPNew, liquidity);
 
                 // calculate input amt
-                amtB = (amtInExclFee < MAX_UINT_DIV_1E10
-                    ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
-                    : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10).toInt256();
+                amtB = (
+                    amtInExclFee < MAX_UINT_DIV_1E10
+                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                        : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10
+                ).toInt256();
 
                 // calculate fee amt
                 feeAmt = uint256(amtB - amtInExclFee);
