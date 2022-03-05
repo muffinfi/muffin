@@ -467,11 +467,9 @@ library Pools {
      *==============================================================*/
 
     function _checkTickInputs(int24 tickLower, int24 tickUpper) internal pure {
-        if (
-            (tickLower >= tickUpper) ||
-            (Constants.MIN_TICK > tickLower || tickLower >= Constants.MAX_TICK) ||
-            (Constants.MIN_TICK >= tickUpper || tickUpper > Constants.MAX_TICK)
-        ) revert InvalidTick();
+        if (tickLower >= tickUpper || Constants.MIN_TICK > tickLower || tickUpper > Constants.MAX_TICK) {
+            revert InvalidTick();
+        }
     }
 
     /// @notice                 Update a position's liquidity
