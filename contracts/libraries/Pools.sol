@@ -302,9 +302,9 @@ library Pools {
 
         while (true) {
             // calculate the swap amount for each tier
-            cache.amounts = amtDesired > 0
-                ? SwapMath.calcTierAmtsIn(tiers, isToken0, amtDesired - amountA, cache.tierChoices)
-                : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired - amountA, cache.tierChoices);
+            cache.amounts = cache.exactIn
+                ? SwapMath.calcTierAmtsIn(tiers, isToken0, amtDesired, cache.tierChoices)
+                : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired, cache.tierChoices);
 
             // compute the swap for each tier
             for (uint256 i; i < tiers.length; i++) {
@@ -314,17 +314,17 @@ library Pools {
             }
 
             // check if we meet the stopping criteria
-            int256 amtRemaining = amtDesired - amountA;
+            amtDesired -= amountA;
             unchecked {
                 if (
-                    (amtDesired > 0 ? amtRemaining <= SWAP_AMOUNT_TOLERANCE : amtRemaining >= -SWAP_AMOUNT_TOLERANCE) ||
+                    (cache.exactIn ? amtDesired <= SWAP_AMOUNT_TOLERANCE : amtDesired >= -SWAP_AMOUNT_TOLERANCE) ||
                     cache.tierChoices == 0
                 ) break;
             }
         }
 
         protocolFeeAmt = cache.protocolFeeAmt;
-        (amtInDistribution, tierData) = _updateTiers(pool, states, tiers, uint256(amtDesired > 0 ? amountA : amountB));
+        (amtInDistribution, tierData) = _updateTiers(pool, states, tiers, uint256(cache.exactIn ? amountA : amountB));
     }
 
     function _swapStep(
