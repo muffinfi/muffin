@@ -80,7 +80,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
-        emit PoolCreated(token0, token1);
+        emit PoolCreated(token0, token1, poolId);
         emit UpdateTier(poolId, 0, sqrtGamma, 0);
         pool.unlock();
         underlyings[poolId] = Pair(token0, token1);

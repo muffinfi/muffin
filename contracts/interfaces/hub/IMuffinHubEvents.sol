@@ -9,7 +9,7 @@ interface IMuffinHubEvents {
     event Withdraw(address indexed recipient, uint256 indexed senderAccRefId, address indexed token, uint256 amount);
 
     /// @notice Emitted when a pool is created
-    event PoolCreated(address indexed token0, address indexed token1);
+    event PoolCreated(address indexed token0, address indexed token1, bytes32 indexed poolId);
 
     /// @notice Emitted when a new tier is added, or when tier's parameters are updated
     event UpdateTier(

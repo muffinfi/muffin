@@ -57,7 +57,7 @@ describe('hub create pool', () => {
       await promise;
 
       // check events
-      expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address);
+      expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address, poolId);
       expect(promise).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 99850, 0);
 
       // check underlying tokens are stored
