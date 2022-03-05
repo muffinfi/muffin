@@ -32,6 +32,9 @@ library Pools {
     int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between desired and actual swap amounts
     uint24 internal constant MAX_SQRT_GAMMA = 100_000;
 
+    uint256 internal constant AMOUNT_DISTRIBUTION_BITS = 256 / MAX_TIERS; // i.e. 42 if MAX_TIERS == 6
+    uint256 internal constant AMOUNT_DISTRIBUTION_RESOLUTION = AMOUNT_DISTRIBUTION_BITS - 1;
+
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
     /// @param protocolFee  Protocol fee with base 255 (e.g. protocolFee = 51 for 20% protocol fee)
@@ -427,8 +430,9 @@ library Pools {
         uint256 amtIn
     ) internal returns (uint256 amtInDistribution, uint256[] memory tierData) {
         tierData = new uint256[](tiers.length);
-        bool noOverflow = amtIn < (1 << 215); // 256 - 41 bits
         unchecked {
+            bool noOverflow = amtIn < (1 << (256 - AMOUNT_DISTRIBUTION_RESOLUTION));
+
             for (uint8 i; i < tiers.length; i++) {
                 TierState memory state = states[i];
                 // we can safely assume tier data is unchanged when there's zero input amount and no crossing tick,
@@ -447,9 +451,11 @@ library Pools {
                     // prepare data for logging
                     tierData[i] = (uint256(tier.sqrtPrice) << 128) | tier.liquidity;
                     if (amtIn > 0) {
-                        amtInDistribution |=
-                            (noOverflow ? (state.amountIn << 41) / amtIn : state.amountIn / ((amtIn >> 41) + 1)) <<
-                            (uint256(i) * 42);
+                        amtInDistribution |= (
+                            noOverflow
+                                ? (state.amountIn << AMOUNT_DISTRIBUTION_RESOLUTION) / amtIn
+                                : state.amountIn / ((amtIn >> AMOUNT_DISTRIBUTION_RESOLUTION) + 1)
+                        ) << (uint256(i) * AMOUNT_DISTRIBUTION_BITS); // prettier-ignore
                     }
                 }
             }

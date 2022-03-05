@@ -90,7 +90,8 @@ interface IMuffinHubEvents {
     );
 
     /// @notice Emitted for any swap happened in any pool
-    /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value takes 42 bits (Q1.41)
+    /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value occupies (256 / Pool.MAX_TIER) bits
+    /// and is a binary fixed-point with 1 integer bit and (256 / Pool.MAX_TIER - 1) fraction bits.
     /// @param tierData Array of tier's liquidity (0-127th bits) and sqrt price (128-255th bits) after the swap
     event Swap(
         bytes32 indexed poolId,
