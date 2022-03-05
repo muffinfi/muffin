@@ -26,7 +26,7 @@ interface IMuffinHubEvents {
     event CollectProtocol(address indexed recipient, address indexed token, uint256 amount);
 
     /// @notice Emitted when governance address is updated
-    event GovernanceUpdated(address governance);
+    event GovernanceUpdated(address indexed governance);
 
     /// @notice Emitted when default parameters are updated
     event UpdateDefaultParameters(uint8 tickSpacing, uint8 protocolFee);
