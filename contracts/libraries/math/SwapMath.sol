@@ -56,7 +56,8 @@ library SwapMath {
         unchecked {
             // calculate input amts, then reject the tiers with negative input amts.
             // repeat until all input amts are non-negative
-            bool wontOverflow = ((denom * num) / denom == num) && (denom * num <= uint256(type(int256).max));
+            uint256 product = denom * num;
+            bool wontOverflow = (product / denom == num) && (product <= uint256(type(int256).max));
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
                     if (
