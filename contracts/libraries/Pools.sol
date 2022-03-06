@@ -288,7 +288,8 @@ library Pools {
         TierState[MAX_TIERS] memory states;
         unchecked {
             if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
-            if (tierChoices > 0x3F || tierChoices & ((1 << tiers.length) - 1) == 0) revert InvalidTierChoices();
+            if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & ((1 << tiers.length) - 1) == 0)
+                revert InvalidTierChoices();
         }
 
         _updateTWAP(pool, tiers);
