@@ -92,12 +92,13 @@ library Pools {
         Pool storage pool,
         uint24 sqrtGamma,
         uint128 sqrtPrice,
-        uint8 tickSpacing, // assume checked
-        uint8 protocolFee // assume checked
+        uint8 tickSpacing,
+        uint8 protocolFee
     ) internal returns (uint256 amount0, uint256 amount1) {
         require(pool.tickSpacing == 0); // ensure not initialized
         require(Constants.MIN_SQRT_P <= sqrtPrice && sqrtPrice <= Constants.MAX_SQRT_P);
         require(sqrtGamma == 99850 || sqrtGamma == 99975); // mandatory 30bps or 5bps as initial fee
+        require(tickSpacing > 0);
 
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;

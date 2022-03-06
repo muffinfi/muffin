@@ -260,7 +260,6 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     /// @inheritdoc IMuffinHubPositionsActions
     function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
         require(tickSpacing > 0);
-        require(protocolFee < 100000);
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
         emit UpdateDefaultParameters(tickSpacing, protocolFee);
