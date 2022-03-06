@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 interface IMuffinHubActions {
     /// @notice                 Deposit token into recipient's account
-    /// @dev                    DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds
+    /// @dev                    DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds.
+    ///                         DO NOT withdraw the token you deposit or swap the token out from the contract during the callback.
     /// @param recipient        Recipient's address
     /// @param recipientAccRefId Recipient's account id
     /// @param token            Address of the token to deposit
