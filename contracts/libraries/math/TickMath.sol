@@ -5,9 +5,13 @@ library TickMath {
     uint256 private constant Q56 = 0x100000000000000;
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
 
+    /// @dev Minimum tick supported in this protocol
     int24 internal constant MIN_TICK = -776363;
+    /// @dev Maximum tick supported in this protocol
     int24 internal constant MAX_TICK = 776363;
+    /// @dev Minimum sqrt price, i.e. tickToSqrtPrice(MIN_TICK)
     uint128 internal constant MIN_SQRT_P = 65539;
+    /// @dev Maximum sqrt price, i.e. tickToSqrtPrice(MAX_TICK)
     uint128 internal constant MAX_SQRT_P = 340271175397327323250730767849398346765;
 
     /**

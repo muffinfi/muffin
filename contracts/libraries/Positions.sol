@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./math/Math.sol";
-import "./Constants.sol";
 
 library Positions {
     struct Position {

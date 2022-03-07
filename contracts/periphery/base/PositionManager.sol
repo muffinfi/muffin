@@ -6,7 +6,7 @@ import "../../interfaces/hub/positions/IMuffinHubPositions.sol";
 import "../../libraries/math/PoolMath.sol";
 import "../../libraries/math/TickMath.sol";
 import "../../libraries/math/UnsafeMath.sol";
-import "../../libraries/Constants.sol";
+import "../../libraries/Pools.sol";
 import "../../libraries/Positions.sol";
 import "./ManagerBase.sol";
 import "./ERC721Extended.sol";
@@ -72,8 +72,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     ) external payable {
         (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(keccak256(abi.encode(token0, token1)));
         if (tickSpacing == 0) {
-            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
-            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Constants.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
+            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
+            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
             IMuffinHub(hub).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
         }
         _cacheTokenPair(token0, token1);

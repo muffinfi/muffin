@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./Constants.sol";
+import "./math/TickMath.sol";
 
 library TickMaps {
     struct TickMap {
@@ -11,7 +11,7 @@ library TickMaps {
     }
 
     /// @dev Compress and convert tick into an unsigned integer, then compute the indices of the block and word that the
-    /// compressed tick uses. Assume tick >= Constants.MIN_TICK
+    /// compressed tick uses. Assume tick >= TickMath.MIN_TICK
     function _indices(int24 tick)
         internal
         pure
@@ -22,7 +22,7 @@ library TickMaps {
         )
     {
         unchecked {
-            compressed = uint256(int256((tick - Constants.MIN_TICK)));
+            compressed = uint256(int256((tick - TickMath.MIN_TICK)));
             blockIdx = compressed >> 16;
             wordIdx = compressed >> 8;
             assert(blockIdx < 256);
@@ -32,7 +32,7 @@ library TickMaps {
     /// @dev Convert the unsigned integer back to a tick. Assume "compressed" is a valid value, computed by _indices function.
     function _decompress(uint256 compressed) internal pure returns (int24 tick) {
         unchecked {
-            tick = int24(int256(compressed) + Constants.MIN_TICK);
+            tick = int24(int256(compressed) + TickMath.MIN_TICK);
         }
     }
 
@@ -56,7 +56,7 @@ library TickMaps {
         }
     }
 
-    /// @dev Find the next initialized tick below the given tick. Assume tick >= Constants.MIN_TICK
+    /// @dev Find the next initialized tick below the given tick. Assume tick >= TickMath.MIN_TICK
     // How to find the next initialized bit below the i-th bit inside a word (e.g. i = 8)?
     // 1)  Mask _off_ the word from the 8th bit to the 255th bit (zero-indexed)
     // 2)  Find the most significant bit of the masked word

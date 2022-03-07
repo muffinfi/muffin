@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "./math/TickMath.sol";
 import "./Tiers.sol";
 import "./Ticks.sol";
 import "./TickMaps.sol";
@@ -171,7 +172,7 @@ library Settlement {
 
         // delete the starting tick if empty (effect)
         if (start.liquidityLowerD8 == 0 && start.liquidityUpperD8 == 0) {
-            assert(tickStart != Constants.MIN_TICK && tickStart != Constants.MAX_TICK);
+            assert(tickStart != TickMath.MIN_TICK && tickStart != TickMath.MAX_TICK);
             int24 below = start.nextBelow;
             int24 above = start.nextAbove;
             ticks[below].nextAbove = above;
@@ -182,7 +183,7 @@ library Settlement {
 
         // delete the ending tick if empty (effect), and update tier's next ticks (locally)
         if (end.liquidityLowerD8 == 0 && end.liquidityUpperD8 == 0) {
-            assert(tickEnd != Constants.MIN_TICK && tickEnd != Constants.MAX_TICK);
+            assert(tickEnd != TickMath.MIN_TICK && tickEnd != TickMath.MAX_TICK);
             int24 below = end.nextBelow;
             int24 above = end.nextAbove;
             ticks[below].nextAbove = above;
