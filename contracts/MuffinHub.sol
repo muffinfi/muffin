@@ -18,6 +18,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     error InvalidTokenOrder();
     error InvalidSwapPath();
     error NotEnoughIntermediateOutput();
+    error NotEnoughFundToWithdraw();
 
     /// @dev To reduce bytecode size of this contract, we offload position-related functions, governance functions and
     /// various view functions to a second contract (i.e. MuffinHubPositions.sol) and use delegatecall to call it.
@@ -55,7 +56,12 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address token,
         uint256 amount
     ) external {
-        accounts[token][getAccHash(msg.sender, senderAccRefId)] -= amount;
+        bytes32 accHash = getAccHash(msg.sender, senderAccRefId);
+        uint256 balance = accounts[token][accHash];
+        if (balance < amount) revert NotEnoughFundToWithdraw();
+        unchecked {
+            accounts[token][accHash] = balance - amount;
+        }
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit Withdraw(recipient, senderAccRefId, token, amount);
     }

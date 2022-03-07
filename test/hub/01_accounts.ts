@@ -50,6 +50,10 @@ describe('hub accounts', () => {
       await hub.addAccountBalance(user.address, 2, token0.address, 100);
     });
 
+    it('not enough fund', async () => {
+      await expect(hub.withdraw(caller.address, 2, token0.address, 101)).to.be.revertedWith('NotEnoughFundToWithdraw()');
+    });
+
     it('withdraw successfully', async () => {
       const hubBalanceBefore = await token0.balanceOf(hub.address);
       const callerBalanceBefore = await token0.balanceOf(caller.address);
