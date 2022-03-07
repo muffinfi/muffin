@@ -54,7 +54,7 @@ library Settlement {
         bool isAdd,
         uint16 defaultTickSpacing
     ) internal returns (uint32 nextSnapshotId, uint16 tickSpacing) {
-        assert(limitOrderType != Positions.NOT_LIMIT_ORDER);
+        assert(limitOrderType == Positions.ZERO_FOR_ONE || limitOrderType == Positions.ONE_FOR_ZERO);
 
         Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE
             ? settlements[tickUpper][1]
@@ -211,7 +211,7 @@ library Settlement {
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (bool settled, Snapshot memory snapshot) {
-        if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
+        if (position.limitOrderType == Positions.ZERO_FOR_ONE || position.limitOrderType == Positions.ONE_FOR_ZERO) {
             Info storage settlement = position.limitOrderType == Positions.ZERO_FOR_ONE
                 ? settlements[tickUpper][1]
                 : settlements[tickLower][0];
