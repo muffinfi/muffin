@@ -22,7 +22,7 @@ library TickMaps {
         )
     {
         unchecked {
-            compressed = uint256(int256((tick - Constants.MIN_TICK) / Constants.MIN_TICK_SPACING));
+            compressed = uint256(int256((tick - Constants.MIN_TICK)));
             blockIdx = compressed >> 16;
             wordIdx = compressed >> 8;
             assert(blockIdx < 256);
@@ -32,7 +32,7 @@ library TickMaps {
     /// @dev Convert the unsigned integer back to a tick. Assume "compressed" is a valid value, computed by _indices function.
     function _decompress(uint256 compressed) internal pure returns (int24 tick) {
         unchecked {
-            tick = int24(int256(compressed) * Constants.MIN_TICK_SPACING + Constants.MIN_TICK);
+            tick = int24(int256(compressed) + Constants.MIN_TICK);
         }
     }
 

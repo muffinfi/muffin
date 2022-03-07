@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 /// @notice Constants shared accross contracts and libraries
 /// @author Deliswap
 library Constants {
-    /// @dev Minimum tick spacing allowed. cannot never be larger than uint8
-    int24 internal constant MIN_TICK_SPACING = 1;
     /// @dev Minimum tick, given min_tick_spacing = 1
     int24 internal constant MIN_TICK = -776363;
     /// @dev Maximum tick, given min_tick_spacing = 1

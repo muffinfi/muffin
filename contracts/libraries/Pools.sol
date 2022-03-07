@@ -182,7 +182,7 @@ library Pools {
         uint8 protocolFee
     ) internal {
         require(pool.unlocked);
-        require(int24(uint24(tickSpacing)) >= Constants.MIN_TICK_SPACING);
+        require(tickSpacing > 0);
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;
     }
@@ -551,7 +551,7 @@ library Pools {
             // reset tier's next ticks if any ticks deleted
             if (deleted) {
                 Tiers.Tier storage tier = pool.tiers[tierId];
-                int24 below = TickMaps.nextBelow(pool.tickMaps[tierId], tier.tick + Constants.MIN_TICK_SPACING);
+                int24 below = TickMaps.nextBelow(pool.tickMaps[tierId], tier.tick + 1);
                 int24 above = pool.ticks[tierId][below].nextAbove;
                 tier.nextTickBelow = below;
                 tier.nextTickAbove = above;
