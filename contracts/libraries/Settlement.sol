@@ -157,6 +157,9 @@ library Settlement {
                 end.needSettle1 = false;
             }
 
+            // play extra safe to ensure settlement is initialized
+            assert(tickStart != tickEnd);
+
             // snapshot data inside the tick range (effect)
             settlement.snapshots[settlement.nextSnapshotId] = Snapshot(
                 end.feeGrowthOutside0 - start.feeGrowthOutside0,
