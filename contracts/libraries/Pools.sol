@@ -106,6 +106,8 @@ library Pools {
         int24 tick = TickMath.sqrtPriceToTick(sqrtPrice);
         (pool.tickLastUpdate, pool.tickEma20, pool.tickEma40) = (uint32(block.timestamp), tick, tick);
         (amount0, amount1) = _addTier(pool, sqrtGamma, sqrtPrice);
+
+        // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 
     function addTier(Pool storage pool, uint24 sqrtGamma)
@@ -120,6 +122,8 @@ library Pools {
         require((tierId = uint8(pool.tiers.length)) > 0);
         _updateTWAP(pool, pool.tiers);
         (amount0, amount1) = _addTier(pool, sqrtGamma, pool.tiers[0].sqrtPrice); // use 1st tier sqrt price as reference
+
+        // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 
     function _addTier(
@@ -330,6 +334,8 @@ library Pools {
 
         protocolFeeAmt = cache.protocolFeeAmt;
         (amtInDistribution, tierData) = _updateTiers(pool, states, tiers, uint256(cache.exactIn ? amountA : amountB));
+
+        // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 
     function _swapStep(
@@ -560,6 +566,8 @@ library Pools {
                 TickMath.tickToSqrtPrice(tickUpper),
                 liquidityDeltaD8
             );
+
+        // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 
     /*===============================================================
@@ -849,6 +857,8 @@ library Pools {
             position.limitOrderType = Positions.NOT_LIMIT_ORDER;
             position.settlementSnapshotId = 0;
         }
+
+        // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 
     /*===============================================================
