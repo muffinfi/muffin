@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 library Math {
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 96-bit unsigned integer

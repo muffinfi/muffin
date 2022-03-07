@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 /**
  * @dev https://github.com/Uniswap/uniswap-v3-core/blob/v1.0.0/contracts/libraries/FullMath.sol
