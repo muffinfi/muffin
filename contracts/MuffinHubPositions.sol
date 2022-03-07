@@ -138,7 +138,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
             params.liquidityD8,
             params.collectAllFees
         );
-        bytes32 accHash = getAccHash(msg.sender, params.positionRefId);
+        bytes32 accHash = getAccHash(msg.sender, params.accRefId);
         accounts[params.token0][accHash] += amount0 + feeAmount0;
         accounts[params.token1][accHash] += amount1 + feeAmount1;
         emit CollectSettled(

@@ -5,6 +5,8 @@ import { IMockMuffinHub, MockCaller, MockERC20 } from '../../typechain';
 import { LimitOrderType } from '../shared/constants';
 import { hubWithPoolFixture } from '../shared/fixtures';
 
+const POS_REF_ID = 777;
+
 describe('hub set limit order', () => {
   let hub: IMockMuffinHub;
   let caller: MockCaller;
@@ -27,7 +29,7 @@ describe('hub set limit order', () => {
       tickUpper: tickUpper,
       liquidityD8: 100,
       recipient: user.address,
-      positionRefId: 1,
+      positionRefId: POS_REF_ID,
       senderAccRefId: 0,
       data: [],
     });
@@ -40,11 +42,11 @@ describe('hub set limit order', () => {
       0,
       tickLower,
       tickUpper,
-      1,
+      POS_REF_ID,
       LimitOrderType.ZERO_FOR_ONE,
     );
     await expect(promise)
       .to.emit(hub, 'SetLimitOrderType')
-      .withArgs(poolId, user.address, 1, 0, tickLower, tickUpper, LimitOrderType.ZERO_FOR_ONE);
+      .withArgs(poolId, user.address, POS_REF_ID, 0, tickLower, tickUpper, LimitOrderType.ZERO_FOR_ONE);
   });
 });

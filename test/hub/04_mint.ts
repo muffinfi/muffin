@@ -8,6 +8,9 @@ import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { hubWithPoolFixture } from '../shared/fixtures';
 import { bn, getEvent } from '../shared/utils';
 
+const ACC_REF_ID = 1;
+const POS_REF_ID = 777;
+
 describe('hub mint', () => {
   let hub: IMockMuffinHub;
   let caller: MockCaller;
@@ -30,7 +33,7 @@ describe('hub mint', () => {
       tickUpper: MAX_TICK,
       liquidityD8: 1,
       recipient: user.address,
-      positionRefId: 1,
+      positionRefId: POS_REF_ID,
       senderAccRefId: 0,
       data: [],
       ...params,
@@ -60,7 +63,7 @@ describe('hub mint', () => {
   it('mint successfully using token transfer', async () => {
     const reserve0Before = await token0.balanceOf(hub.address);
     const reserve1Before = await token1.balanceOf(hub.address);
-    await expect(mint()).to.emit(hub, 'Mint').withArgs(poolId, user.address, 1, 0, MIN_TICK, MAX_TICK, 1, 256, 256);
+    await expect(mint()).to.emit(hub, 'Mint').withArgs(poolId, user.address, POS_REF_ID, 0, MIN_TICK, MAX_TICK, 1, 256, 256);
     expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(256);
     expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(256);
   });
@@ -71,12 +74,12 @@ describe('hub mint', () => {
       const transferAmount = 256 - internalBalance;
 
       // show we have zero internal balance
-      expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
-      expect(await getAccBalance(token1.address, caller.address, 1)).eq(0);
+      expect(await getAccBalance(token0.address, caller.address, ACC_REF_ID)).eq(0);
+      expect(await getAccBalance(token1.address, caller.address, ACC_REF_ID)).eq(0);
 
       // add some internal balance
-      await hub.addAccountBalance(caller.address, 1, token0.address, internalBalance);
-      await hub.addAccountBalance(caller.address, 1, token1.address, internalBalance);
+      await hub.addAccountBalance(caller.address, ACC_REF_ID, token0.address, internalBalance);
+      await hub.addAccountBalance(caller.address, ACC_REF_ID, token1.address, internalBalance);
 
       // get current token balances in hub
       const reserve0Before = await token0.balanceOf(hub.address);
@@ -84,15 +87,15 @@ describe('hub mint', () => {
 
       // perform mint
       const noNeedCallback = internalBalance == 256;
-      const tx = await mint({ senderAccRefId: 1, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
+      const tx = await mint({ senderAccRefId: ACC_REF_ID, data: noNeedCallback ? utils.id('UNKNOWN') : [] });
 
       // check amount of tokens "transfered" in
       expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(transferAmount);
       expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(transferAmount);
 
       // check internal balances are used up
-      expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
-      expect(await getAccBalance(token1.address, caller.address, 1)).eq(0);
+      expect(await getAccBalance(token0.address, caller.address, ACC_REF_ID)).eq(0);
+      expect(await getAccBalance(token1.address, caller.address, ACC_REF_ID)).eq(0);
 
       // check event data and return values not affected by switching on/off internal account
       const event = await getEvent(tx, hub, 'Mint');

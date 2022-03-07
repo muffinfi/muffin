@@ -8,6 +8,9 @@ import { LimitOrderType } from '../shared/constants';
 import { hubWithPoolFixture } from '../shared/fixtures';
 import { getEvent, wad } from '../shared/utils';
 
+const ACC_REF_ID = 1;
+const POS_REF_ID = 777;
+
 describe('hub collect settled positions', () => {
   let hub: IMockMuffinHub;
   let caller: MockCaller;
@@ -35,15 +38,15 @@ describe('hub collect settled positions', () => {
       tickUpper: tickUpper,
       liquidityD8: 10000,
       recipient: user.address,
-      positionRefId: 1,
+      positionRefId: POS_REF_ID,
       senderAccRefId: 0,
       data: [],
     });
-    await hub.setLimitOrderType(token0.address, token1.address, 0, tickLower, tickUpper, 1, LimitOrderType.ONE_FOR_ZERO);
+    await hub.setLimitOrderType(token0.address, token1.address, 0, tickLower, tickUpper, POS_REF_ID, LimitOrderType.ONE_FOR_ZERO);
     await hub.increaseFeeGrowthGlobal(poolId, wad(1), wad(1));
     await caller.swap(token0.address, token1.address, 0x3f, 300, caller.address, 0, 0, utils.id(''));
-    expect(await getAccBalance(token0.address, user.address, 1)).eq(0);
-    expect(await getAccBalance(token1.address, user.address, 1)).eq(0);
+    expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(0);
+    expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(0);
   });
 
   it('collect successfully', async () => {
@@ -54,14 +57,14 @@ describe('hub collect settled positions', () => {
       tickLower: tickLower,
       tickUpper: tickUpper,
       liquidityD8: 10000,
-      positionRefId: 1,
-      accRefId: 1,
+      positionRefId: POS_REF_ID,
+      accRefId: ACC_REF_ID,
       collectAllFees: false,
     });
     const event = await getEvent(tx, hub, 'CollectSettled');
     expect(event.poolId).eq(poolId);
     expect(event.owner).eq(user.address);
-    expect(event.positionRefId).eq(1);
+    expect(event.positionRefId).eq(POS_REF_ID);
     expect(event.tierId).eq(0);
     expect(event.tickLower).eq(tickLower);
     expect(event.tickUpper).eq(tickUpper);
@@ -71,7 +74,7 @@ describe('hub collect settled positions', () => {
     expect(event.feeAmount0).gt(0);
     expect(event.feeAmount1).gt(0);
 
-    expect(await getAccBalance(token0.address, user.address, 1)).eq(event.amount0.add(event.feeAmount0));
-    expect(await getAccBalance(token1.address, user.address, 1)).eq(event.amount1.add(event.feeAmount1));
+    expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(event.amount0.add(event.feeAmount0));
+    expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(event.amount1.add(event.feeAmount1));
   });
 });
