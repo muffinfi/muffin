@@ -6,25 +6,21 @@ library EMAMath {
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
 
     /**
-     *  Definition:
-     *  EMA[T] = a * P[T] + (1-a) * EMA[T-1]
-     *  -   EMA[T]: EMA price at time T
-     *  -   P[T]:   price at time T
+     *  Definition of EMA:
+     *  S[T] = a * Y[T] + (1-a) * S[T-1]
+     *  -   S[T]:   EMA price at time T
+     *  -   Y[T]:   price at time T
      *  -   a:      smoothing factor, 0 < a ≤ 1
      *
-     *  For 1-second sampling interval,
-     *  -   Using common convention of EMA period:  a = 2/(N+1)
-     *  -   Using half-life:                        a = 1 - 2^(-1/H)
-     *  -   Combining both formula:             =>  a = 1 - (N+1)/(N-1)
+     *  If Y is unchanged for t time steps:
+     *  Let u = 1 - a
+     *  S[T] = (1-u^t) Y[T-t+1] + u^t S[T-t]
      *
-     *  For t-second interval,
-     *  -   a = 1 - ((N-1)/(N+1))^t
-     *
-     *  We want to calculate the decay factor (i.e. 1-a) for a 40-min EMA.
-     *  Let N = 2400 sec,
-     *      u = (N-1)/(N+1) = 0.99916701374...
+     *  Definition of smoothing factor in N-period EMA:  a = 2 / (N+1)
+     *  Let N = 2400 sec
+     *      u = 1 - 2/(N+1) = 0.99916701374...
      *      t = seconds elapsed since last EMA update
-     *  Find d = u^t
+     *  Find u^t
      */
 
     /// @dev Calculate the EMA decay factors for the given time elapsed
