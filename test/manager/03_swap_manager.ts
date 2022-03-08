@@ -142,6 +142,31 @@ describe('manager swap manager', () => {
         },
       );
     });
+
+    it('use internal account partial', async () => {
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 1);
+      await expectBalanceChanges(
+        [
+          { account: user, token: token0, delta: -2 },
+          { account: user, token: token1, delta: 0 },
+          { account: hub, token: token0, delta: 2 },
+          { account: hub, token: token1, delta: 0 },
+        ],
+        async () => {
+          const accBalance0Before = await getAccBalance(token0.address, user.address);
+          const accBalance1Before = await getAccBalance(token1.address, user.address);
+
+          const tx = await manager.exactInSingle(token0.address, token1.address, 0x3f, 3, 0, user.address, true, true, MaxUint256); // prettier-ignore
+          const event = await getEvent(tx, hub, 'Swap');
+          expect(event.poolId).eq(poolId01);
+          expect(event.amount0).eq(3);
+          expect(event.amount1).eq(-1);
+
+          expect((await getAccBalance(token0.address, user.address)).sub(accBalance0Before)).eq(-1);
+          expect((await getAccBalance(token1.address, user.address)).sub(accBalance1Before)).eq(+1);
+        },
+      );
+    });
   });
 
   context('exactIn', () => {

@@ -248,7 +248,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
                 recipient: address(this),
                 positionRefId: tokenId,
                 senderAccRefId: useAccount ? getAccRefId(msg.sender) : 0,
-                data: useAccount ? new bytes(0) : abi.encode(msg.sender)
+                data: abi.encode(msg.sender)
             })
         );
         require(amount0 >= amount0Min && amount1 >= amount1Min, "Price slippage");
