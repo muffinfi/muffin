@@ -74,7 +74,7 @@ describe('hub burn', () => {
   it('burn successfully', async () => {
     await expect(burn({ liquidityD8: 50, collectAllFees: false }))
       .to.emit(hub, 'Burn')
-      .withArgs(poolId, user.address, POSITION_REF_ID, 0, MIN_TICK, MAX_TICK, 50, 12799, 12799, 693, 693);
+      .withArgs(poolId, user.address, POSITION_REF_ID, ACC_REF_ID, 0, MIN_TICK, MAX_TICK, 50, 12799, 12799, 693, 693);
     expect(await getAccBalance(token0.address, user.address, ACC_REF_ID)).eq(12799 + 693);
     expect(await getAccBalance(token1.address, user.address, ACC_REF_ID)).eq(12799 + 693);
   });

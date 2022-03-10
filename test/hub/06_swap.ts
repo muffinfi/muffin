@@ -133,41 +133,46 @@ describe('hub swap', () => {
   });
 
   it('to recipient internal account', async () => {
+    const recipientAccRefId = 777;
     const reserve1Before = await token1.balanceOf(hub.address);
-    const accBalance1Before = await getAccBalance(token1.address, user.address, 1);
+    const accBalance1Before = await getAccBalance(token1.address, user.address, recipientAccRefId);
 
-    await swap({ amountDesired: -10000, recipient: user.address, recipientAccRefId: 1 });
+    const tx = await swap({ amountDesired: -10000, recipient: user.address, recipientAccRefId });
+    const event = await getEvent(tx, hub, 'Swap');
+    expect(event.recipientAccRefId).eq(recipientAccRefId);
 
     // check no token left the contract, and recipient internal balance increased
     expect(await token1.balanceOf(hub.address)).eq(reserve1Before);
-    expect(await getAccBalance(token1.address, user.address, 1)).eq(accBalance1Before.add(10000));
+    expect(await getAccBalance(token1.address, user.address, recipientAccRefId)).eq(accBalance1Before.add(10000));
   });
 
   context('from sender internal account', () => {
     const run = async (internalBalance: number) => {
+      const senderAccRefId = 777;
       const amountDesired = 10000;
       const transferAmount = amountDesired - internalBalance;
       expect(internalBalance >= 0 && internalBalance <= amountDesired).to.be.true;
 
       // show we have zero internal balance
-      expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
+      expect(await getAccBalance(token0.address, caller.address, senderAccRefId)).eq(0);
 
       // add some internal balance
-      await hub.addAccountBalance(caller.address, 1, token0.address, internalBalance);
+      await hub.addAccountBalance(caller.address, senderAccRefId, token0.address, internalBalance);
 
       // get current token balances in hub
       const reserve0Before = await token0.balanceOf(hub.address);
 
       // perform swap
-      const tx = await swap({ amountDesired, senderAccRefId: 1 });
+      const tx = await swap({ amountDesired, senderAccRefId });
       const event = await getEvent(tx, hub, 'Swap');
       expect(event.amount0).eq(amountDesired);
+      expect(event.senderAccRefId).eq(senderAccRefId);
 
       // check amount of tokens "transfered" in
       expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(transferAmount);
 
       // check internal balances are used up
-      expect(await getAccBalance(token0.address, caller.address, 1)).eq(0);
+      expect(await getAccBalance(token0.address, caller.address, senderAccRefId)).eq(0);
     };
 
     it('cover all input', async () => {
