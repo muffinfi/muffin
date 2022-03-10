@@ -63,7 +63,9 @@ describe('hub mint', () => {
   it('mint successfully using token transfer', async () => {
     const reserve0Before = await token0.balanceOf(hub.address);
     const reserve1Before = await token1.balanceOf(hub.address);
-    await expect(mint()).to.emit(hub, 'Mint').withArgs(poolId, user.address, POS_REF_ID, 0, 0, MIN_TICK, MAX_TICK, 1, 256, 256);
+    await expect(mint())
+      .to.emit(hub, 'Mint')
+      .withArgs(poolId, user.address, POS_REF_ID, 0, MIN_TICK, MAX_TICK, caller.address, 0, 1, 256, 256);
     expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(256);
     expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(256);
   });
@@ -101,6 +103,7 @@ describe('hub mint', () => {
       const event = await getEvent(tx, hub, 'Mint');
       expect(event.amount0).eq(256);
       expect(event.amount1).eq(256);
+      expect(event.sender).eq(caller.address);
       expect(event.senderAccRefId).eq(ACC_REF_ID);
     };
 
