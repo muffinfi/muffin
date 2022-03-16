@@ -1,6 +1,7 @@
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
+import 'dotenv/config';
 import 'hardhat-contract-sizer';
 import 'hardhat-storage-layout';
 import { HardhatUserConfig, task } from 'hardhat/config';
@@ -47,6 +48,17 @@ const config: HardhatUserConfig = {
       initialBaseFeePerGas: 0,
       gasPrice: 0,
     },
+    rinkeby: {
+      url: process.env.RINKEBY_RPC,
+      accounts: process.env.RINKEBY_ACCOUNT ? [process.env.RINKEBY_ACCOUNT] : undefined
+    },
+    arbitrumTestnet: {
+      url: 'https://rinkeby.arbitrum.io/rpc',
+      accounts: process.env.ARBITRUM_TESTNET_ACCOUNT ? [process.env.ARBITRUM_TESTNET_ACCOUNT] : undefined
+    },
+    arbitrum: {
+      url: 'https://arb1.arbitrum.io/rpc',
+    }
   },
   solidity: {
     compilers: [basicCompiler],

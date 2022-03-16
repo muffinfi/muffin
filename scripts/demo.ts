@@ -18,6 +18,7 @@ async function main() {
   let WETH_ADDRESS;
   if (network.name === 'hardhat') WETH_ADDRESS = (await deploy('WETH9')).address;
   else if (network.name === 'rinkeby') WETH_ADDRESS = '0xc778417e063141139fce010982780140aa0cd5ab';
+  else if (network.name === 'arbitrumTestnet') WETH_ADDRESS = '0xb47e6a5f8b33b3f17603c83a0535a9dcd7e32681';
   else throw new Error('unknown network');
 
   // 2. deploy mock tokens
@@ -114,7 +115,7 @@ async function main() {
         : [usdc, weth, bn(1).shl(288).div(ethUsdPrice)];
 
     await logTx(weth.deposit({ value: 1e8 }), 'mint weth');
-    await logTx(weth.approve(hub.address, constants.MaxUint256), 'approve weth to manager');
+    await logTx(weth.approve(manager.address, constants.MaxUint256), 'approve weth to manager');
     await logTx(
       manager.createPool(token0.address, token1.address, 99850, sqrt(price), { gasLimit: 600_000 }),
       'create weth-usdc pool',
@@ -122,7 +123,7 @@ async function main() {
   }
 
   // 16. perform a swap
-  await manager.exactInSingle(usdc.address, wbtc.address, 0x3f, 100, 0, user.address, false, true, constants.MaxUint256);
+  await manager.exactInSingle(usdc.address, wbtc.address, 0b111111, 100, 0, user.address, false, true, constants.MaxUint256);
 }
 
 main()
