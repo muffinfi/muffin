@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 /**
  * @dev https://github.com/Uniswap/uniswap-v3-core/blob/v1.0.0/contracts/libraries/FullMath.sol
@@ -129,12 +129,9 @@ library FullMath {
         uint256 b,
         uint256 denominator
     ) internal pure returns (uint256 result) {
-        unchecked {
-            result = mulDiv(a, b, denominator);
-            if (mulmod(a, b, denominator) > 0) {
-                require(result < type(uint256).max);
-                result++;
-            }
+        result = mulDiv(a, b, denominator);
+        if (mulmod(a, b, denominator) > 0) {
+            result++;
         }
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 interface IMuffinHubPositionsActions {
     /// @notice                 Parameters for the mint function
@@ -134,5 +134,5 @@ interface IMuffinHubPositionsActions {
     ) external;
 
     /// @notice Collect the protocol fee accrued
-    function collectProtocolFee(address token, address recipient) external;
+    function collectProtocolFee(address token, address recipient) external returns (uint256 amount);
 }

@@ -1,31 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.10;
-
-library UnsafeMath {
-    /// @dev Division by 0 has unspecified behavior, and must be checked externally.
-    function ceilDiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        assembly {
-            z := add(div(x, y), gt(mod(x, y), 0))
-        }
-    }
-}
+pragma solidity ^0.8.0;
 
 library Math {
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 96-bit unsigned integer
     function addInt96(uint96 x, int96 y) internal pure returns (uint96 z) {
         unchecked {
-            int256 s = int256(uint256(x)) + int256(y);
-            assert(s >= 0 && s <= int256(uint256(type(uint96).max)));
-            z = uint96(uint256(s));
+            uint256 s = x + uint256(int256(y)); // overflow is fine here
+            assert(s <= type(uint96).max);
+            z = uint96(s);
         }
     }
 
     /// @dev Compute z = x + y, where z must be non-negative and fit in a 128-bit unsigned integer
     function addInt128(uint128 x, int128 y) internal pure returns (uint128 z) {
         unchecked {
-            int256 s = int256(uint256(x)) + y; // won't overflow
-            assert(s >= 0 && s <= int256(uint256(type(uint128).max)));
-            z = uint128(uint256(s));
+            uint256 s = x + uint256(int256(y)); // overflow is fine here
+            assert(s <= type(uint128).max);
+            z = uint128(s);
         }
     }
 

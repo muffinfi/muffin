@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 library TickMath {
     uint256 private constant Q56 = 0x100000000000000;
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
 
+    /// @dev Minimum tick supported in this protocol
     int24 internal constant MIN_TICK = -776363;
+    /// @dev Maximum tick supported in this protocol
     int24 internal constant MAX_TICK = 776363;
+    /// @dev Minimum sqrt price, i.e. tickToSqrtPrice(MIN_TICK)
     uint128 internal constant MIN_SQRT_P = 65539;
+    /// @dev Maximum sqrt price, i.e. tickToSqrtPrice(MAX_TICK)
     uint128 internal constant MAX_SQRT_P = 340271175397327323250730767849398346765;
 
     /**
@@ -113,7 +117,7 @@ library TickMath {
             int24 tickUpper = int24((r + 17996007701288367970265332090599899137) >> 128);
             int24 tickLower = int24(
                 r < -230154402537746701963478439606373042805014528 ? (r - 98577143636729737466164032634120830977) >> 128 :
-                r < -162097929153559009270803518120019400513814528 ? (r - 243593344879128563154481485709313) >> 128 :
+                r < -162097929153559009270803518120019400513814528 ? (r - 527810000259722480933883300202676225) >> 128 :
                 r >> 128
             );
             tick = (tickUpper == tickLower || sqrtP >= tickToSqrtPrice(tickUpper)) ? tickUpper : tickLower;

@@ -238,6 +238,31 @@ describe('manager position manager', () => {
       expect((await getAccBalance(token1.address, user.address)).sub(userAccBalance1Before)).eq(-event.amount1);
     });
 
+    it('use internal account partially', async () => {
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 100);
+      await hub.addAccountBalance(manager.address, bn(user.address), token1.address, 100);
+
+      const reserve0Before = await token0.balanceOf(hub.address);
+      const reserve1Before = await token1.balanceOf(hub.address);
+      const userBalance0Before = await token0.balanceOf(user.address);
+      const userBalance1Before = await token1.balanceOf(user.address);
+      const userAccBalance0Before = await getAccBalance(token0.address, user.address);
+      const userAccBalance1Before = await getAccBalance(token1.address, user.address);
+
+      const tx = await manager.mint({ ...baseParams(), useAccount: true });
+
+      // check no real token transfer
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(25600 - 100);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(25600 - 100);
+      expect((await token0.balanceOf(user.address)).sub(userBalance0Before)).eq(100 - 25600);
+      expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(100 - 25600);
+
+      // check use internal balance used
+      const event = await getEvent(tx, hub, 'Mint');
+      expect((await getAccBalance(token0.address, user.address)).sub(userAccBalance0Before)).eq(-100);
+      expect((await getAccBalance(token1.address, user.address)).sub(userAccBalance1Before)).eq(-100);
+    });
+
     it('eth in (multicall: refundETH)', async () => {
       await checkEthBalanceChanges([-25600, 0, 0], [0, 0, 25600], async () => {
         const tx = await manager.multicall(

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
+import "./math/TickMath.sol";
 import "./Tiers.sol";
 import "./Ticks.sol";
 import "./TickMaps.sol";
@@ -39,13 +40,13 @@ library Settlement {
      * @param tickUpper         Upper tick boundary of the position
      * @param limitOrderType    Direction of the limit order (i.e. token0 or token1)
      * @param liquidityDeltaD8  Change of the amount of liquidity to be settled
-     * @param isAdd             True if the change is additive
+     * @param isAdd             True if the liquidity change is additive. False otherwise.
      * @param defaultTickSpacing Default tick spacing of limit orders. Only needed when initializing
      * @return nextSnapshotId   Settlement's next snapshot id
      * @return tickSpacing      Tick spacing of the limit orders pending to be settled
      */
     function update(
-        mapping(int24 => Settlement.Info[2]) storage settlements,
+        mapping(int24 => Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         int24 tickLower,
         int24 tickUpper,
@@ -54,7 +55,7 @@ library Settlement {
         bool isAdd,
         uint16 defaultTickSpacing
     ) internal returns (uint32 nextSnapshotId, uint16 tickSpacing) {
-        assert(limitOrderType != Positions.NOT_LIMIT_ORDER);
+        assert(limitOrderType == Positions.ZERO_FOR_ONE || limitOrderType == Positions.ONE_FOR_ZERO);
 
         Info storage settlement = limitOrderType == Positions.ZERO_FOR_ONE
             ? settlements[tickUpper][1]
@@ -66,9 +67,10 @@ library Settlement {
             : settlement.liquidityD8 - liquidityDeltaD8;
 
         // initialize settlement if it's the first limit order at this tick
+        nextSnapshotId = settlement.nextSnapshotId;
         if (settlement.tickSpacing == 0) {
             settlement.tickSpacing = defaultTickSpacing;
-            settlement.snapshots[settlement.nextSnapshotId] = Snapshot(0, 0, 1); // pre-fill to reduce SSTORE gas during swap
+            settlement.snapshots[nextSnapshotId] = Snapshot(0, 0, 1); // pre-fill to reduce SSTORE gas during swap
         }
 
         // if no liqudity to settle, clear tick spacing so as to set a latest one next time
@@ -83,12 +85,12 @@ library Settlement {
         }
 
         // return data for validating position's settling status
-        return (settlement.nextSnapshotId, settlement.tickSpacing);
+        tickSpacing = settlement.tickSpacing;
     }
 
     /// @dev Bridging function to sidestep "stack too deep" problem
     function update(
-        mapping(int24 => Settlement.Info[2]) storage settlements,
+        mapping(int24 => Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         int24 tickLower,
         int24 tickUpper,
@@ -96,6 +98,7 @@ library Settlement {
         int96 liquidityDeltaD8,
         uint16 defaultTickSpacing
     ) internal returns (uint32 nextSnapshotId) {
+        bool isAdd = liquidityDeltaD8 > 0;
         unchecked {
             (nextSnapshotId, ) = update(
                 settlements,
@@ -103,8 +106,8 @@ library Settlement {
                 tickLower,
                 tickUpper,
                 limitOrderType,
-                uint96(liquidityDeltaD8 < 0 ? -liquidityDeltaD8 : liquidityDeltaD8),
-                liquidityDeltaD8 > 0,
+                uint96(isAdd ? liquidityDeltaD8 : -liquidityDeltaD8),
+                isAdd,
                 defaultTickSpacing
             );
         }
@@ -112,7 +115,7 @@ library Settlement {
 
     /**
      * @notice Settle single-sided positions, i.e. filled limit orders, that ends at the tick `tickEnd`.
-     * @dev Called during a swap right after tickEnd is crossed. It updates settlement and tick, and possibly tickmap
+     * @dev Called during a swap right after tickEnd is crossed. It updates settlement and tick, and possibly tickmap.
      * @param settlements   Mapping of settlements of each tick
      * @param ticks         Mapping of ticks of a tier
      * @param tickMap       Tick bitmap of a tier
@@ -121,14 +124,14 @@ library Settlement {
      * @param token0In      The direction of the ongoing swap
      */
     function settle(
-        mapping(int24 => Settlement.Info[2]) storage settlements,
+        mapping(int24 => Info[2]) storage settlements,
         mapping(int24 => Ticks.Tick) storage ticks,
         TickMaps.TickMap storage tickMap,
         Tiers.Tier memory tier,
         int24 tickEnd,
         bool token0In
     ) internal {
-        Info storage settlement;
+        Info storage settlement; // we assume settlement is intialized
         int24 tickStart; // i.e. the starting tick of the limit orders
         Ticks.Tick storage start;
         Ticks.Tick storage end = ticks[tickEnd];
@@ -136,7 +139,7 @@ library Settlement {
         unchecked {
             if (token0In) {
                 settlement = settlements[tickEnd][0];
-                tickStart = tickEnd + int24(uint24(settlement.tickSpacing));
+                tickStart = tickEnd + int16(settlement.tickSpacing);
                 start = ticks[tickStart];
 
                 // remove liquidity changes on ticks (effect)
@@ -145,7 +148,7 @@ library Settlement {
                 end.needSettle0 = false;
             } else {
                 settlement = settlements[tickEnd][1];
-                tickStart = tickEnd - int24(uint24(settlement.tickSpacing));
+                tickStart = tickEnd - int16(settlement.tickSpacing);
                 start = ticks[tickStart];
 
                 // remove liquidity changes on ticks (effect)
@@ -153,6 +156,9 @@ library Settlement {
                 end.liquidityUpperD8 -= settlement.liquidityD8;
                 end.needSettle1 = false;
             }
+
+            // play extra safe to ensure settlement is initialized
+            assert(tickStart != tickEnd);
 
             // snapshot data inside the tick range (effect)
             settlement.snapshots[settlement.nextSnapshotId] = Snapshot(
@@ -169,6 +175,7 @@ library Settlement {
 
         // delete the starting tick if empty (effect)
         if (start.liquidityLowerD8 == 0 && start.liquidityUpperD8 == 0) {
+            assert(tickStart != TickMath.MIN_TICK && tickStart != TickMath.MAX_TICK);
             int24 below = start.nextBelow;
             int24 above = start.nextAbove;
             ticks[below].nextAbove = above;
@@ -179,6 +186,7 @@ library Settlement {
 
         // delete the ending tick if empty (effect), and update tier's next ticks (locally)
         if (end.liquidityLowerD8 == 0 && end.liquidityUpperD8 == 0) {
+            assert(tickEnd != TickMath.MIN_TICK && tickEnd != TickMath.MAX_TICK);
             int24 below = end.nextBelow;
             int24 above = end.nextAbove;
             ticks[below].nextAbove = above;
@@ -202,12 +210,12 @@ library Settlement {
      * @return snapshot     Data snapshot if position is settled
      */
     function getSnapshot(
-        mapping(int24 => Settlement.Info[2]) storage settlements,
+        mapping(int24 => Info[2]) storage settlements,
         Positions.Position storage position,
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (bool settled, Snapshot memory snapshot) {
-        if (position.limitOrderType != Positions.NOT_LIMIT_ORDER) {
+        if (position.limitOrderType == Positions.ZERO_FOR_ONE || position.limitOrderType == Positions.ONE_FOR_ZERO) {
             Info storage settlement = position.limitOrderType == Positions.ZERO_FOR_ONE
                 ? settlements[tickUpper][1]
                 : settlements[tickLower][0];

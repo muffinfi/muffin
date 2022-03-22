@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 import "./Math.sol";
+import "./UnsafeMath.sol";
 import "./FullMath.sol";
 
 library PoolMath {
@@ -16,8 +17,8 @@ library PoolMath {
     /// i.e. Δx = L (√P0 - √P1) / (√P0 √P1)
     ///
     /// @dev Rounding rules:
-    /// if sqrtP0 > sqrtP1 (price goes down):   => amt0 is input    => round up
-    /// if sqrtP0 < sqrtP1 (price goes up):     => amt1 is output   => round down
+    /// if sqrtP0 > sqrtP1 (price goes down):   => amt0 is input    => round away from zero
+    /// if sqrtP0 < sqrtP1 (price goes up):     => amt0 is output   => round towards zero
     function calcAmt0FromSqrtP(
         uint128 sqrtP0,
         uint128 sqrtP1,
@@ -27,8 +28,8 @@ library PoolMath {
             bool priceUp = sqrtP1 > sqrtP0;
             if (priceUp) (sqrtP0, sqrtP1) = (sqrtP1, sqrtP0);
 
-            uint num = uint(liquidity) * (sqrtP0 - sqrtP1);
-            uint denom = uint(sqrtP0) * sqrtP1;
+            uint256 num = uint256(liquidity) * (sqrtP0 - sqrtP1);
+            uint256 denom = uint256(sqrtP0) * sqrtP1;
             amt0 = Math.toInt256(
                 num < Q184
                     ? (priceUp ? (num << 72) / denom : UnsafeMath.ceilDiv(num << 72, denom))
@@ -42,8 +43,8 @@ library PoolMath {
     /// i.e. Δy = L (√P0 - √P1)
     ///
     /// @dev Rounding rules:
-    /// if sqrtP0 > sqrtP1 (price goes down):   => amt1 is output   => round down
-    /// if sqrtP0 < sqrtP1 (price goes up):     => amt1 is input    => round up
+    /// if sqrtP0 > sqrtP1 (price goes down):   => amt1 is output   => round towards zero
+    /// if sqrtP0 < sqrtP1 (price goes up):     => amt1 is input    => round away from zero
     function calcAmt1FromSqrtP(
         uint128 sqrtP0,
         uint128 sqrtP1,
@@ -53,7 +54,7 @@ library PoolMath {
             bool priceDown = sqrtP1 < sqrtP0;
             if (priceDown) (sqrtP0, sqrtP1) = (sqrtP1, sqrtP0);
 
-            uint num = uint(liquidity) * (sqrtP1 - sqrtP0);
+            uint256 num = uint256(liquidity) * (sqrtP1 - sqrtP0);
             amt1 = (priceDown ? num >> 72 : UnsafeMath.ceilDiv(num, Q72)).toInt256();
             if (priceDown) amt1 *= -1;
         }
@@ -74,15 +75,15 @@ library PoolMath {
     ) internal pure returns (uint128 sqrtP1) {
         unchecked {
             if (amt0 == 0) return sqrtP0;
-            uint absAmt0 = uint(amt0 < 0 ? -amt0 : amt0);
-            uint product = absAmt0 * sqrtP0;
-            uint liquidityX72 = uint(liquidity) << 72;
-            uint denom;
+            uint256 absAmt0 = uint256(amt0 < 0 ? -amt0 : amt0);
+            uint256 product = absAmt0 * sqrtP0;
+            uint256 liquidityX72 = uint256(liquidity) << 72;
+            uint256 denom;
 
             if (amt0 > 0) {
                 if ((product / absAmt0 == sqrtP0) && ((denom = liquidityX72 + product) >= liquidityX72)) {
                     // if product and denom don't overflow:
-                    uint num = uint(liquidity) * sqrtP0;
+                    uint256 num = uint256(liquidity) * sqrtP0;
                     sqrtP1 = num < Q184
                         ? uint128(UnsafeMath.ceilDiv(num << 72, denom)) // denom > 0
                         : uint128(FullMath.mulDivRoundingUp(num, Q72, denom));
@@ -95,7 +96,7 @@ library PoolMath {
                 require(product / absAmt0 == sqrtP0);
                 require((denom = liquidityX72 - product) <= liquidityX72);
                 require(denom != 0);
-                uint num = uint(liquidity) * sqrtP0;
+                uint256 num = uint256(liquidity) * sqrtP0;
                 sqrtP1 = num < Q184
                     ? UnsafeMath.ceilDiv(num << 72, denom).toUint128()
                     : FullMath.mulDivRoundingUp(num, Q72, denom).toUint128();
@@ -119,19 +120,19 @@ library PoolMath {
             if (amt1 < 0) {
                 // price moves down
                 require(liquidity != 0);
-                uint absAmt1 = uint(-amt1);
-                uint absAmt1DivL = absAmt1 < Q184
+                uint256 absAmt1 = uint256(-amt1);
+                uint256 absAmt1DivL = absAmt1 < Q184
                     ? UnsafeMath.ceilDiv(absAmt1 * Q72, liquidity)
                     : FullMath.mulDivRoundingUp(absAmt1, Q72, liquidity);
 
-                sqrtP1 = uint(sqrtP0).sub(absAmt1DivL).toUint128();
+                sqrtP1 = uint256(sqrtP0).sub(absAmt1DivL).toUint128();
             } else {
                 // price moves up
-                uint amt1DivL = uint(amt1) < Q184
-                    ? (uint(amt1) * Q72) / liquidity
-                    : FullMath.mulDiv(uint(amt1), Q72, liquidity);
+                uint256 amt1DivL = uint256(amt1) < Q184
+                    ? (uint256(amt1) * Q72) / liquidity
+                    : FullMath.mulDiv(uint256(amt1), Q72, liquidity);
 
-                sqrtP1 = uint(sqrtP0).add(amt1DivL).toUint128();
+                sqrtP1 = uint256(sqrtP0).add(amt1DivL).toUint128();
             }
         }
     }
@@ -154,12 +155,12 @@ library PoolMath {
             uint128 absL = uint128(uint96(liquidityDeltaD8 >= 0 ? liquidityDeltaD8 : -liquidityDeltaD8)) << 8;
             if (liquidityDeltaD8 >= 0) {
                 // round up
-                amt0 = uint(calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL));
-                amt1 = uint(calcAmt1FromSqrtP(sqrtPLower, sqrtP, absL));
+                amt0 = uint256(calcAmt0FromSqrtP(sqrtPUpper, sqrtP, absL));
+                amt1 = uint256(calcAmt1FromSqrtP(sqrtPLower, sqrtP, absL));
             } else {
                 // round down
-                amt0 = uint(-calcAmt0FromSqrtP(sqrtP, sqrtPUpper, absL));
-                amt1 = uint(-calcAmt1FromSqrtP(sqrtP, sqrtPLower, absL));
+                amt0 = uint256(-calcAmt0FromSqrtP(sqrtP, sqrtPUpper, absL));
+                amt1 = uint256(-calcAmt1FromSqrtP(sqrtP, sqrtPLower, absL));
             }
         }
     }
@@ -174,16 +175,16 @@ library PoolMath {
     ) internal pure returns (uint96 liquidityD8) {
         // we assume {sqrtP, sqrtPLower, sqrtPUpper} ≠ 0 and sqrtPLower < sqrtPUpper
         unchecked {
-            uint liquidity;
+            uint256 liquidity;
             if (sqrtP <= sqrtPLower) {
                 // L = Δx (√P0 √P1) / (√P0 - √P1)
-                liquidity = FullMath.mulDiv(amt0, uint(sqrtPLower) * sqrtPUpper, (sqrtPUpper - sqrtPLower) * Q72);
+                liquidity = FullMath.mulDiv(amt0, uint256(sqrtPLower) * sqrtPUpper, (sqrtPUpper - sqrtPLower) * Q72);
             } else if (sqrtP >= sqrtPUpper) {
                 // L = Δy / (√P0 - √P1)
                 liquidity = FullMath.mulDiv(amt1, Q72, sqrtPUpper - sqrtPLower);
             } else {
-                uint liquidity0 = FullMath.mulDiv(amt0, uint(sqrtP) * sqrtPUpper, (sqrtPUpper - sqrtP) * Q72);
-                uint liquidity1 = FullMath.mulDiv(amt1, Q72, sqrtP - sqrtPLower);
+                uint256 liquidity0 = FullMath.mulDiv(amt0, uint256(sqrtP) * sqrtPUpper, (sqrtPUpper - sqrtP) * Q72);
+                uint256 liquidity1 = FullMath.mulDiv(amt1, Q72, sqrtP - sqrtPLower);
                 liquidity = (liquidity0 < liquidity1 ? liquidity0 : liquidity1);
             }
             liquidityD8 = (liquidity >> 8).toUint96();

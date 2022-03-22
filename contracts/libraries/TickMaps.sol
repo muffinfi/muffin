@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
-import "./Constants.sol";
+import "./math/TickMath.sol";
 
 library TickMaps {
     struct TickMap {
-        uint256 blockmap; //                    stores which blocks are initialized
+        uint256 blockMap; //                    stores which blocks are initialized
         mapping(uint256 => uint256) blocks; //  stores which words are initialized
         mapping(uint256 => uint256) words; //   stores which ticks are initialized
     }
 
     /// @dev Compress and convert tick into an unsigned integer, then compute the indices of the block and word that the
-    /// compressed tick uses. Assume tick >= Constants.MIN_TICK
+    /// compressed tick uses. Assume tick >= TickMath.MIN_TICK
     function _indices(int24 tick)
         internal
         pure
@@ -22,17 +22,17 @@ library TickMaps {
         )
     {
         unchecked {
-            compressed = uint256(int256((tick - Constants.MIN_TICK) / Constants.MIN_TICK_SPACING));
+            compressed = uint256(int256((tick - TickMath.MIN_TICK)));
             blockIdx = compressed >> 16;
             wordIdx = compressed >> 8;
             assert(blockIdx < 256);
         }
     }
 
-    /// @dev Convert the unsigned integer back to a tick
+    /// @dev Convert the unsigned integer back to a tick. Assume "compressed" is a valid value, computed by _indices function.
     function _decompress(uint256 compressed) internal pure returns (int24 tick) {
         unchecked {
-            tick = int24(int256(compressed) * Constants.MIN_TICK_SPACING + Constants.MIN_TICK);
+            tick = int24(int256(compressed) + TickMath.MIN_TICK);
         }
     }
 
@@ -41,7 +41,7 @@ library TickMaps {
 
         self.words[wordIdx] |= 1 << (compressed & 0xFF);
         self.blocks[blockIdx] |= 1 << (wordIdx & 0xFF);
-        self.blockmap |= 1 << blockIdx;
+        self.blockMap |= 1 << blockIdx;
     }
 
     function unset(TickMap storage self, int24 tick) internal {
@@ -51,12 +51,12 @@ library TickMaps {
         if (self.words[wordIdx] == 0) {
             self.blocks[blockIdx] &= ~(1 << (wordIdx & 0xFF));
             if (self.blocks[blockIdx] == 0) {
-                self.blockmap &= ~(1 << blockIdx);
+                self.blockMap &= ~(1 << blockIdx);
             }
         }
     }
 
-    /// @dev Find the next initialized tick below the given tick. Assume tick >= Constants.MIN_TICK
+    /// @dev Find the next initialized tick below the given tick. Assume tick >= TickMath.MIN_TICK
     // How to find the next initialized bit below the i-th bit inside a word (e.g. i = 8)?
     // 1)  Mask _off_ the word from the 8th bit to the 255th bit (zero-indexed)
     // 2)  Find the most significant bit of the masked word
@@ -75,10 +75,10 @@ library TickMaps {
             if (word == 0) {
                 uint256 block_ = self.blocks[blockIdx] & ((1 << (wordIdx & 0xFF)) - 1);
                 if (block_ == 0) {
-                    uint256 blockmap = self.blockmap & ((1 << blockIdx) - 1);
-                    assert(blockmap != 0);
+                    uint256 blockMap = self.blockMap & ((1 << blockIdx) - 1);
+                    assert(blockMap != 0);
 
-                    blockIdx = _msb(blockmap);
+                    blockIdx = _msb(blockMap);
                     block_ = self.blocks[blockIdx];
                 }
                 wordIdx = (blockIdx << 8) | _msb(block_);

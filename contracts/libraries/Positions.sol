@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 import "./math/Math.sol";
-import "./Constants.sol";
 
 library Positions {
     struct Position {
@@ -73,10 +72,12 @@ library Positions {
                 self.feeGrowthInside1Last = feeGrowthInside1;
                 //
             } else if (liquidityDeltaD8 > 0) {
-                feeGrowthInside0 -= uint80((uint256(liquidityD8) * feeGrowthDelta0) / liquidityD8New);
-                feeGrowthInside1 -= uint80((uint256(liquidityD8) * feeGrowthDelta1) / liquidityD8New);
-                self.feeGrowthInside0Last = feeGrowthInside0;
-                self.feeGrowthInside1Last = feeGrowthInside1;
+                self.feeGrowthInside0Last =
+                    feeGrowthInside0 -
+                    uint80((uint256(liquidityD8) * feeGrowthDelta0) / liquidityD8New);
+                self.feeGrowthInside1Last =
+                    feeGrowthInside1 -
+                    uint80((uint256(liquidityD8) * feeGrowthDelta1) / liquidityD8New);
                 //
             } else if (liquidityDeltaD8 < 0) {
                 feeAmtOut0 = (uint256(uint96(-liquidityDeltaD8)) * feeGrowthDelta0) >> 56;

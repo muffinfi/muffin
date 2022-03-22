@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 interface IMuffinHubActions {
     /// @notice                 Deposit token into recipient's account
-    /// @dev                    DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds
+    /// @dev                    DO NOT deposit rebasing tokens or multiple-address tokens as it will cause loss of funds.
+    ///                         DO NOT withdraw the token you deposit or swap the token out from the contract during the callback.
     /// @param recipient        Recipient's address
     /// @param recipientAccRefId Recipient's account id
     /// @param token            Address of the token to deposit
@@ -36,13 +37,14 @@ interface IMuffinHubActions {
     /// @param sqrtGamma        Sqrt (1 - percentage swap fee of the tier) (precision: 1e5)
     /// @param sqrtPrice        Sqrt price of token0 denominated in token1 (UQ56.72)
     /// @param senderAccRefId   Sender's account id, for paying the base liquidity
+    /// @return poolId          Pool id
     function createPool(
         address token0,
         address token1,
         uint24 sqrtGamma,
         uint128 sqrtPrice,
         uint256 senderAccRefId
-    ) external;
+    ) external returns (bytes32 poolId);
 
     /// @notice                 Add a new tier to a pool. Called by governanace only.
     /// @param token0           Address of token0 of the pool

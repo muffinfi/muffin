@@ -208,7 +208,7 @@ contract MockPool {
         TickMaps.TickMap storage map = pool.tickMaps[tierId];
         (uint256 blockIdx, uint256 wordIdx, uint256 compressed) = TickMaps._indices(tick);
 
-        require(map.blockmap & (1 << blockIdx) > 0 == set);
+        require(map.blockMap & (1 << blockIdx) > 0 == set);
         require(map.blocks[blockIdx] & (1 << (wordIdx & 0xFF)) > 0 == set);
         require(map.words[wordIdx] & (1 << (compressed & 0xFF)) > 0 == set);
     }

@@ -65,7 +65,7 @@ abstract contract SwapManager is ManagerBase {
             toAccount ? address(this) : recipient,
             toAccount ? getAccRefId(recipient) : 0,
             fromAccount ? getAccRefId(msg.sender) : 0,
-            fromAccount ? new bytes(0) : abi.encode(msg.sender)
+            abi.encode(msg.sender)
         );
         require(amountOut >= amountOutMinimum, "TOO_LITTLE_RECEIVED");
     }
@@ -97,7 +97,7 @@ abstract contract SwapManager is ManagerBase {
                 recipient: toAccount ? address(this) : recipient,
                 recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
                 senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
-                data: fromAccount ? new bytes(0) : abi.encode(msg.sender)
+                data: abi.encode(msg.sender)
             })
         );
         require(amountOut >= amountOutMinimum, "TOO_LITTLE_RECEIVED");
@@ -135,7 +135,7 @@ abstract contract SwapManager is ManagerBase {
             toAccount ? address(this) : recipient,
             toAccount ? getAccRefId(recipient) : 0,
             fromAccount ? getAccRefId(msg.sender) : 0,
-            fromAccount ? new bytes(0) : abi.encode(msg.sender)
+            abi.encode(msg.sender)
         );
         require(amountIn <= amountInMaximum, "TOO_MUCH_REQUESTED");
     }
@@ -167,7 +167,7 @@ abstract contract SwapManager is ManagerBase {
                 recipient: toAccount ? address(this) : recipient,
                 recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
                 senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
-                data: fromAccount ? new bytes(0) : abi.encode(msg.sender)
+                data: abi.encode(msg.sender)
             })
         );
         require(amountIn <= amountInMaximum, "TOO_MUCH_REQUESTED");

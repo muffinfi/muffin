@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 import "./FullMath.sol";
 import "./PoolMath.sol";
+import "./UnsafeMath.sol";
 import "./Math.sol";
 import "../Tiers.sol";
 
@@ -11,11 +12,16 @@ library SwapMath {
     using Math for int256;
 
     uint256 internal constant MAX_TIERS = 6;
-    int256 private constant REJECTED = type(int256).max;
+    int256 internal constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
     int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
 
-    /// @dev calculate the optimized input amount for each tier using lagragian multiplier.
+    /// @notice Given a set of tiers and the desired input amount, calculate the optimized input amount for each tier
+    /// @param tiers        List of tiers
+    /// @param isToken0     True if "amount" refers to token0
+    /// @param amount       Desired input amount of the swap (must be positive)
+    /// @param tierChoices  Bitmap to allow which tiers to swap
+    /// @return amts        Optimized input amounts for tiers
     function calcTierAmtsIn(
         Tiers.Tier[] memory tiers,
         bool isToken0,
@@ -50,13 +56,16 @@ library SwapMath {
         unchecked {
             // calculate input amts, then reject the tiers with negative input amts.
             // repeat until all input amts are non-negative
-            bool wontOverflow = ((denom * num) / denom == num) && (denom * num <= uint256(type(int256).max));
+            uint256 product = denom * num;
+            bool wontOverflow = (product / denom == num) && (product <= uint256(type(int256).max));
             for (uint256 i; i < tiers.length; ) {
                 if (amts[i] != REJECTED) {
                     if (
-                        (amts[i] = wontOverflow
-                            ? int256((denom * lsg[i]) / num).sub(int256(res[i]))
-                            : FullMath.mulDiv(denom, lsg[i], num).toInt256().sub(int256(res[i]))) < 0
+                        (amts[i] = (
+                            wontOverflow
+                                ? int256((denom * lsg[i]) / num)
+                                : FullMath.mulDiv(denom, lsg[i], num).toInt256()
+                        ).sub(int256(res[i]))) < 0
                     ) {
                         amts[i] = REJECTED;
                         num -= lsg[i];
@@ -70,7 +79,12 @@ library SwapMath {
         }
     }
 
-    /// @dev calculate the optimized output amount for each tier using lagragian multiplier.
+    /// @notice Given a set of tiers and the desired output amount, calculate the optimized output amount for each tier
+    /// @param tiers        List of tiers
+    /// @param isToken0     True if "amount" refers to token0
+    /// @param amount       Desired output amount of the swap (must be negative)
+    /// @param tierChoices  Bitmap to allow which tiers to swap
+    /// @return amts        Optimized output amounts for tiers
     function calcTierAmtsOut(
         Tiers.Tier[] memory tiers,
         bool isToken0,
@@ -178,7 +192,7 @@ library SwapMath {
                 // calculate input amt excluding fee
                 amtInExclFee = amtA < MAX_UINT_DIV_1E10
                     ? int256((uint256(amtA) * gamma) / 1e10)
-                    : int256(FullMath.mulDiv(uint256(amtA), gamma, 1e10));
+                    : int256((uint256(amtA) / 1e10) * gamma);
 
                 // check if crossing tick
                 if (amtInExclFee < amtTick) {
@@ -192,9 +206,11 @@ library SwapMath {
                     amtInExclFee = amtTick;
 
                     // re-calculate input amt _including_ fee
-                    amtA = amtInExclFee < MAX_UINT_DIV_1E10
-                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma).toInt256()
-                        : FullMath.mulDivRoundingUp(uint256(amtInExclFee), 1e10, gamma).toInt256();
+                    amtA = (
+                        amtInExclFee < MAX_UINT_DIV_1E10
+                            ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                            : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10
+                    ).toInt256();
                 }
 
                 // calculate output amt
@@ -226,9 +242,11 @@ library SwapMath {
                     : PoolMath.calcAmt0FromSqrtP(sqrtP, sqrtPNew, liquidity);
 
                 // calculate input amt
-                amtB = amtInExclFee < MAX_UINT_DIV_1E10
-                    ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma).toInt256()
-                    : FullMath.mulDivRoundingUp(uint256(amtInExclFee), 1e10, gamma).toInt256();
+                amtB = (
+                    amtInExclFee < MAX_UINT_DIV_1E10
+                        ? UnsafeMath.ceilDiv(uint256(amtInExclFee) * 1e10, gamma)
+                        : UnsafeMath.ceilDiv(uint256(amtInExclFee), gamma) * 1e10
+                ).toInt256();
 
                 // calculate fee amt
                 feeAmt = uint256(amtB - amtInExclFee);

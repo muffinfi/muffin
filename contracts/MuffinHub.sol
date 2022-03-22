@@ -18,6 +18,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     error InvalidTokenOrder();
     error InvalidSwapPath();
     error NotEnoughIntermediateOutput();
+    error NotEnoughFundToWithdraw();
 
     /// @dev To reduce bytecode size of this contract, we offload position-related functions, governance functions and
     /// various view functions to a second contract (i.e. MuffinHubPositions.sol) and use delegatecall to call it.
@@ -55,7 +56,12 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address token,
         uint256 amount
     ) external {
-        accounts[token][getAccHash(msg.sender, senderAccRefId)] -= amount;
+        bytes32 accHash = getAccHash(msg.sender, senderAccRefId);
+        uint256 balance = accounts[token][accHash];
+        if (balance < amount) revert NotEnoughFundToWithdraw();
+        unchecked {
+            accounts[token][accHash] = balance - amount;
+        }
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit Withdraw(recipient, senderAccRefId, token, amount);
     }
@@ -71,15 +77,16 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         uint24 sqrtGamma,
         uint128 sqrtPrice,
         uint256 senderAccRefId
-    ) external {
+    ) external returns (bytes32 poolId) {
         if (token0 >= token1 || token0 == address(0)) revert InvalidTokenOrder();
 
-        (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
+        Pools.Pool storage pool;
+        (pool, poolId) = pools.getPoolAndId(token0, token1);
         (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 
-        emit PoolCreated(token0, token1);
+        emit PoolCreated(token0, token1, poolId);
         emit UpdateTier(poolId, 0, sqrtGamma, 0);
         pool.unlock();
         underlyings[poolId] = Pair(token0, token1);
@@ -137,7 +144,8 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
                 // For an "exact output" swap, it's possible to not receive the full desired output amount. therefore, in
                 // the 2nd (and following) swaps, we request more token output so as to ensure we get enough tokens to pay
-                // for the previous swap. The extra token is not refunded and thus results in a very small extra cost.
+                // for the previous swap. The extra token is not refunded and thus results in an extra cost (small in common
+                // token pairs).
                 uint256 amtIn;
                 uint256 amtOut;
                 (, poolIds[i], amtIn, amtOut) = _computeSwap(
@@ -174,7 +182,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address tokenIn,
         address tokenOut,
         uint256 tierChoices,
-        int256 amountDesired,
+        int256 amountDesired, // Desired swap amount (positive: exact input, negative: exact output)
         address recipient
     )
         internal
@@ -199,6 +207,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDistribution, tierData);
         }
         unchecked {
+            // overflow is acceptable and protocol is expected to collect protocol fee before overflow
             if (protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(protocolFeeAmt);
             (amountIn, amountOut) = tokenIn < tokenOut
                 ? (uint256(amount0), uint256(-amount1))
@@ -244,7 +253,8 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     }
 
     function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
-        return (pools[poolId].tickSpacing, pools[poolId].protocolFee);
+        Pools.Pool storage pool = pools[poolId];
+        return (pool.tickSpacing, pool.protocolFee);
     }
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory) {

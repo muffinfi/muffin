@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.10;
+pragma solidity ^0.8.0;
 
 library PathLib {
     uint256 internal constant ADDR_BYTES = 20;
-    uint256 internal constant ADDR_UINT8_BYTES = 21;
-    uint256 internal constant PATH_MAX_BYTES = 5396; // 256 pools (i.e. 21 * 256 + 20 = 5396 bytes)
+    uint256 internal constant ADDR_UINT8_BYTES = ADDR_BYTES + 1;
+    uint256 internal constant PATH_MAX_BYTES = ADDR_UINT8_BYTES * 256 + ADDR_BYTES;  // 256 pools (i.e. 5396 bytes)
 
     function invalid(bytes memory path) internal pure returns (bool) {
         unchecked {
@@ -12,12 +12,14 @@ library PathLib {
         }
     }
 
+    /// @dev Assume the path is valid
     function hopCount(bytes memory path) internal pure returns (uint256) {
         unchecked {
-            return (path.length - ADDR_BYTES) / ADDR_UINT8_BYTES;
+            return path.length / ADDR_UINT8_BYTES;
         }
     }
 
+    /// @dev Assume the path is valid
     function decodePool(
         bytes memory path,
         uint256 poolIndex,
@@ -40,6 +42,7 @@ library PathLib {
         }
     }
 
+    /// @dev Assume the path is valid
     function tokensInOut(bytes memory path, bool exactIn) internal pure returns (address tokenIn, address tokenOut) {
         unchecked {
             tokenIn = _readAddressAt(path, 0);

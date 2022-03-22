@@ -2,13 +2,15 @@
 pragma solidity 0.8.10;
 
 import "./interfaces/hub/IMuffinHubBase.sol";
-import "./interfaces/common/IERC20.sol";
+import "./interfaces/common/IERC20Minimal.sol";
 import "./libraries/Pools.sol";
 
 abstract contract MuffinHubBase is IMuffinHubBase {
     error FailedBalanceOf();
     error NotEnoughTokenInput();
 
+    /// @param locked           1 means locked. 0 or 2 means unlocked.
+    /// @param protocolFeeAmt   Amount of token accrued as the protocol fee
     struct TokenData {
         uint8 locked;
         uint248 protocolFeeAmt;
@@ -41,8 +43,10 @@ abstract contract MuffinHubBase is IMuffinHubBase {
 
     /// @dev Get token balance of this contract
     function getBalance(address token) private view returns (uint256) {
-        (bool success, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
-        if (!success || data.length < 32) revert FailedBalanceOf();
+        (bool success, bytes memory data) = token.staticcall(
+            abi.encodeWithSelector(IERC20Minimal.balanceOf.selector, address(this))
+        );
+        if (!success || data.length != 32) revert FailedBalanceOf();
         return abi.decode(data, (uint256));
     }
 
@@ -50,8 +54,9 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     function getBalanceAndLock(address token) internal returns (uint256) {
         require(token != TUSD_LEGACY_ADDRESS);
 
-        require(tokens[token].locked != 1); // 1 means locked
-        tokens[token].locked = 1;
+        TokenData storage tokenData = tokens[token];
+        require(tokenData.locked != 1); // 1 means locked
+        tokenData.locked = 1;
         return getBalance(token);
     }
 

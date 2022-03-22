@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 interface IMuffinHubEvents {
     /// @notice Emitted when user deposits tokens to an account
@@ -9,7 +9,7 @@ interface IMuffinHubEvents {
     event Withdraw(address indexed recipient, uint256 indexed senderAccRefId, address indexed token, uint256 amount);
 
     /// @notice Emitted when a pool is created
-    event PoolCreated(address indexed token0, address indexed token1);
+    event PoolCreated(address indexed token0, address indexed token1, bytes32 indexed poolId);
 
     /// @notice Emitted when a new tier is added, or when tier's parameters are updated
     event UpdateTier(
@@ -26,7 +26,10 @@ interface IMuffinHubEvents {
     event CollectProtocol(address indexed recipient, address indexed token, uint256 amount);
 
     /// @notice Emitted when governance address is updated
-    event GovernanceUpdated(address governance);
+    event GovernanceUpdated(address indexed governance);
+
+    /// @notice Emitted when default parameters are updated
+    event UpdateDefaultParameters(uint8 tickSpacing, uint8 protocolFee);
 
     /// @notice Emitted when liquidity is minted for a given position
     event Mint(
@@ -87,7 +90,8 @@ interface IMuffinHubEvents {
     );
 
     /// @notice Emitted for any swap happened in any pool
-    /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value takes 42 bits (Q1.41)
+    /// @param amountInDistribution Percentages of input token amount routed to each tier. Each value occupies (256 / Pool.MAX_TIER) bits
+    /// and is a binary fixed-point with 1 integer bit and (256 / Pool.MAX_TIER - 1) fraction bits.
     /// @param tierData Array of tier's liquidity (0-127th bits) and sqrt price (128-255th bits) after the swap
     event Swap(
         bytes32 indexed poolId,

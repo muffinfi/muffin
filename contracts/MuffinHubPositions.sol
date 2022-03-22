@@ -138,7 +138,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
             params.liquidityD8,
             params.collectAllFees
         );
-        bytes32 accHash = getAccHash(msg.sender, params.positionRefId);
+        bytes32 accHash = getAccHash(msg.sender, params.accRefId);
         accounts[params.token0][accHash] += amount0 + feeAmount0;
         accounts[params.token1][accHash] += amount1 + feeAmount1;
         emit CollectSettled(
@@ -228,7 +228,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {
-        return pools[poolId].tickMaps[tierId].blockmap;
+        return pools[poolId].tickMaps[tierId].blockMap;
     }
 
     function getTickMapBlock(
@@ -259,8 +259,10 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
 
     /// @inheritdoc IMuffinHubPositionsActions
     function setDefaultParameters(uint8 tickSpacing, uint8 protocolFee) external onlyGovernance {
+        require(tickSpacing > 0);
         defaultTickSpacing = tickSpacing;
         defaultProtocolFee = protocolFee;
+        emit UpdateDefaultParameters(tickSpacing, protocolFee);
     }
 
     /// @inheritdoc IMuffinHubPositionsActions
@@ -285,8 +287,8 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     /// @inheritdoc IMuffinHubPositionsActions
-    function collectProtocolFee(address token, address recipient) external onlyGovernance {
-        uint248 amount = tokens[token].protocolFeeAmt;
+    function collectProtocolFee(address token, address recipient) external onlyGovernance returns (uint256 amount) {
+        amount = tokens[token].protocolFeeAmt;
         tokens[token].protocolFeeAmt = 0;
         SafeTransferLib.safeTransfer(token, recipient, amount);
         emit CollectProtocol(recipient, token, amount);
