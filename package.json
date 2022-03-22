@@ -4,7 +4,10 @@
   "description": "Smart contracts of Muffin AMM",
   "repository": "https://github.com/deliswap/muffin.git",
   "scripts": {
+    "hardhat": "hardhat",
     "demo": "hardhat run scripts/demo.ts",
+    "node": "hardhat node",
+    "console": "hardhat console",
     "compile": "hardhat compile",
     "test": "hardhat test"
   },

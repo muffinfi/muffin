@@ -1,8 +1,7 @@
-import { BigNumber, BigNumberish, ContractTransaction, ContractReceipt, ContractFactory } from 'ethers';
-import { ethers } from 'hardhat';
-import hre from 'hardhat';
-import util from 'util';
 import chalk from 'chalk';
+import { BigNumber, BigNumberish, Contract, ContractFactory, ContractReceipt, ContractTransaction } from 'ethers';
+import hre, { ethers, network } from 'hardhat';
+import util from 'util';
 
 //////////////////////////////////////////////////////////////////////////
 //                          PATCH BIGNUMBER
@@ -55,6 +54,15 @@ export const deploy = async (factoryName: string | ContractFactory, ...args: any
 
   return contract;
 };
+
+export async function getOrDeployContract<T extends Contract>(name: string, addressMap: { [networkName: string]: string | boolean } = {}, ...deployArgs: any[]) {
+  const address = addressMap[network.name]
+  if (!address) throw new Error(`Unsupported network for ${name}`);
+  if (typeof address === 'string') {
+    return ethers.getContractAt(name, address) as Promise<T>
+  }
+  return deploy(name, ...deployArgs) as Promise<T>
+}
 
 export const logTx = async (
   txOrPromise: ContractTransaction | Promise<ContractTransaction>,

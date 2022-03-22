@@ -50,7 +50,7 @@ const config: HardhatUserConfig = {
     },
     rinkeby: {
       url: process.env.RINKEBY_RPC,
-      accounts: process.env.RINKEBY_ACCOUNT ? [process.env.RINKEBY_ACCOUNT] : undefined
+      accounts: process.env.RINKEBY_ACCOUNT ? [process.env.RINKEBY_ACCOUNT] : undefined,
     },
     arbitrumTestnet: {
       url: 'https://rinkeby.arbitrum.io/rpc',

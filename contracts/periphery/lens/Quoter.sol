@@ -179,6 +179,7 @@ contract Quoter {
         int256 amountA;
         int256 amountB;
 
+
         Tiers.Tier[] memory tiers = hub.getAllTiers(poolId);
         Pools.TierState[MAX_TIERS] memory states;
 
@@ -192,7 +193,7 @@ contract Quoter {
             exactIn: amtDesired > 0,
             protocolFee: 0,
             protocolFeeAmt: 0,
-            priceBoundReached: 0,
+            tierChoices: tierChoices & ((1 << tiers.length) - 1),
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
             amounts: [int256(0), 0, 0, 0, 0, 0]
         });
@@ -219,7 +220,7 @@ contract Quoter {
                         amtDesired > 0
                             ? amtRemaining <= Pools.SWAP_AMOUNT_TOLERANCE
                             : amtRemaining >= -Pools.SWAP_AMOUNT_TOLERANCE
-                    ) || cache.priceBoundReached == tierChoices & ((1 << tiers.length) - 1)
+                    ) || cache.tierChoices == 0
                 ) break;
             }
         }
@@ -288,8 +289,8 @@ contract Quoter {
             int24 tickCross = cache.zeroForOne ? tier.nextTickBelow : tier.nextTickAbove;
 
             // skip crossing tick if reaches the end of the supported price range
-            if (tickCross == Constants.MIN_TICK || tickCross == Constants.MAX_TICK) {
-                cache.priceBoundReached |= 1 << tierId;
+            if (tickCross == TickMath.MIN_TICK || tickCross == TickMath.MAX_TICK) {
+                cache.tierChoices &= ~(1 << tierId);
                 return (amtAStep, amtBStep);
             }
 

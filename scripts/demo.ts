@@ -2,7 +2,7 @@ import { BigNumber, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
 import { Manager, MockERC20, MuffinHub, MuffinHubPositions, WETH9 } from '../typechain';
-import { bn, deploy, logTx, printStruct, wad } from './utils';
+import { bn, getOrDeployContract, logTx, printStruct, wad } from './utils';
 
 /**
  * A demo script to deploy and call the hub contract.
@@ -14,21 +14,50 @@ async function main() {
   console.log('================= main =================');
   console.log('Account Balance: ', await user.getBalance());
 
-  // 1. deploy weth if we're on local network
-  let WETH_ADDRESS;
-  if (network.name === 'hardhat') WETH_ADDRESS = (await deploy('WETH9')).address;
-  else if (network.name === 'rinkeby') WETH_ADDRESS = '0xc778417e063141139fce010982780140aa0cd5ab';
-  else if (network.name === 'arbitrumTestnet') WETH_ADDRESS = '0xb47e6a5f8b33b3f17603c83a0535a9dcd7e32681';
-  else throw new Error('unknown network');
+  const gasMultiplier = network.name === 'arbitrum' || network.name === 'arbitrumTestnet' ? 1000 : 1;
 
-  // 2. deploy mock tokens
-  const weth = (await ethers.getContractAt('WETH9', WETH_ADDRESS)) as WETH9;
-  const wbtc = (await deploy('MockERC20', 'WBTC', 'WBTC')) as MockERC20;
-  const usdc = (await deploy('MockERC20', 'USDC', 'USDC')) as MockERC20;
+  // 1 & 2. deploy & get mock tokens contracts
+  const weth: WETH9 = await getOrDeployContract('WETH9', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: '0xc778417e063141139fce010982780140aa0cd5ab',
+    arbitrumTestnet: '0xb47e6a5f8b33b3f17603c83a0535a9dcd7e32681',
+  });
+  const wbtc: MockERC20 = await getOrDeployContract('MockERC20', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: '0x868cac73fe792d68e8e91d0fac94acdb0d385af9',
+    arbitrumTestnet: '0x530c0e815e743cfffb90adaf37dda3cadee5206a',
+  }, 'WBTC', 'WBTC');
+  const usdc: MockERC20 = await getOrDeployContract('MockERC20', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: '0x4bac7231ba2392c55e8190de7d216d7ed7b9bf5f',
+    arbitrumTestnet: '0x149d5acb49d048474dc2752babbdb3a14f6c6cec',
+  }, 'USDC', 'USDC');
 
   // 3. deploy contracts
-  const hub = (await deploy('MuffinHub', (await deploy('MuffinHubPositions')).address)) as MuffinHub;
-  const manager = (await deploy('Manager', hub.address, weth.address)) as Manager;
+  const hubPositions = await getOrDeployContract('MuffinHubPositions', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: true,
+    // rinkeby: '0x64490c188a2daec2e8b050f9ac3a4d5699bd0b44',
+    arbitrumTestnet: true,
+  });
+  const hub: MuffinHub = await getOrDeployContract('MuffinHub', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: true,
+    // rinkeby: '0xa488583a8b2caecf8e9a576e514e64c8f3b744c8',
+    arbitrumTestnet: true,
+  }, hubPositions.address);
+  const manager: Manager = await getOrDeployContract('Manager', {
+    hardhat: true,
+    localhost: true,
+    rinkeby: true,
+    // rinkeby: '0x3ebb5694bb99ada53026cacfeb3cb9f6249f5310',
+    arbitrumTestnet: true,
+  }, hub.address, weth.address);
 
   // 4. mint and approve tokens
   await logTx(usdc.mint(wad(10000)), 'mint usdc');
@@ -51,8 +80,8 @@ async function main() {
   // 7. add some more tiers
   await logTx(manager.depositToExternal(user.address, 1, token0.address, wad(1)), 'deposit token0 externally');
   await logTx(manager.depositToExternal(user.address, 1, token1.address, wad(1)), 'deposit token1 externally');
-  await logTx(hub.addTier(token0.address, token1.address, 99925, 1, { gasLimit: 500000 }), 'add tier 15 bps');
-  await logTx(hub.addTier(token0.address, token1.address, 99975, 1, { gasLimit: 500000 }), 'add tier  5 bps');
+  await logTx(hub.addTier(token0.address, token1.address, 99925, 1, { gasLimit: 500_000 * gasMultiplier }), 'add tier 15 bps');
+  await logTx(hub.addTier(token0.address, token1.address, 99975, 1, { gasLimit: 500_000 * gasMultiplier }), 'add tier  5 bps');
 
   // 8. set pool's tick spacing to 1, protocol fee to 15%
   const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
@@ -117,13 +146,16 @@ async function main() {
     await logTx(weth.deposit({ value: 1e8 }), 'mint weth');
     await logTx(weth.approve(manager.address, constants.MaxUint256), 'approve weth to manager');
     await logTx(
-      manager.createPool(token0.address, token1.address, 99850, sqrt(price), { gasLimit: 600_000 }),
+      manager.createPool(token0.address, token1.address, 99850, sqrt(price), { gasLimit: 600_000 * gasMultiplier }),
       'create weth-usdc pool',
     );
   }
 
   // 16. perform a swap
-  await manager.exactInSingle(usdc.address, wbtc.address, 0b111111, 100, 0, user.address, false, true, constants.MaxUint256);
+  await logTx(
+    manager.exactInSingle(usdc.address, wbtc.address, 0b111111, 100, 0, user.address, false, true, constants.MaxUint256),
+    'swap usdc with wbtc',
+  );
 }
 
 main()
