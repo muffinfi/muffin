@@ -28,7 +28,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
     /// @dev Next pair id. skips 0
     uint40 internal nextPairId = 1;
-    /// @notice Array of pools represented by its underlying token pair (pairId => Pair)
+    /// @notice Mapping of pair id to its underlying tokens
     mapping(uint40 => Pair) public pairs;
     /// @notice Mapping of pool id to pair id
     mapping(bytes32 => uint40) public pairIdsByPoolId;
