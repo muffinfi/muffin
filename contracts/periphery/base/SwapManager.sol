@@ -23,14 +23,12 @@ abstract contract SwapManager is ManagerBase {
     /// @dev Called by the hub contract
     function swapCallback(
         address tokenIn,
-        address tokenOut,
+        address, // tokenOut,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256, // amountOut,
         bytes calldata data
     ) external fromHub {
         if (amountIn > 0) payHub(tokenIn, abi.decode(data, (address)), amountIn);
-        tokenOut; // shhh
-        amountOut; // shhh
     }
 
     /**
