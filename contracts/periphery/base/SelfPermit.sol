@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import "../../interfaces/common/IERC20PermitAllowed.sol";
+
 abstract contract SelfPermit {
     /// @notice Permits this contract to spend a given token from `msg.sender`
     /// @dev The `owner` is always msg.sender and the `spender` is always address(this).
@@ -18,10 +21,7 @@ abstract contract SelfPermit {
         bytes32 r,
         bytes32 s
     ) external payable {
-        (bool success, ) = token.call(
-            abi.encodeWithSelector(0xd505accf, msg.sender, address(this), value, deadline, v, r, s)
-        );
-        require(success, "PERMIT_FAILED");
+        IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
     }
 
     /// @notice Permits this contract to spend the sender's tokens for permit signatures that have the `allowed` parameter
@@ -40,9 +40,6 @@ abstract contract SelfPermit {
         bytes32 r,
         bytes32 s
     ) external payable {
-        (bool success, ) = token.call(
-            abi.encodeWithSelector(0x8fcbaf0c, msg.sender, address(this), nonce, expiry, true, v, r, s)
-        );
-        require(success, "PERMIT_FAILED");
+        IERC20PermitAllowed(token).permit(msg.sender, address(this), nonce, expiry, true, v, r, s);
     }
 }
