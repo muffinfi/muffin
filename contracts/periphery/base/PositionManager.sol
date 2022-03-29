@@ -76,8 +76,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     ) external payable {
         (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(_getPoolId(token0, token1));
         if (tickSpacing == 0) {
-            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
-            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
+            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice));
+            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8)));
             IMuffinHub(hub).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
         }
         _cacheTokenPair(token0, token1);
