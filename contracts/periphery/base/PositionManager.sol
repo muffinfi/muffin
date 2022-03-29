@@ -41,7 +41,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     function _checkApproved(uint256 tokenId) internal view {
-        require(msg.sender == positionsByTokenId[tokenId].owner || msg.sender == getApproved(tokenId), "NOT_APPROVED");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "NOT_APPROVED");
     }
 
     /// @dev Cache the underlying tokens of a pool and return an id of the cache

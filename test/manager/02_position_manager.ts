@@ -311,7 +311,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.addLiquidity({ ...baseParams(), tokenId: 123 })).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -449,7 +449,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.removeLiquidity({ ...baseParams(), tokenId: 123 })).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -588,7 +588,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.setLimitOrderType(123, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -614,7 +614,7 @@ describe('manager position manager', () => {
     const tokenId = FIRST_TOKEN_ID;
 
     it('non-existing position', async () => {
-      await expect(manager.burn([tokenId])).to.be.revertedWith('ERC721: approved query for nonexistent token');
+      await expect(manager.burn([tokenId])).to.be.revertedWith('ERC721: operator query for nonexistent token');
     });
 
     it('non-empty position', async () => {
