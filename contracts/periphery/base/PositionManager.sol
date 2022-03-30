@@ -266,8 +266,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      * @notice                  Parameters for the removeLiquidity function
      * @param tokenId           Id of the position NFT
      * @param liquidityD8       Amount of liquidity to remove (divided by 2^8)
-     * @param amount0Min        Minimum token0 amount to collect
-     * @param amount1Min        Minimum token1 amount to collect
+     * @param amount0Min        Minimum token0 amount received from the removed liquidity
+     * @param amount1Min        Minimum token1 amount received from the removed liquidity
      * @param withdrawTo        Recipient of the withdrawn tokens. Set to zero for no withdrawal
      * @param collectAllFees    True to collect all remaining accrued fees in the position
      * @param settled           True if the position is settled
