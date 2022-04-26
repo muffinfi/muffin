@@ -28,7 +28,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
     /// @dev Next pair id. skips 0
     uint40 internal nextPairId = 1;
-    /// @notice Array of pools represented by its underlying token pair (pairId => Pair)
+    /// @notice Mapping of pair id to its underlying tokens
     mapping(uint40 => Pair) public pairs;
     /// @notice Mapping of pool id to pair id
     mapping(bytes32 => uint40) public pairIdsByPoolId;
@@ -41,12 +41,16 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     function _checkApproved(uint256 tokenId) internal view {
-        require(msg.sender == positionsByTokenId[tokenId].owner || msg.sender == getApproved(tokenId), "NOT_APPROVED");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "NOT_APPROVED");
+    }
+
+    function _getPoolId(address token0, address token1) internal pure returns (bytes32) {
+        return keccak256(abi.encode(token0, token1));
     }
 
     /// @dev Cache the underlying tokens of a pool and return an id of the cache
     function _cacheTokenPair(address token0, address token1) internal returns (uint40 pairId) {
-        bytes32 poolId = keccak256(abi.encode(token0, token1));
+        bytes32 poolId = _getPoolId(token0, token1);
         pairId = pairIdsByPoolId[poolId];
         if (pairId == 0) {
             pairIdsByPoolId[poolId] = (pairId = nextPairId++);
@@ -70,10 +74,10 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         uint24 sqrtGamma,
         uint128 sqrtPrice
     ) external payable {
-        (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(keccak256(abi.encode(token0, token1)));
+        (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(_getPoolId(token0, token1));
         if (tickSpacing == 0) {
-            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << 80, sqrtPrice));
-            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << 64));
+            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice));
+            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8)));
             IMuffinHub(hub).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
         }
         _cacheTokenPair(token0, token1);
@@ -231,7 +235,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         )
     {
         liquidityD8 = PoolMath.calcLiquidityForAmts(
-            IMuffinHub(hub).getTier(keccak256(abi.encode(pair.token0, pair.token1)), info.tierId).sqrtPrice,
+            IMuffinHub(hub).getTier(_getPoolId(pair.token0, pair.token1), info.tierId).sqrtPrice,
             TickMath.tickToSqrtPrice(info.tickLower),
             TickMath.tickToSqrtPrice(info.tickUpper),
             amount0Desired,
@@ -262,8 +266,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      * @notice                  Parameters for the removeLiquidity function
      * @param tokenId           Id of the position NFT
      * @param liquidityD8       Amount of liquidity to remove (divided by 2^8)
-     * @param amount0Min        Minimum token0 amount to collect
-     * @param amount1Min        Minimum token1 amount to collect
+     * @param amount0Min        Minimum token0 amount received from the removed liquidity
+     * @param amount1Min        Minimum token1 amount received from the removed liquidity
      * @param withdrawTo        Recipient of the withdrawn tokens. Set to zero for no withdrawal
      * @param collectAllFees    True to collect all remaining accrued fees in the position
      * @param settled           True if the position is settled
@@ -330,9 +334,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *==============================================================*/
 
     /// @notice                 Set position's limit order type
-    /// @param tokenId          Id of the position NFT
+    /// @param tokenId          Id of the position NFT. Or set to zero to indicate the latest NFT id in this contract
+    ///                         (useful for chaining this function after `mint` in a multicall)
     /// @param limitOrderType   Direction of limit order (0: N/A, 1: zero->one, 2: one->zero)
-    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external payable checkApproved(tokenId) {
+    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external payable {
+        // zero is the magic number to indicate the latest token id
+        if (tokenId == 0) tokenId = latestTokenId();
+        _checkApproved(tokenId);
+
         PositionInfo memory info = positionsByTokenId[tokenId];
         Pair memory pair = pairs[info.pairId];
         IMuffinHubPositions(hub).setLimitOrderType(
@@ -362,7 +371,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             PositionInfo memory info = positionsByTokenId[tokenId];
             Pair memory pair = pairs[info.pairId];
             Positions.Position memory position = IMuffinHub(hub).getPosition(
-                keccak256(abi.encode(pair.token0, pair.token1)),
+                _getPoolId(pair.token0, pair.token1),
                 address(this),
                 tokenId,
                 info.tierId,
@@ -402,14 +411,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         Pair storage pair = pairs[info.pairId];
         (token0, token1) = (pair.token0, pair.token1);
 
-        position = IMuffinHub(hub).getPosition(
-            keccak256(abi.encode(token0, token1)),
-            address(this),
-            tokenId,
-            tierId,
-            tickLower,
-            tickUpper
-        );
+        position = IMuffinHub(hub).getPosition(_getPoolId(token0, token1), address(this), tokenId, tierId, tickLower, tickUpper);
     }
 
     /*===============================================================

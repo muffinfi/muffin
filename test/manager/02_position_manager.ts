@@ -311,7 +311,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.addLiquidity({ ...baseParams(), tokenId: 123 })).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -449,7 +449,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.removeLiquidity({ ...baseParams(), tokenId: 123 })).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -588,7 +588,7 @@ describe('manager position manager', () => {
 
     it('non-existing token id', async () => {
       await expect(manager.setLimitOrderType(123, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith(
-        'ERC721: approved query for nonexistent token',
+        'ERC721: operator query for nonexistent token',
       );
     });
 
@@ -608,13 +608,72 @@ describe('manager position manager', () => {
         .to.emit(hub, 'SetLimitOrderType')
         .withArgs(poolId01, manager.address, tokenId, 0, -100, 100, LimitOrderType.ONE_FOR_ZERO);
     });
+
+    context('using magic zero tokenId', () => {
+      beforeEach(async () => {
+        // ensure the latest token is owned by user
+        const latestTokenId = await manager.latestTokenId();
+        expect(latestTokenId).eq(tokenId);
+        await expect(await manager.ownerOf(latestTokenId)).eq(user.address);
+      });
+
+      it('not owner + not approved', async () => {
+        await expect(manager.connect(other).setLimitOrderType(0, LimitOrderType.ONE_FOR_ZERO)).to.be.revertedWith('NOT_APPROVED');
+      });
+
+      it('set limit order successfully', async () => {
+        await expect(manager.setLimitOrderType(0, LimitOrderType.ONE_FOR_ZERO))
+          .to.emit(hub, 'SetLimitOrderType')
+          .withArgs(poolId01, manager.address, tokenId, 0, -100, 100, LimitOrderType.ONE_FOR_ZERO);
+      });
+
+      context('(multicall) mint + set limit order type', () => {
+        const mintParams = () => ({
+          tierId: 0,
+          token0: token0.address,
+          token1: token1.address,
+          tickLower: -100,
+          tickUpper: +100,
+          amount0Desired: 30000,
+          amount1Desired: 30000,
+          amount0Min: 0,
+          amount1Min: 0,
+          recipient: user.address,
+          useAccount: false,
+        });
+
+        it('not owned position', async () => {
+          const promise = manager.multicall([
+            manager.interface.encodeFunctionData('mint', [{ ...mintParams(), recipient: other.address }]),
+            manager.interface.encodeFunctionData('setLimitOrderType', [0, LimitOrderType.ONE_FOR_ZERO]),
+          ]);
+          await expect(promise).to.be.revertedWith('NOT_APPROVED');
+        });
+
+        it('successfully ', async () => {
+          const latestTokenId = await manager.latestTokenId();
+          const tx = await manager.multicall([
+            manager.interface.encodeFunctionData('mint', [mintParams()]),
+            manager.interface.encodeFunctionData('setLimitOrderType', [0, LimitOrderType.ONE_FOR_ZERO]),
+          ]);
+
+          const mintEvent = await getEvent(tx, hub, 'Mint');
+          expect(mintEvent.owner).eq(manager.address);
+          expect(mintEvent.positionRefId).eq(latestTokenId.add(1));
+
+          const setEvent = await getEvent(tx, hub, 'SetLimitOrderType');
+          expect(setEvent.owner).eq(manager.address);
+          expect(setEvent.positionRefId).eq(latestTokenId.add(1));
+        });
+      });
+    });
   });
 
   context('burn nft', () => {
     const tokenId = FIRST_TOKEN_ID;
 
     it('non-existing position', async () => {
-      await expect(manager.burn([tokenId])).to.be.revertedWith('ERC721: approved query for nonexistent token');
+      await expect(manager.burn([tokenId])).to.be.revertedWith('ERC721: operator query for nonexistent token');
     });
 
     it('non-empty position', async () => {
