@@ -334,9 +334,14 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
      *==============================================================*/
 
     /// @notice                 Set position's limit order type
-    /// @param tokenId          Id of the position NFT
+    /// @param tokenId          Id of the position NFT. Or set to zero to indicate the latest NFT id in this contract
+    ///                         (useful for chaining this function after `mint` in a multicall)
     /// @param limitOrderType   Direction of limit order (0: N/A, 1: zero->one, 2: one->zero)
-    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external payable checkApproved(tokenId) {
+    function setLimitOrderType(uint256 tokenId, uint8 limitOrderType) external payable {
+        // zero is the magic number to indicate the latest token id
+        if (tokenId == 0) tokenId = latestTokenId();
+        _checkApproved(tokenId);
+
         PositionInfo memory info = positionsByTokenId[tokenId];
         Pair memory pair = pairs[info.pairId];
         IMuffinHubPositions(hub).setLimitOrderType(

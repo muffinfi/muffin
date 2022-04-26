@@ -96,6 +96,10 @@ abstract contract ERC721Extended is ERC721 {
         _mint(to, tokenId);
     }
 
+    function latestTokenId() public view virtual returns (uint256 tokenId) {
+        return minted;
+    }
+
     function _beforeTokenTransfer(
         address from,
         address to,
