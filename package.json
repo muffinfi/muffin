@@ -1,6 +1,6 @@
 {
   "name": "@muffinfi/muffin-contract",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Smart contracts of Muffin AMM",
   "repository": "https://github.com/deliswap/muffin.git",
   "scripts": {
