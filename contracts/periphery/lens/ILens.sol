@@ -35,7 +35,7 @@ interface ILens {
             uint256 feeAmount1
         );
 
-    function getFeeAmounts(PositionInfo memory info, Positions.Position memory position)
+    function getFeeAmounts(uint256 tokenId, PositionInfo memory info, Positions.Position memory position)
         external
         view
         returns (uint256 feeAmount0, uint256 feeAmount1);

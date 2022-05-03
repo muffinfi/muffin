@@ -65,10 +65,10 @@ contract Lens is ILens {
         (info, position) = getPosition(tokenId);
         settled = isSettled(info, position);
         (amount0, amount1) = getUnderlyingAmounts(info, position, settled);
-        (feeAmount0, feeAmount1) = getFeeAmounts(info, position);
+        (feeAmount0, feeAmount1) = getFeeAmounts(tokenId, info, position);
     }
 
-    function getFeeAmounts(PositionInfo memory info, Positions.Position memory position)
+    function getFeeAmounts(uint256 tokenId, PositionInfo memory info, Positions.Position memory position)
         public
         view
         returns (uint256 feeAmount0, uint256 feeAmount1)
@@ -76,7 +76,7 @@ contract Lens is ILens {
         (uint80 feeGrowthInside0, uint80 feeGrowthInside1) = IMuffinHubPositions(hub).getPositionFeeGrowthInside(
             keccak256(abi.encode(info.token0, info.token1)),
             manager,
-            uint256(uint160(info.owner)),
+            tokenId,
             info.tierId,
             info.tickLower,
             info.tickUpper
