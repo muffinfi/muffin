@@ -251,6 +251,7 @@ library Pools {
     struct SwapCache {
         bool zeroForOne;
         bool exactIn;
+        int256 initialAmtDesired;
         uint8 protocolFee;
         uint256 protocolFeeAmt;
         uint256 tierChoices;
@@ -303,6 +304,7 @@ library Pools {
         SwapCache memory cache = SwapCache({
             zeroForOne: isToken0 == (amtDesired > 0),
             exactIn: amtDesired > 0,
+            initialAmtDesired: amtDesired,
             protocolFee: pool.protocolFee,
             protocolFeeAmt: 0,
             tierChoices: tierChoices & ((1 << tiers.length) - 1),
@@ -317,14 +319,17 @@ library Pools {
                 : SwapMath.calcTierAmtsOut(tiers, isToken0, amtDesired, cache.tierChoices);
 
             // compute the swap for each tier
-            for (uint256 i; i < tiers.length; i++) {
+            for (uint256 i; i < tiers.length; ) {
                 (int256 amtAStep, int256 amtBStep) = _swapStep(pool, isToken0, cache, states[i], tiers[i], i);
                 amountA += amtAStep;
                 amountB += amtBStep;
+                unchecked {
+                    i++;
+                }
             }
 
             // check if we meet the stopping criteria
-            amtDesired -= amountA;
+            amtDesired = cache.initialAmtDesired - amountA;
             unchecked {
                 if (
                     (cache.exactIn ? amtDesired <= SWAP_AMOUNT_TOLERANCE : amtDesired >= -SWAP_AMOUNT_TOLERANCE) ||
