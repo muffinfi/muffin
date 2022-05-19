@@ -68,6 +68,7 @@ describe('hub collect settled positions', () => {
     expect(event.tierId).eq(0);
     expect(event.tickLower).eq(tickLower);
     expect(event.tickUpper).eq(tickUpper);
+    expect(event.ownerAccRefId).eq(ACC_REF_ID);
     expect(event.liquidityD8).eq(10000);
     expect(event.amount0).gt(0);
     expect(event.amount1).eq(0);

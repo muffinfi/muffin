@@ -38,10 +38,12 @@ describe('hub accounts', () => {
 
     it('deposit successfully', async () => {
       expect(await getAccBalance(caller.address, 1)).eq(0);
-      await expect(caller.deposit(caller.address, 1, token0.address, 100, ''))
+
+      await expect(caller.deposit(user.address, 1, token0.address, 100, ''))
         .to.emit(hub, 'Deposit')
-        .withArgs(caller.address, 1, token0.address, 100);
-      expect(await getAccBalance(caller.address, 1)).eq(100);
+        .withArgs(user.address, 1, token0.address, 100, caller.address);
+
+      expect(await getAccBalance(user.address, 1)).eq(100);
     });
   });
 
@@ -61,7 +63,7 @@ describe('hub accounts', () => {
 
       await expect(hub.withdraw(caller.address, 2, token0.address, 100))
         .to.emit(hub, 'Withdraw')
-        .withArgs(caller.address, 2, token0.address, 100);
+        .withArgs(user.address, 2, token0.address, 100, caller.address);
 
       expect(await getAccBalance(user.address, 2)).eq(0);
       expect((await token0.balanceOf(hub.address)).sub(hubBalanceBefore)).eq(-100);

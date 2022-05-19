@@ -46,7 +46,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         checkBalanceAndUnlock(token, balanceBefore + amount);
 
         accounts[token][getAccHash(recipient, recipientAccRefId)] += amount;
-        emit Deposit(recipient, recipientAccRefId, token, amount);
+        emit Deposit(recipient, recipientAccRefId, token, amount, msg.sender);
     }
 
     /// @inheritdoc IMuffinHubActions
@@ -63,7 +63,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             accounts[token][accHash] = balance - amount;
         }
         SafeTransferLib.safeTransfer(token, recipient, amount);
-        emit Withdraw(recipient, senderAccRefId, token, amount);
+        emit Withdraw(msg.sender, senderAccRefId, token, amount, recipient);
     }
 
     /*===============================================================
@@ -124,7 +124,13 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         bytes calldata data
     ) external returns (uint256 amountIn, uint256 amountOut) {
         Pools.Pool storage pool;
-        (pool, , amountIn, amountOut) = _computeSwap(tokenIn, tokenOut, tierChoices, amountDesired, recipient);
+        (pool, , amountIn, amountOut) = _computeSwap(
+            tokenIn,
+            tokenOut,
+            tierChoices,
+            amountDesired,
+            SwapEventVars(msg.sender, senderAccRefId, recipient, recipientAccRefId)
+        );
         _transferSwap(tokenIn, tokenOut, amountIn, amountOut, recipient, recipientAccRefId, senderAccRefId, data);
         pool.unlock();
     }
@@ -138,9 +144,21 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         bytes32[] memory poolIds = new bytes32[](path.hopCount());
         unchecked {
             int256 amtDesired = p.amountDesired;
+            SwapEventVars memory evtData = exactIn
+                ? SwapEventVars(msg.sender, p.senderAccRefId, address(this), 0)
+                : SwapEventVars(address(this), 0, p.recipient, p.recipientAccRefId);
+
             for (uint256 i; i < poolIds.length; i++) {
+                if (i == poolIds.length - 1) {
+                    if (exactIn) {
+                        evtData.recipient = p.recipient;
+                        evtData.recipientAccRefId = p.recipientAccRefId;
+                    } else {
+                        evtData.sender = msg.sender;
+                        evtData.senderAccRefId = p.senderAccRefId;
+                    }
+                }
                 (address tokenIn, address tokenOut, uint256 tierChoices) = path.decodePool(i, exactIn);
-                address recipient = (exactIn ? i == poolIds.length - 1 : i == 0) ? p.recipient : address(this);
 
                 // For an "exact output" swap, it's possible to not receive the full desired output amount. therefore, in
                 // the 2nd (and following) swaps, we request more token output so as to ensure we get enough tokens to pay
@@ -153,7 +171,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
                     tokenOut,
                     tierChoices,
                     (exactIn || i == 0) ? amtDesired : amtDesired - Pools.SWAP_AMOUNT_TOLERANCE,
-                    recipient
+                    evtData
                 );
 
                 if (exactIn) {
@@ -178,12 +196,20 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         }
     }
 
+    /// @dev Data to emit in "Swap" event in "_computeSwap" function
+    struct SwapEventVars {
+        address sender;
+        uint256 senderAccRefId;
+        address recipient;
+        uint256 recipientAccRefId;
+    }
+
     function _computeSwap(
         address tokenIn,
         address tokenOut,
         uint256 tierChoices,
         int256 amountDesired, // Desired swap amount (positive: exact input, negative: exact output)
-        address recipient
+        SwapEventVars memory evtData
     )
         internal
         returns (
@@ -204,7 +230,17 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             bool isToken0 = (amountDesired > 0) == (tokenIn < tokenOut); // i.e. isToken0In == isExactIn
             (amount0, amount1, protocolFeeAmt, amtInDistribution, tierData) = pool.swap(isToken0, amountDesired, tierChoices);
             if (!isToken0) (amount0, amount1) = (amount1, amount0);
-            emit Swap(poolId, msg.sender, recipient, amount0, amount1, amtInDistribution, tierData);
+            emit Swap(
+                poolId,
+                evtData.sender,
+                evtData.recipient,
+                evtData.senderAccRefId,
+                evtData.recipientAccRefId,
+                amount0,
+                amount1,
+                amtInDistribution,
+                tierData
+            );
         }
         unchecked {
             // overflow is acceptable and protocol is expected to collect protocol fee before overflow

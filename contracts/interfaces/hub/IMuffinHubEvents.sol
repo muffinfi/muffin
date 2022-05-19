@@ -3,10 +3,22 @@ pragma solidity ^0.8.0;
 
 interface IMuffinHubEvents {
     /// @notice Emitted when user deposits tokens to an account
-    event Deposit(address indexed recipient, uint256 indexed recipientAccRefId, address indexed token, uint256 amount);
+    event Deposit(
+        address indexed recipient,
+        uint256 indexed recipientAccRefId,
+        address indexed token,
+        uint256 amount,
+        address sender
+    );
 
     /// @notice Emitted when user withdraws tokens from an account
-    event Withdraw(address indexed recipient, uint256 indexed senderAccRefId, address indexed token, uint256 amount);
+    event Withdraw(
+        address indexed sender,
+        uint256 indexed senderAccRefId,
+        address indexed token,
+        uint256 amount,
+        address recipient
+    );
 
     /// @notice Emitted when a pool is created
     event PoolCreated(address indexed token0, address indexed token1, bytes32 indexed poolId);
@@ -39,6 +51,8 @@ interface IMuffinHubEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
+        address sender,
+        uint256 senderAccRefId,
         uint96 liquidityD8,
         uint256 amount0,
         uint256 amount1
@@ -56,6 +70,7 @@ interface IMuffinHubEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
+        uint256 ownerAccRefId,
         uint96 liquidityD8,
         uint256 amount0,
         uint256 amount1,
@@ -71,6 +86,7 @@ interface IMuffinHubEvents {
         uint8 tierId,
         int24 tickLower,
         int24 tickUpper,
+        uint256 ownerAccRefId,
         uint96 liquidityD8,
         uint256 amount0,
         uint256 amount1,
@@ -97,6 +113,8 @@ interface IMuffinHubEvents {
         bytes32 indexed poolId,
         address indexed sender,
         address indexed recipient,
+        uint256 senderAccRefId,
+        uint256 recipientAccRefId,
         int256 amount0,
         int256 amount1,
         uint256 amountInDistribution,
