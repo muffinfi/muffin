@@ -129,7 +129,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             tokenOut,
             tierChoices,
             amountDesired,
-            SwapEventVars(msg.sender, senderAccRefId, recipient, recipientAccRefId)
+            SwapEventVars(senderAccRefId, recipient, recipientAccRefId)
         );
         _transferSwap(tokenIn, tokenOut, amountIn, amountOut, recipient, recipientAccRefId, senderAccRefId, data);
         pool.unlock();
@@ -145,19 +145,22 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         unchecked {
             int256 amtDesired = p.amountDesired;
             SwapEventVars memory evtData = exactIn
-                ? SwapEventVars(msg.sender, p.senderAccRefId, address(this), 0)
-                : SwapEventVars(address(this), 0, p.recipient, p.recipientAccRefId);
+                ? SwapEventVars(p.senderAccRefId, msg.sender, p.senderAccRefId)
+                : SwapEventVars(p.senderAccRefId, p.recipient, p.recipientAccRefId);
 
             for (uint256 i; i < poolIds.length; i++) {
-                if (i == poolIds.length - 1) {
-                    if (exactIn) {
+                if (exactIn) {
+                    if (i == poolIds.length - 1) {
                         evtData.recipient = p.recipient;
                         evtData.recipientAccRefId = p.recipientAccRefId;
-                    } else {
-                        evtData.sender = msg.sender;
-                        evtData.senderAccRefId = p.senderAccRefId;
+                    }
+                } else {
+                    if (i == 1) {
+                        evtData.recipient = msg.sender;
+                        evtData.recipientAccRefId = p.senderAccRefId;
                     }
                 }
+
                 (address tokenIn, address tokenOut, uint256 tierChoices) = path.decodePool(i, exactIn);
 
                 // For an "exact output" swap, it's possible to not receive the full desired output amount. therefore, in
@@ -198,7 +201,6 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
     /// @dev Data to emit in "Swap" event in "_computeSwap" function
     struct SwapEventVars {
-        address sender;
         uint256 senderAccRefId;
         address recipient;
         uint256 recipientAccRefId;
@@ -219,35 +221,29 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             uint256 amountOut
         )
     {
-        (pool, poolId) = tokenIn < tokenOut ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
-        uint256 protocolFeeAmt;
-        int256 amount0;
-        int256 amount1;
-        {
-            uint256 amtInDistribution;
-            uint256[] memory tierData;
+        bool isExactIn = tokenIn < tokenOut;
+        bool isToken0 = (amountDesired > 0) == isExactIn; // i.e. isToken0In == isExactIn
+        (pool, poolId) = isExactIn ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
+        Pools.SwapResult memory result = pool.swap(isToken0, amountDesired, tierChoices);
 
-            bool isToken0 = (amountDesired > 0) == (tokenIn < tokenOut); // i.e. isToken0In == isExactIn
-            (amount0, amount1, protocolFeeAmt, amtInDistribution, tierData) = pool.swap(isToken0, amountDesired, tierChoices);
-            if (!isToken0) (amount0, amount1) = (amount1, amount0);
-            emit Swap(
-                poolId,
-                evtData.sender,
-                evtData.recipient,
-                evtData.senderAccRefId,
-                evtData.recipientAccRefId,
-                amount0,
-                amount1,
-                amtInDistribution,
-                tierData
-            );
-        }
+        emit Swap(
+            poolId,
+            msg.sender,
+            evtData.recipient,
+            evtData.senderAccRefId,
+            evtData.recipientAccRefId,
+            result.amount0,
+            result.amount1,
+            result.amountInDistribution,
+            result.tierData
+        );
+
         unchecked {
             // overflow is acceptable and protocol is expected to collect protocol fee before overflow
-            if (protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(protocolFeeAmt);
-            (amountIn, amountOut) = tokenIn < tokenOut
-                ? (uint256(amount0), uint256(-amount1))
-                : (uint256(amount1), uint256(-amount0));
+            if (result.protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(result.protocolFeeAmt);
+            (amountIn, amountOut) = isExactIn
+                ? (uint256(result.amount0), uint256(-result.amount1))
+                : (uint256(result.amount1), uint256(-result.amount0));
         }
     }
 

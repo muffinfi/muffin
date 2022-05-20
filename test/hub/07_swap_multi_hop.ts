@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber, utils } from 'ethers';
-import { solidityPack } from 'ethers/lib/utils';
+import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
+import { IMockMuffinHub, MockCaller, MockERC20 } from '../../typechain';
 import { MAX_TICK, MIN_TICK } from '../shared/constants';
 import { hubWithTwoPoolsFixture } from '../shared/fixtures';
 import { getEvents } from '../shared/utils';
@@ -92,6 +92,31 @@ describe('hub swap multi hop', () => {
     return solidityPack(types, values);
   };
 
+  const checkEventSenderRecipient = (
+    events: any[],
+    exactIn: boolean,
+    senderAccRefId: number = 0,
+    recipientAccRefId: number = 0,
+  ) => {
+    for (const [i, event] of events.entries()) {
+      expect(event.sender).eq(caller.address);
+      expect(event.senderAccRefId).eq(senderAccRefId);
+
+      if (exactIn ? i == events.length - 1 : i == 0) {
+        expect(event.recipient).eq(user.address);
+        expect(event.recipientAccRefId).eq(recipientAccRefId);
+      } else {
+        expect(event.recipient).eq(caller.address);
+        expect(event.recipientAccRefId).eq(senderAccRefId);
+      }
+    }
+  };
+
+  const getAccBalance = async (token: string, owner: string, accRefId: number) => {
+    const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [owner, accRefId]));
+    return await hub.accounts(token, accHash);
+  };
+
   it('invalid path', async () => {
     const path = solidityPack(['address', 'address'], [token0.address, token1.address]);
     await expect(swapMultiHop({ path })).to.be.revertedWith('InvalidSwapPath()');
@@ -107,6 +132,7 @@ describe('hub swap multi hop', () => {
     it('0 -> 1', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, true);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -121,9 +147,33 @@ describe('hub swap multi hop', () => {
       expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
     });
 
+    it('0 -> 1 (to recipient internal account)', async () => {
+      const recipientAccRefId = 1;
+      const accBalance1Before = await getAccBalance(token1.address, user.address, recipientAccRefId);
+
+      const tx = await swapMultiHop({ path: toPath([token0, token1]), recipientAccRefId });
+      const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, true, 0, recipientAccRefId);
+
+      expect(events[0].poolId).eq(poolId01);
+      expect(events[0].amount0).eq(10000);
+      expect(events[0].amount1).lt(0);
+
+      const amount0 = +events[0].amount0;
+      const amount1 = +events[0].amount1; // it's negative
+
+      expect((await token0.balanceOf(hub.address)).sub(reserve0Before)).eq(amount0);
+      expect((await token1.balanceOf(hub.address)).sub(reserve1Before)).eq(0);
+      expect((await token1.balanceOf(user.address)).sub(userBalance1Before)).eq(0);
+      expect((await hub.tokens(token0.address)).protocolFeeAmt).gt(protocolFeeAmt0Before);
+
+      expect((await getAccBalance(token1.address, user.address, recipientAccRefId)).sub(accBalance1Before)).eq(-amount1);
+    });
+
     it('0 -> 1 -> 2', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1, token2]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, true);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -150,6 +200,7 @@ describe('hub swap multi hop', () => {
     it('0 -> 1 -> 2 -> 0', async () => {
       const tx = await swapMultiHop({ path: toPath([token0, token1, token2, token0]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, true);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(10000);
@@ -180,6 +231,7 @@ describe('hub swap multi hop', () => {
     it('0 <- 1', async () => {
       const tx = await swapMultiHop({ amountDesired: -10000, path: toPath([token0, token1]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, false);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-10000);
@@ -199,6 +251,7 @@ describe('hub swap multi hop', () => {
     it('0 <- 1 <- 2', async () => {
       const tx = await swapMultiHop({ amountDesired: -10000, path: toPath([token0, token1, token2]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, false);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-10000);
@@ -225,6 +278,7 @@ describe('hub swap multi hop', () => {
     it('0 <- 1 <- 2 <- 0', async () => {
       const tx = await swapMultiHop({ amountDesired: -5000, path: toPath([token0, token1, token2, token0]) });
       const events = await getEvents(tx, hub, 'Swap');
+      checkEventSenderRecipient(events, false);
 
       expect(events[0].poolId).eq(poolId01);
       expect(events[0].amount0).eq(-5000);

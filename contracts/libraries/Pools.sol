@@ -251,7 +251,6 @@ library Pools {
     struct SwapCache {
         bool zeroForOne;
         bool exactIn;
-        int256 initialAmtDesired;
         uint8 protocolFee;
         uint256 protocolFeeAmt;
         uint256 tierChoices;
@@ -265,31 +264,32 @@ library Pools {
         bool crossed;
     }
 
+    /// @dev                    Struct returned by the "swap" function
+    /// @param amount0          Pool's token0 balance change
+    /// @param amount1          Pool's token1 balance change
+    /// @param amountInDistribution Percentages of input amount routed to each tier (for logging)
+    /// @param tierData         Array of tier's liquidity and sqrt price after the swap (for logging)
+    /// @param protocolFeeAmt   Amount of input token as protocol fee
+    struct SwapResult {
+        int256 amount0;
+        int256 amount1;
+        uint256 amountInDistribution;
+        uint256[] tierData;
+        uint256 protocolFeeAmt;
+    }
+
     /// @notice                 Perform a swap in the pool
     /// @param pool             Pool storage pointer
     /// @param isToken0         True if amtDesired refers to token0
     /// @param amtDesired       Desired swap amount (positive: exact input, negative: exact output)
     /// @param tierChoices      Bitmap to allow which tiers to swap
-    /// @return amountA         Pool's tokenA balance change (the token which amtDesired refers to)
-    /// @return amountB         Pool's tokenB balance change (the opposite token of tokenA)
-    /// @return protocolFeeAmt  Amount of input token as protocol fee
-    /// @return amtInDistribution Percentages of input amount routed to each tier (for logging)
-    /// @return tierData        Array of tier's liquidity and sqrt price after the swap (for logging)
+    /// @return result          Swap result
     function swap(
         Pool storage pool,
         bool isToken0,
         int256 amtDesired,
         uint256 tierChoices
-    )
-        internal
-        returns (
-            int256 amountA,
-            int256 amountB,
-            uint256 protocolFeeAmt,
-            uint256 amtInDistribution,
-            uint256[] memory tierData
-        )
-    {
+    ) internal returns (SwapResult memory result) {
         lock(pool);
         Tiers.Tier[] memory tiers = pool.tiers;
         TierState[MAX_TIERS] memory states;
@@ -304,13 +304,16 @@ library Pools {
         SwapCache memory cache = SwapCache({
             zeroForOne: isToken0 == (amtDesired > 0),
             exactIn: amtDesired > 0,
-            initialAmtDesired: amtDesired,
             protocolFee: pool.protocolFee,
             protocolFeeAmt: 0,
             tierChoices: tierChoices & ((1 << tiers.length) - 1),
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
             amounts: [int256(0), 0, 0, 0, 0, 0]
         });
+
+        int256 initialAmtDesired = amtDesired;
+        int256 amountA; // pool's balance change of the token which "amtDesired" refers to
+        int256 amountB; // pool's balance change of the opposite token
 
         while (true) {
             // calculate the swap amount for each tier
@@ -329,7 +332,7 @@ library Pools {
             }
 
             // check if we meet the stopping criteria
-            amtDesired = cache.initialAmtDesired - amountA;
+            amtDesired = initialAmtDesired - amountA;
             unchecked {
                 if (
                     (cache.exactIn ? amtDesired <= SWAP_AMOUNT_TOLERANCE : amtDesired >= -SWAP_AMOUNT_TOLERANCE) ||
@@ -338,8 +341,14 @@ library Pools {
             }
         }
 
-        protocolFeeAmt = cache.protocolFeeAmt;
-        (amtInDistribution, tierData) = _updateTiers(pool, states, tiers, uint256(cache.exactIn ? amountA : amountB));
+        result.protocolFeeAmt = cache.protocolFeeAmt;
+        (result.amountInDistribution, result.tierData) = _updateTiers(
+            pool,
+            states,
+            tiers,
+            uint256(cache.exactIn ? amountA : amountB)
+        );
+        (result.amount0, result.amount1) = isToken0 ? (amountA, amountB) : (amountB, amountA);
 
         // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }

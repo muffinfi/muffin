@@ -112,18 +112,18 @@ contract MockPool {
         int256 amtDesired,
         uint256 tierChoices
     ) external unlock {
-        (
-            int256 amountA,
-            int256 amountB,
-            uint256 protocolFeeAmt,
-            uint256 amtInDistribution,
-            uint256[] memory tierData
-        ) = pool.swap(isToken0, amtDesired, tierChoices);
+        Pools.SwapResult memory result = pool.swap(isToken0, amtDesired, tierChoices);
 
-        (int256 amount0, int256 amount1) = isToken0 ? (amountA, amountB) : (amountB, amountA);
+        emit SwapReturns(
+            result.amount0,
+            result.amount1,
+            result.protocolFeeAmt,
+            result.amountInDistribution,
+            result.tierData
+        );
 
-        emit SwapReturns(amount0, amount1, protocolFeeAmt, amtInDistribution, tierData);
-
+        int256 amount0 = result.amount0;
+        int256 amount1 = result.amount1;
         reserve0 = amount0 >= 0 ? reserve0 + abs(amount0) : reserve0 - abs(amount0);
         reserve1 = amount1 >= 0 ? reserve1 + abs(amount1) : reserve1 - abs(amount1);
     }
