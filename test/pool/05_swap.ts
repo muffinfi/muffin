@@ -309,6 +309,22 @@ describe('pool swap', () => {
           await test(pool, false, -10000000, 10820082, [32437], [bn('4331598934694138314210')], [true], [[-3000, -300]]);
         });
       });
+
+      context('cross two ticks', () => {
+        beforeEach(async () => {
+          await initialize(99850, Q72);
+          await updateLiquidity(0, -300, 300, 400000);
+          await updateLiquidity(0, -3000, 3000, 400000);
+        });
+
+        it('token0 exact input', async () => {
+          await test(pool, true, 18177069 + 10000, -15796400, [54522], [bn('3044253451861908254066')], [true], [[MIN_TICK, -3000]]);
+        });
+
+        it('token1 exact input', async () => {
+          await test(pool, false, 18177069 + 10000, -15796400, [54522], [bn('7325521856562624091456')], [true], [[3000, MAX_TICK]]);
+        });
+      })
     });
 
     context('three tier', () => {

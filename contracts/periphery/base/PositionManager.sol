@@ -74,11 +74,22 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         uint24 sqrtGamma,
         uint128 sqrtPrice
     ) external payable {
-        (uint8 tickSpacing, ) = IMuffinHub(hub).getPoolParameters(_getPoolId(token0, token1));
+        uint256 accRefId = getAccRefId(msg.sender);
+        IMuffinHub _hub = IMuffinHub(hub);
+        (uint8 tickSpacing, ) = _hub.getPoolParameters(_getPoolId(token0, token1));
         if (tickSpacing == 0) {
-            deposit(msg.sender, token0, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice));
-            deposit(msg.sender, token1, UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8)));
-            IMuffinHub(hub).createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
+            // deposit tokens to internal account if not enough
+            unchecked {
+                bytes32 accHash = keccak256(abi.encode(address(this), accRefId));
+                uint256 amt0Req = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice);
+                uint256 amt0Acc = _hub.accounts(token0, accHash);
+                if (amt0Acc < amt0Req) deposit(msg.sender, token0, amt0Req - amt0Acc);
+
+                uint256 amt1Req = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8));
+                uint256 amt1Acc = _hub.accounts(token1, accHash);
+                if (amt1Acc < amt1Req) deposit(msg.sender, token1, amt1Req - amt1Acc);
+            }
+            _hub.createPool(token0, token1, sqrtGamma, sqrtPrice, accRefId);
         }
         _cacheTokenPair(token0, token1);
     }
