@@ -6,14 +6,14 @@ library PathLib {
     uint256 internal constant ADDR_UINT8_BYTES = ADDR_BYTES + 1;
     uint256 internal constant PATH_MAX_BYTES = ADDR_UINT8_BYTES * 256 + ADDR_BYTES;  // 256 pools (i.e. 5396 bytes)
 
-    function invalid(bytes memory path) internal pure returns (bool) {
+    function invalid(bytes calldata path) internal pure returns (bool) {
         unchecked {
             return (path.length > PATH_MAX_BYTES || (path.length - ADDR_BYTES) % ADDR_UINT8_BYTES != 0);
         }
     }
 
     /// @dev Assume the path is valid
-    function hopCount(bytes memory path) internal pure returns (uint256) {
+    function hopCount(bytes calldata path) internal pure returns (uint256) {
         unchecked {
             return path.length / ADDR_UINT8_BYTES;
         }
@@ -21,7 +21,7 @@ library PathLib {
 
     /// @dev Assume the path is valid
     function decodePool(
-        bytes memory path,
+        bytes calldata path,
         uint256 poolIndex,
         bool exactIn
     )
@@ -43,7 +43,7 @@ library PathLib {
     }
 
     /// @dev Assume the path is valid
-    function tokensInOut(bytes memory path, bool exactIn) internal pure returns (address tokenIn, address tokenOut) {
+    function tokensInOut(bytes calldata path, bool exactIn) internal pure returns (address tokenIn, address tokenOut) {
         unchecked {
             tokenIn = _readAddressAt(path, 0);
             tokenOut = _readAddressAt(path, path.length - ADDR_BYTES);
@@ -51,15 +51,15 @@ library PathLib {
         }
     }
 
-    function _readAddressAt(bytes memory data, uint256 offset) internal pure returns (address addr) {
+    function _readAddressAt(bytes calldata data, uint256 offset) internal pure returns (address addr) {
         assembly {
-            addr := mload(add(add(data, 20), offset))
+            addr := shr(96, calldataload(add(data.offset, offset)))
         }
     }
 
-    function _readUint8At(bytes memory data, uint256 offset) internal pure returns (uint8 value) {
+    function _readUint8At(bytes calldata data, uint256 offset) internal pure returns (uint8 value) {
         assembly {
-            value := mload(add(add(data, 1), offset))
+            value := shr(248, calldataload(add(data.offset, offset)))
         }
     }
 }

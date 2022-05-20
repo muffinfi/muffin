@@ -137,12 +137,12 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
     /// @inheritdoc IMuffinHubActions
     function swapMultiHop(SwapMultiHopParams calldata p) external returns (uint256 amountIn, uint256 amountOut) {
-        bytes memory path = p.path;
+        bytes calldata path = p.path;
         if (path.invalid()) revert InvalidSwapPath();
 
-        bool exactIn = p.amountDesired > 0;
         bytes32[] memory poolIds = new bytes32[](path.hopCount());
         unchecked {
+            bool exactIn = p.amountDesired > 0;
             int256 amtDesired = p.amountDesired;
             SwapEventVars memory evtData = exactIn
                 ? SwapEventVars(p.senderAccRefId, msg.sender, p.senderAccRefId)
@@ -192,7 +192,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
                 amountIn = uint256(-amtDesired);
             }
         }
-        (address _tokenIn, address _tokenOut) = path.tokensInOut(exactIn);
+        (address _tokenIn, address _tokenOut) = path.tokensInOut(p.amountDesired > 0);
         _transferSwap(_tokenIn, _tokenOut, amountIn, amountOut, p.recipient, p.recipientAccRefId, p.senderAccRefId, p.data);
         unchecked {
             for (uint256 i; i < poolIds.length; i++) pools[poolIds[i]].unlock();
