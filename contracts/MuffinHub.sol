@@ -255,7 +255,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address recipient,
         uint256 recipientAccRefId,
         uint256 senderAccRefId,
-        bytes memory data
+        bytes calldata data
     ) internal {
         if (tokenIn == tokenOut) {
             (amountIn, amountOut) = amountIn.subUntilZero(amountOut);
