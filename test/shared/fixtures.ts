@@ -11,7 +11,7 @@ export const poolTestFixture = async () => {
 export const hubFixture = async () => {
   // ===== contracts =====
   const positionController = (await deploy('MuffinHubPositions')) as MuffinHubPositions;
-  const _hub = (await deploy('MockMuffinHub', positionController.address)) as IMockMuffinHub;
+  const _hub = await deploy('MockMuffinHub', positionController.address);
   const hub = (await ethers.getContractAt('IMockMuffinHub', _hub.address)) as IMockMuffinHub;
   const caller = (await deploy('MockCaller', hub.address)) as MockCaller;
 
@@ -23,6 +23,9 @@ export const hubFixture = async () => {
 
   // ===== test users =====
   const [user, other] = await ethers.getSigners();
+
+  // ===== change allowed sqrtGamma =====
+  await hub.setDefaultAllowedSqrtGammas([99850]);
 
   return { hub, caller, token0, token1, user, other, poolId };
 };
@@ -69,6 +72,7 @@ export const hubWithTwoPoolsFixture = async () => {
   await hub.addAccountBalance(user.address, 1, token2.address, 25600 * 2);
 
   await hub.setDefaultParameters(1, 25);
+  await hub.setDefaultAllowedSqrtGammas([99850]);
   await hub.createPool(token0.address, token1.address, 99850, bn(1).shl(72), 1);
   await hub.createPool(token1.address, token2.address, 99850, bn(1).shl(72), 1);
   await hub.createPool(token0.address, token2.address, 99850, bn(1).shl(72), 1);

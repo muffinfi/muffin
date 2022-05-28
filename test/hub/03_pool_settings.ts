@@ -20,6 +20,8 @@ describe('hub pool settings', () => {
     await expect(hub.connect(other).setPoolParameters(poolId, 123, 234)).to.be.revertedWith('');
     await expect(hub.connect(other).setGovernance(other.address)).to.be.revertedWith('');
     await expect(hub.connect(other).setDefaultParameters(123, 234)).to.be.revertedWith('');
+    await expect(hub.connect(other).setDefaultAllowedSqrtGammas([99999])).to.be.revertedWith('');
+    await expect(hub.connect(other).setPoolAllowedSqrtGammas(poolId, [99999])).to.be.revertedWith('');
   });
 
   it('setTierParameters', async () => {
@@ -43,5 +45,15 @@ describe('hub pool settings', () => {
     await hub.setDefaultParameters(123, 234);
     expect((await hub.getDefaultParameters()).tickSpacing).eq(123);
     expect((await hub.getDefaultParameters()).protocolFee).eq(234);
+  });
+
+  it('setDefaultAllowedSqrtGammas', async () => {
+    await hub.setDefaultAllowedSqrtGammas([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(await hub.getDefaultAllowedSqrtGammas()).deep.eq([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it('setPoolAllowedSqrtGammas', async () => {
+    await hub.setPoolAllowedSqrtGammas(poolId, [1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(await hub.getPoolAllowedSqrtGammas(poolId)).deep.eq([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 });

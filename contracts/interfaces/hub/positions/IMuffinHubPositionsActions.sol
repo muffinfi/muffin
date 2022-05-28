@@ -133,6 +133,12 @@ interface IMuffinHubPositionsActions {
         uint8 limitOrderTickSpacingMultiplier
     ) external;
 
+    /// @notice Update the whitelist of swap fees which LPs can choose to create a pool
+    function setDefaultAllowedSqrtGammas(uint24[] calldata sqrtGammas) external;
+
+    /// @notice Update the pool-specific whitelist of swap fees
+    function setPoolAllowedSqrtGammas(bytes32 poolId, uint24[] calldata sqrtGammas) external;
+
     /// @notice Collect the protocol fee accrued
     function collectProtocolFee(address token, address recipient) external returns (uint256 amount);
 }

@@ -39,6 +39,15 @@ describe('hub create pool', () => {
       await expect(hub.createPool(token1.address, token0.address, 99850, Q72, 1)).to.be.revertedWith('InvalidTokenOrder()');
     });
 
+    it('invalid sqrtGamma', async () => {
+      await expect(hub.createPool(token0.address, token1.address, 99850 + 1, Q72, 1)).to.be.revertedWith('NotAllowedSqrtGamma()');
+    });
+
+    it('invalid sqrtGamma (pool-specific)', async () => {
+      await hub.setPoolAllowedSqrtGammas(poolId, [99850 + 1]);
+      await expect(hub.createPool(token0.address, token1.address, 99850, Q72, 1)).to.be.revertedWith('NotAllowedSqrtGamma()');
+    });
+
     it('not enough token0', async () => {
       await hub.withdraw(caller.address, 1, token0.address, 1);
       await expect(hub.createPool(token0.address, token1.address, 99850, Q72, 1)).to.be.revertedWith('');

@@ -2,8 +2,15 @@
 pragma solidity ^0.8.0;
 
 import "../../../libraries/Settlement.sol";
+import "../../../libraries/Tiers.sol";
 
 interface IMuffinHubPositionsView {
+    function getDefaultAllowedSqrtGammas() external view returns (uint24[] memory);
+
+    function getPoolAllowedSqrtGammas(bytes32 poolId) external view returns (uint24[] memory);
+
+    function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory);
+
     function getPositionFeeGrowthInside(
         bytes32 poolId,
         address owner,

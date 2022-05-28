@@ -24,9 +24,14 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     /// @inheritdoc IMuffinHubBase
     address public governance;
     /// @dev Default tick spacing of new pool
-    uint8 internal defaultTickSpacing = 200;
+    uint8 internal defaultTickSpacing = 100;
     /// @dev Default protocl fee of new pool (base 255)
     uint8 internal defaultProtocolFee = 0;
+
+    /// @dev Whitelist of swap fees that LPs can choose to create a pool
+    uint24[] internal defaultAllowedSqrtGammas = [99800, 99650, 99500];
+    /// @dev Pool-specific whitelist of swap fees
+    mapping(bytes32 => uint24[]) internal poolAllowedSqrtGammas;
 
     /// @dev Mapping of poolId to pool state
     mapping(bytes32 => Pools.Pool) internal pools;

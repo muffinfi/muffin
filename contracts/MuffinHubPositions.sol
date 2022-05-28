@@ -165,15 +165,16 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
      *                         VIEW FUNCTIONS
      *==============================================================*/
 
-    function getPosition(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (Positions.Position memory) {
-        return Positions.get(pools[poolId].positions, owner, positionRefId, tierId, tickLower, tickUpper);
+    function getDefaultAllowedSqrtGammas() external view returns (uint24[] memory) {
+        return defaultAllowedSqrtGammas;
+    }
+
+    function getPoolAllowedSqrtGammas(bytes32 poolId) external view returns (uint24[] memory) {
+        return poolAllowedSqrtGammas[poolId];
+    }
+
+    function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory) {
+        return pools[poolId].tiers;
     }
 
     function getPositionFeeGrowthInside(
@@ -288,6 +289,16 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     ) external onlyGovernance {
         pools[poolId].setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
         emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setDefaultAllowedSqrtGammas(uint24[] calldata sqrtGammas) external onlyGovernance {
+        defaultAllowedSqrtGammas = sqrtGammas;
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setPoolAllowedSqrtGammas(bytes32 poolId, uint24[] calldata sqrtGammas) external onlyGovernance {
+        poolAllowedSqrtGammas[poolId] = sqrtGammas;
     }
 
     /// @inheritdoc IMuffinHubPositionsActions

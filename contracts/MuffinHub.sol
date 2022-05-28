@@ -16,6 +16,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
     using PathLib for bytes;
 
     error InvalidTokenOrder();
+    error NotAllowedSqrtGamma();
     error InvalidSwapPath();
     error NotEnoughIntermediateOutput();
     error NotEnoughFundToWithdraw();
@@ -70,6 +71,17 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
      *                      CREATE POOL / TIER
      *==============================================================*/
 
+    /// @notice Check if the given sqrtGamma is allowed to be used to create a pool or tier
+    function isSqrtGammaAllowed(bytes32 poolId, uint24 sqrtGamma) public view returns (bool) {
+        uint24[] storage allowed = poolAllowedSqrtGammas[poolId].length != 0
+            ? poolAllowedSqrtGammas[poolId]
+            : defaultAllowedSqrtGammas;
+        unchecked {
+            for (uint256 i; i < allowed.length; i++) if (allowed[i] == sqrtGamma) return true;
+        }
+        return false;
+    }
+
     /// @inheritdoc IMuffinHubActions
     function createPool(
         address token0,
@@ -82,6 +94,8 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
         Pools.Pool storage pool;
         (pool, poolId) = pools.getPoolAndId(token0, token1);
+        if (!isSqrtGammaAllowed(poolId, sqrtGamma)) revert NotAllowedSqrtGamma();
+
         (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
@@ -98,8 +112,10 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address token1,
         uint24 sqrtGamma,
         uint256 senderAccRefId
-    ) external onlyGovernance {
+    ) external {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
+        if (!isSqrtGammaAllowed(poolId, sqrtGamma)) revert NotAllowedSqrtGamma();
+
         (uint256 amount0, uint256 amount1, uint8 tierId) = pool.addTier(sqrtGamma);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
@@ -291,10 +307,6 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory) {
         return pools[poolId].tiers[tierId];
-    }
-
-    function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory) {
-        return pools[poolId].tiers;
     }
 
     function getTiersCount(bytes32 poolId) external view returns (uint256) {

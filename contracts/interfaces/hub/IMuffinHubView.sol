@@ -6,13 +6,13 @@ import "../../libraries/Ticks.sol";
 import "../../libraries/Positions.sol";
 
 interface IMuffinHubView {
+    function isSqrtGammaAllowed(bytes32 poolId, uint24 sqrtGamma) external view returns (bool);
+
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
 
     function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee);
 
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory);
-
-    function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory);
 
     function getTiersCount(bytes32 poolId) external view returns (uint256);
 

@@ -16,7 +16,7 @@ describe('pool initialize', () => {
   });
 
   it('invalid sqrt gamma', async () => {
-    await expect(pool.initialize(SQRT_GAMMA + 1, ONE_X72, 1, 0)).to.be.reverted;
+    await expect(pool.initialize(100001, ONE_X72, 1, 0)).to.be.reverted;
   });
 
   it('invalid sqrt price', async () => {
