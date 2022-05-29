@@ -59,10 +59,10 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     }
 
     /*===============================================================
-     *                         CREATE POOL
+     *                      CREATE POOL / TIER
      *==============================================================*/
 
-    /// @notice             Create a pool
+    /// @notice             Create a pool for token0 and token1 if it hasn't been created
     /// @dev                DO NOT create pool with rebasing tokens or multiple-address tokens as it will cause loss of funds
     /// @param token0       Address of token0 of the pool
     /// @param token1       Address of token1 of the pool
@@ -72,26 +72,65 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         address token0,
         address token1,
         uint24 sqrtGamma,
-        uint128 sqrtPrice
+        uint128 sqrtPrice,
+        bool useAccount
     ) external payable {
-        uint256 accRefId = getAccRefId(msg.sender);
         IMuffinHub _hub = IMuffinHub(hub);
+        // check tick spacing. zero means the pool is not created
         (uint8 tickSpacing, ) = _hub.getPoolParameters(_getPoolId(token0, token1));
         if (tickSpacing == 0) {
-            // deposit tokens to internal account if not enough
-            unchecked {
-                bytes32 accHash = keccak256(abi.encode(address(this), accRefId));
-                uint256 amt0Req = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice);
-                uint256 amt0Acc = _hub.accounts(token0, accHash);
-                if (amt0Acc < amt0Req) deposit(msg.sender, token0, amt0Req - amt0Acc);
-
-                uint256 amt1Req = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8));
-                uint256 amt1Acc = _hub.accounts(token1, accHash);
-                if (amt1Acc < amt1Req) deposit(msg.sender, token1, amt1Req - amt1Acc);
-            }
-            _hub.createPool(token0, token1, sqrtGamma, sqrtPrice, accRefId);
+            _depositForTierCreation(token0, token1, sqrtPrice, useAccount);
+            _hub.createPool(token0, token1, sqrtGamma, sqrtPrice, getAccRefId(msg.sender));
         }
         _cacheTokenPair(token0, token1);
+    }
+
+    /// @notice             Add a tier to a pool
+    /// @dev                This function is subject to sandwitch attack which costs more tokens to add a tier, but the extra cost
+    ///                     should be small in common token pairs. Also, users can multicall with "mint" to do slippage check.
+    /// @param token0       Address of token0 of the pool
+    /// @param token1       Address of token1 of the pool
+    /// @param sqrtGamma    Sqrt of (1 - percentage swap fee of the 1st tier)
+    function addTier(
+        address token0,
+        address token1,
+        uint24 sqrtGamma,
+        bool useAccount
+    ) external payable {
+        IMuffinHub _hub = IMuffinHub(hub);
+        uint128 sqrtPrice = _hub.getTier(_getPoolId(token0, token1), 0).sqrtPrice;
+        _depositForTierCreation(token0, token1, sqrtPrice, useAccount);
+
+        _hub.addTier(token0, token1, sqrtGamma, getAccRefId(msg.sender));
+        _cacheTokenPair(token0, token1);
+    }
+
+    /// @dev Deposit tokens required to create a tier
+    function _depositForTierCreation(
+        address token0,
+        address token1,
+        uint128 sqrtPrice,
+        bool useAccount
+    ) internal {
+        unchecked {
+            uint256 amount0 = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) << (72 + 8), sqrtPrice);
+            uint256 amount1 = UnsafeMath.ceilDiv(uint256(Pools.BASE_LIQUIDITY_D8) * sqrtPrice, 1 << (72 - 8));
+
+            if (useAccount) {
+                bytes32 accHash = keccak256(abi.encode(address(this), getAccRefId(msg.sender)));
+                uint256 amt0Acc = _getAccountBalance(token0, accHash);
+                uint256 amt1Acc = _getAccountBalance(token1, accHash);
+                if (amount0 > amt0Acc) deposit(msg.sender, token0, amount0 - amt0Acc);
+                if (amount1 > amt1Acc) deposit(msg.sender, token1, amount1 - amt1Acc);
+            } else {
+                deposit(msg.sender, token0, amount0);
+                deposit(msg.sender, token1, amount1);
+            }
+        }
+    }
+
+    function _getAccountBalance(address token, bytes32 accHash) internal view returns (uint256) {
+        return IMuffinHub(hub).accounts(token, accHash);
     }
 
     /*===============================================================
@@ -312,7 +351,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             uint256 feeAmount1
         )
     {
-        PositionInfo memory info = positionsByTokenId[params.tokenId];
+        PositionInfo storage info = positionsByTokenId[params.tokenId];
         Pair memory pair = pairs[info.pairId];
         IMuffinHubPositionsActions.BurnParams memory burnParams = IMuffinHubPositionsActions.BurnParams({
             token0: pair.token0,
@@ -353,8 +392,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         if (tokenId == 0) tokenId = latestTokenId();
         _checkApproved(tokenId);
 
-        PositionInfo memory info = positionsByTokenId[tokenId];
-        Pair memory pair = pairs[info.pairId];
+        PositionInfo storage info = positionsByTokenId[tokenId];
+        Pair storage pair = pairs[info.pairId];
         IMuffinHubPositions(hub).setLimitOrderType(
             pair.token0,
             pair.token1,
@@ -379,8 +418,8 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
             _checkApproved(tokenId);
 
             // check if position is empty
-            PositionInfo memory info = positionsByTokenId[tokenId];
-            Pair memory pair = pairs[info.pairId];
+            PositionInfo storage info = positionsByTokenId[tokenId];
+            Pair storage pair = pairs[info.pairId];
             Positions.Position memory position = IMuffinHub(hub).getPosition(
                 _getPoolId(pair.token0, pair.token1),
                 address(this),

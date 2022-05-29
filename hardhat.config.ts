@@ -26,7 +26,7 @@ const basicCompiler = {
 const managerCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 4800 },
+    optimizer: { enabled: true, runs: 4500 },
     metadata: { bytecodeHash: 'none' },
   },
 };
