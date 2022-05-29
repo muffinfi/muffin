@@ -30,15 +30,4 @@ interface IMuffinHubView {
         int24 tickLower,
         int24 tickUpper
     ) external view returns (Positions.Position memory);
-
-    function getTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            uint32 lastUpdate,
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        );
 }

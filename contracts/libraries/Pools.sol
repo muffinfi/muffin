@@ -948,4 +948,43 @@ library Pools {
             }
         }
     }
+
+    function getDerivedTWAP(Pool storage pool)
+        internal
+        view
+        returns (
+            int56 tickCum,
+            int24 ema20,
+            int24 ema40,
+            uint96 secsPerLiqCumulative
+        )
+    {
+        Tiers.Tier[] storage tiers = pool.tiers;
+        uint32 lastUpdate = pool.tickLastUpdate;
+        tickCum = pool.tickCumulative;
+        ema20 = pool.tickEma20;
+        ema40 = pool.tickEma40;
+        secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
+
+        unchecked {
+            uint32 secs = uint32(block.timestamp) - lastUpdate;
+            if (secs != 0) {
+                uint256 sumL;
+                int256 sumLTick; // sum of liquidity * tick (Q24 * UQ128)
+
+                for (uint256 i; i < tiers.length; i++) {
+                    Tiers.Tier storage tier = tiers[i];
+                    sumL += tier.liquidity;
+                    sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
+                }
+                tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
+                secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
+
+                // calculate tick ema
+                (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
+                ema20 = int24(((sumLTick * int256(Q64 - d20)) / int256(sumL) + ema20 * int256(d20)) >> 64);
+                ema40 = int24(((sumLTick * int256(Q64 - d40)) / int256(sumL) + ema40 * int256(d40)) >> 64);
+            }
+        }
+    }
 }

@@ -52,4 +52,25 @@ interface IMuffinHubPositionsView {
     ) external view returns (Settlement.Snapshot memory);
 
     function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
+
+    function getTWAP(bytes32 poolId)
+        external
+        view
+        returns (
+            uint32 lastUpdate,
+            int56 tickCumulative,
+            int24 tickEma20,
+            int24 tickEma40,
+            uint96 secondsPerLiquidityCumulative
+        );
+
+    function getDerivedTWAP(bytes32 poolId)
+        external
+        view
+        returns (
+            int56 tickCumulative,
+            int24 tickEma20,
+            int24 tickEma40,
+            uint96 secondsPerLiquidityCumulative
+        );
 }

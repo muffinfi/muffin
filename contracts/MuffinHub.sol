@@ -332,21 +332,6 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         return Positions.get(pools[poolId].positions, owner, positionRefId, tierId, tickLower, tickUpper);
     }
 
-    function getTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            uint32 lastUpdate,
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        )
-    {
-        Pools.Pool storage pool = pools[poolId];
-        return (pool.tickLastUpdate, pool.tickCumulative, pool.tickEma20, pool.tickEma40, pool.secondsPerLiquidityCumulative);
-    }
-
     /*===============================================================
      *                FALLBACK TO POSITION CONTROLLER
      *==============================================================*/
