@@ -92,6 +92,7 @@ describe('hub create pool', () => {
 
   context('add tier', () => {
     beforeEach(async () => {
+      await hub.setDefaultAllowedSqrtGammas([99850, 99851, 99852, 99853, 99854, 99855]);
       await hub.createPool(token0.address, token1.address, 99850, Q72, 1);
       await hub.addAccountBalance(user.address, 1, token0.address, 25600);
       await hub.addAccountBalance(user.address, 1, token1.address, 25600);
@@ -100,39 +101,43 @@ describe('hub create pool', () => {
     });
 
     it('zero token address', async () => {
-      await expect(hub.addTier(constants.AddressZero, token1.address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(constants.AddressZero, token1.address, 99851, 1)).to.be.revertedWith('');
     });
 
     it('invalid token order', async () => {
-      await expect(hub.addTier(token1.address, token0.address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(token1.address, token0.address, 99851, 1)).to.be.revertedWith('');
     });
 
     it('not enough token0', async () => {
       await hub.withdraw(caller.address, 1, token0.address, 1);
-      await expect(hub.addTier(token0.address, token1.address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(token0.address, token1.address, 99851, 1)).to.be.revertedWith('');
     });
 
     it('not enough token1', async () => {
       await hub.withdraw(caller.address, 1, token1.address, 1);
-      await expect(hub.addTier(token0.address, token1.address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(token0.address, token1.address, 99851, 1)).to.be.revertedWith('');
+    });
+
+    it('repeated sqrt gamma', async () => {
+      await expect(hub.addTier(token0.address, token1.address, 99850, 1)).to.be.revertedWith('NotAllowedSqrtGamma');
     });
 
     it('pool not created', async () => {
       const tokenC = (await deploy('MockERC20', 'CCC Token', 'CCC')) as MockERC20;
       const pair = token0.address.toLowerCase() < tokenC.address.toLowerCase() ? [token0, tokenC] : [tokenC, token0];
       await hub.addAccountBalance(user.address, 1, tokenC.address, 25600);
-      await expect(hub.addTier(pair[0].address, pair[1].address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(pair[0].address, pair[1].address, 99851, 1)).to.be.revertedWith('');
     });
 
     it('add tier successfully', async () => {
       const tierCount = await hub.getTiersCount(poolId);
-      const promise = hub.addTier(token0.address, token1.address, 99850, 1);
+      const promise = hub.addTier(token0.address, token1.address, 99851, 1);
       await promise;
 
       // check events
       expect(promise)
         .to.emit(hub, 'UpdateTier')
-        .withArgs(poolId, +tierCount, 99850, 0);
+        .withArgs(poolId, +tierCount, 99851, 0);
 
       // check tier count
       expect(await hub.getTiersCount(poolId)).eq(tierCount.add(1));
@@ -146,9 +151,11 @@ describe('hub create pool', () => {
       await hub.addAccountBalance(user.address, 1, token0.address, 1e15);
       await hub.addAccountBalance(user.address, 1, token1.address, 1e15);
 
-      for (let i = 0; i < 5; i++) await hub.addTier(token0.address, token1.address, 99850, 1);
+      for (let i = 0; i < 5; i++) {
+        await hub.addTier(token0.address, token1.address, 99851 + i, 1);
+      }
       expect(await hub.getTiersCount(poolId)).eq(6);
-      await expect(hub.addTier(token0.address, token1.address, 99850, 1)).to.be.revertedWith('');
+      await expect(hub.addTier(token0.address, token1.address, 99851, 1)).to.be.revertedWith('');
     });
   });
 });

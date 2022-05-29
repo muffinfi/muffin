@@ -72,12 +72,19 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
      *==============================================================*/
 
     /// @notice Check if the given sqrtGamma is allowed to be used to create a pool or tier
+    /// @dev It first checks if the sqrtGamma is in the whitelist, then check if the pool hasn't had that fee tier created.
     function isSqrtGammaAllowed(bytes32 poolId, uint24 sqrtGamma) public view returns (bool) {
         uint24[] storage allowed = poolAllowedSqrtGammas[poolId].length != 0
             ? poolAllowedSqrtGammas[poolId]
             : defaultAllowedSqrtGammas;
         unchecked {
-            for (uint256 i; i < allowed.length; i++) if (allowed[i] == sqrtGamma) return true;
+            for (uint256 i; i < allowed.length; i++) {
+                if (allowed[i] == sqrtGamma) {
+                    Tiers.Tier[] storage tiers = pools[poolId].tiers;
+                    for (uint256 j; j < tiers.length; j++) if (tiers[j].sqrtGamma == sqrtGamma) return false;
+                    return true;
+                }
+            }
         }
         return false;
     }
