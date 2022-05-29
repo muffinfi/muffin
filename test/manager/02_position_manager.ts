@@ -59,14 +59,30 @@ describe('manager position manager', () => {
     return retval;
   };
 
+  const computePoolId = (tokens: (MockERC20 | WETH9)[]) => {
+    return keccak256(defaultAbiCoder.encode(['address', 'address'], [tokens[0].address, tokens[1].address]));
+  };
+
   context('create pool', () => {
+    let token4: MockERC20;
+
+    beforeEach(async () => {
+      token4 = (await deploy('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
+    });
+
+    const expectPairCached = async (tokens: (MockERC20 | WETH9)[], pairId = 1) => {
+      const pair = await manager.pairs(pairId);
+      expect(pair[0]).eq(tokens[0].address);
+      expect(pair[1]).eq(tokens[1].address);
+
+      const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [tokens[0].address, tokens[1].address]));
+      expect(await manager.pairIdsByPoolId(poolId)).eq(pairId);
+    };
+
     it('create pool successfully', async () => {
-      // deploy a new token
-      const token4 = (await deploy('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
       await token4.mint(1e12);
       await token4.approve(manager.address, 1e12);
       const tokens = token0.address.toLowerCase() < token4.address.toLowerCase() ? [token0, token4] : [token4, token0];
-      const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [tokens[0].address, tokens[1].address]));
 
       await expectBalanceChanges(
         [
@@ -76,15 +92,13 @@ describe('manager position manager', () => {
           { account: hub, token: tokens[1], delta: 25600 },
         ],
         async () => {
-          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72);
+          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72, false);
 
           // check pair cached
-          const pair = await manager.pairs(1);
-          expect(pair[0]).eq(tokens[0].address);
-          expect(pair[1]).eq(tokens[1].address);
-          expect(await manager.pairIdsByPoolId(poolId)).eq(1);
+          await expectPairCached(tokens);
 
           // check pool created
+          const poolId = computePoolId(tokens);
           expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(1);
           expect((await hub.getPoolParameters(poolId)).protocolFee).eq(25);
         },
@@ -92,12 +106,9 @@ describe('manager position manager', () => {
     });
 
     it('create pool successfully with eth', async () => {
-      // deploy a new token
-      const token4 = (await deploy('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
       await token4.mint(1e12);
       await token4.approve(manager.address, 1e12);
       const tokens = weth.address.toLowerCase() < token4.address.toLowerCase() ? [weth, token4] : [token4, weth];
-      const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [tokens[0].address, tokens[1].address]));
 
       await expectBalanceChanges(
         [
@@ -108,15 +119,13 @@ describe('manager position manager', () => {
           { account: hub, token: weth, delta: 25600 },
         ],
         async () => {
-          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72, { value: 25600 });
+          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72, false, { value: 25600 });
 
           // check pair cached
-          const pair = await manager.pairs(1);
-          expect(pair[0]).eq(tokens[0].address);
-          expect(pair[1]).eq(tokens[1].address);
-          expect(await manager.pairIdsByPoolId(poolId)).eq(1);
+          await expectPairCached(tokens);
 
           // check pool created
+          const poolId = computePoolId(tokens);
           expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(1);
           expect((await hub.getPoolParameters(poolId)).protocolFee).eq(25);
         },
@@ -124,10 +133,7 @@ describe('manager position manager', () => {
     });
 
     it('create pool successfully with internal accounts', async () => {
-      // deploy a new token
-      const token4 = (await deploy('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
       const tokens = token0.address.toLowerCase() < token4.address.toLowerCase() ? [token0, token4] : [token4, token0];
-      const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [tokens[0].address, tokens[1].address]));
 
       // add internal balances
       await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 1e8);
@@ -142,15 +148,44 @@ describe('manager position manager', () => {
           { account: hub, token: tokens[1], delta: 0 },
         ],
         async () => {
-          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72);
+          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72, true);
 
           // check pair cached
-          const pair = await manager.pairs(1);
-          expect(pair[0]).eq(tokens[0].address);
-          expect(pair[1]).eq(tokens[1].address);
-          expect(await manager.pairIdsByPoolId(poolId)).eq(1);
+          await expectPairCached(tokens);
 
           // check pool created
+          const poolId = computePoolId(tokens);
+          expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(1);
+          expect((await hub.getPoolParameters(poolId)).protocolFee).eq(25);
+        },
+      );
+    });
+
+    it('create pool successfully with internal accounts partially', async () => {
+      await token4.mint(1e12);
+      await token4.approve(manager.address, 1e12);
+      const tokens = token0.address.toLowerCase() < token4.address.toLowerCase() ? [token0, token4] : [token4, token0];
+
+      // add internal balances
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 777);
+      await hub.addAccountBalance(manager.address, bn(user.address), token4.address, 777);
+
+      // check zero token balance changes
+      await expectBalanceChanges(
+        [
+          { account: user, token: tokens[0], delta: -(25600 - 777) },
+          { account: user, token: tokens[1], delta: -(25600 - 777) },
+          { account: hub, token: tokens[0], delta: 25600 - 777 },
+          { account: hub, token: tokens[1], delta: 25600 - 777 },
+        ],
+        async () => {
+          await manager.createPool(tokens[0].address, tokens[1].address, 99850, Q72, true);
+
+          // check pair cached
+          await expectPairCached(tokens);
+
+          // check pool created
+          const poolId = computePoolId(tokens);
           expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(1);
           expect((await hub.getPoolParameters(poolId)).protocolFee).eq(25);
         },
@@ -166,15 +201,65 @@ describe('manager position manager', () => {
           { account: hub, token: token1, delta: 0 },
         ],
         async () => {
-          await manager.createPool(token0.address, token1.address, 99850, Q72);
+          await manager.createPool(token0.address, token1.address, 99850, Q72, false);
 
           // check pair cached
-          const pair = await manager.pairs(1);
-          expect(pair[0]).eq(token0.address);
-          expect(pair[1]).eq(token1.address);
-          expect(await manager.pairIdsByPoolId(poolId01)).eq(1);
+          await expectPairCached([token0, token1]);
         },
       );
+    });
+  });
+
+  context('add tier', () => {
+    beforeEach(async () => {
+      expect((await hub.getTier(poolId01, 0)).sqrtPrice).eq(Q72);
+      expect(await hub.getTiersCount(poolId01)).eq(1);
+      await hub.setDefaultAllowedSqrtGammas([99850, 99900]);
+    });
+
+    it('add tier successfully', async () => {
+      await expectBalanceChanges(
+        [
+          { account: user, token: token0, delta: -25600 },
+          { account: user, token: token1, delta: -25600 },
+          { account: hub, token: token0, delta: 25600 },
+          { account: hub, token: token1, delta: 25600 },
+        ],
+        async () => {
+          await manager.addTier(token0.address, token1.address, 99900, false);
+          expect((await hub.getTier(poolId01, 1)).sqrtGamma).eq(99900);
+        },
+      );
+    });
+
+    it('add tier successfully with internal account partially', async () => {
+      // add internal balances
+      await hub.addAccountBalance(manager.address, bn(user.address), token0.address, 777);
+      await hub.addAccountBalance(manager.address, bn(user.address), token1.address, 777);
+
+      await expectBalanceChanges(
+        [
+          { account: user, token: token0, delta: -(25600 - 777) },
+          { account: user, token: token1, delta: -(25600 - 777) },
+          { account: hub, token: token0, delta: 25600 - 777 },
+          { account: hub, token: token1, delta: 25600 - 777 },
+        ],
+        async () => {
+          await manager.addTier(token0.address, token1.address, 99900, true);
+          expect((await hub.getTier(poolId01, 1)).sqrtGamma).eq(99900);
+        },
+      );
+    });
+
+    it('non-existing pool', async () => {
+      const token4 = (await deploy('MockERC20', 'AAA Token', 'AAA')) as MockERC20;
+      const tokens = token0.address.toLowerCase() < token4.address.toLowerCase() ? [token0, token4] : [token4, token0];
+
+      await token4.mint(1e12);
+      await token4.approve(manager.address, 1e12);
+
+      const outOfBoundErrMsg = 'reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)';
+      await expect(manager.addTier(tokens[0].address, tokens[1].address, 99900, false)).to.be.revertedWith(outOfBoundErrMsg);
     });
   });
 

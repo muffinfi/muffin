@@ -98,6 +98,7 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
         bool useAccount
     ) external payable {
         IMuffinHub _hub = IMuffinHub(hub);
+        // get first tier's sqrtPrice. revert if pool is not created.
         uint128 sqrtPrice = _hub.getTier(_getPoolId(token0, token1), 0).sqrtPrice;
         _depositForTierCreation(token0, token1, sqrtPrice, useAccount);
 
