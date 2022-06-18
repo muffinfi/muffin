@@ -11,7 +11,6 @@ library Ticks {
      * @param needSettle1       True if needed to settle positions with upper tick boundary at this tick (i.e. 0 -> 1 limit orders)
      * @param feeGrowthOutside0 Fee0 growth per unit liquidity from this tick to the end in a direction away from the tier's current tick (UQ16.64)
      * @param feeGrowthOutside1 Fee1 growth per unit liquidity from this tick to the end in a direction away from the tier's current tick (UQ16.64)
-     * @param secondsPerLiquidityOutside Seconds per unit liquidity from this tick outwards (UQ8.80)
      */
     struct Tick {
         uint96 liquidityLowerD8;
@@ -22,20 +21,17 @@ library Ticks {
         bool needSettle1;
         uint80 feeGrowthOutside0;
         uint80 feeGrowthOutside1;
-        uint96 secondsPerLiquidityOutside;
     }
 
     /// @dev Flip the direction of "outside". Called when the tick is being crossed.
     function flip(
         Tick storage self,
         uint80 feeGrowthGlobal0,
-        uint80 feeGrowthGlobal1,
-        uint96 secondsPerLiquidityCumulative
+        uint80 feeGrowthGlobal1
     ) internal {
         unchecked {
             self.feeGrowthOutside0 = feeGrowthGlobal0 - self.feeGrowthOutside0;
             self.feeGrowthOutside1 = feeGrowthGlobal1 - self.feeGrowthOutside1;
-            self.secondsPerLiquidityOutside = secondsPerLiquidityCumulative - self.secondsPerLiquidityOutside;
         }
     }
 }

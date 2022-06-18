@@ -20,15 +20,6 @@ interface IMuffinHubPositionsView {
         int24 tickUpper
     ) external view returns (uint80 feeGrowthInside0, uint80 feeGrowthInside1);
 
-    function getPositionSecondsPerLiquidityInside(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint96 secondsPerLiquidityInside);
-
     function getSettlement(
         bytes32 poolId,
         uint8 tierId,
@@ -52,25 +43,4 @@ interface IMuffinHubPositionsView {
     ) external view returns (Settlement.Snapshot memory);
 
     function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
-
-    function getTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            uint32 lastUpdate,
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        );
-
-    function getDerivedTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        );
 }

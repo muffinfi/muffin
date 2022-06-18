@@ -18,7 +18,7 @@ task('compile-size-contracts', 'Compile and measure contract size', async (_args
 const basicCompiler = {
   version: '0.8.10',
   settings: {
-    optimizer: { enabled: true, runs: 9999 },
+    optimizer: { enabled: true, runs: 99999 },
     metadata: { bytecodeHash: 'none' },
   },
 };

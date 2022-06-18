@@ -188,17 +188,6 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         return pools[poolId].getPositionFeeGrowthInside(owner, positionRefId, tierId, tickLower, tickUpper);
     }
 
-    function getPositionSecondsPerLiquidityInside(
-        bytes32 poolId,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (uint96 secondsPerLiquidityInside) {
-        return pools[poolId].getPositionSecondsPerLiquidityInside(owner, positionRefId, tierId, tickLower, tickUpper);
-    }
-
     function getSettlement(
         bytes32 poolId,
         uint8 tierId,
@@ -250,34 +239,6 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         uint256 wordIdx
     ) external view returns (uint256) {
         return pools[poolId].tickMaps[tierId].words[wordIdx];
-    }
-
-    function getTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            uint32 lastUpdate,
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        )
-    {
-        Pools.Pool storage pool = pools[poolId];
-        return (pool.tickLastUpdate, pool.tickCumulative, pool.tickEma20, pool.tickEma40, pool.secondsPerLiquidityCumulative);
-    }
-
-    function getDerivedTWAP(bytes32 poolId)
-        external
-        view
-        returns (
-            int56 tickCumulative,
-            int24 tickEma20,
-            int24 tickEma40,
-            uint96 secondsPerLiquidityCumulative
-        )
-    {
-        return Pools.getDerivedTWAP(pools[poolId]);
     }
 
     /*===============================================================

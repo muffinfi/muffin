@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./math/TickMath.sol";
 import "./math/SwapMath.sol";
-import "./math/EMAMath.sol";
 import "./math/UnsafeMath.sol";
 import "./math/Math.sol";
 import "./Tiers.sol";
@@ -39,11 +38,6 @@ library Pools {
     /// @param unlocked     Reentrancy lock
     /// @param tickSpacing  Tick spacing. Only ticks that are multiples of the tick spacing can be used
     /// @param protocolFee  Protocol fee with base 255 (e.g. protocolFee = 51 for 20% protocol fee)
-    /// @param tickLastUpdate Timestamp of last tickCumulative update
-    /// @param tickCumulative Tick * seconds elapsed
-    /// @param tickEma20    Tick 20-min EMA
-    /// @param tickEma40    Tick 40-min EMA
-    /// @param secondsPerLiquidityCumulative Accumulated seconds per unit of liquidity (UQ8.88)
     /// @param tiers        Array of tiers
     /// @param tickMaps     Bitmap for each tier to store which ticks are initializated
     /// @param ticks        Mapping of tick states of each tier
@@ -54,11 +48,6 @@ library Pools {
         bool unlocked;
         uint8 tickSpacing;
         uint8 protocolFee;
-        uint32 tickLastUpdate;
-        int56 tickCumulative;
-        int24 tickEma20;
-        int24 tickEma40;
-        uint96 secondsPerLiquidityCumulative;
         Tiers.Tier[] tiers;
         mapping(uint256 => TickMaps.TickMap) tickMaps;
         mapping(uint256 => mapping(int24 => Ticks.Tick)) ticks;
@@ -103,8 +92,6 @@ library Pools {
         pool.tickSpacing = tickSpacing;
         pool.protocolFee = protocolFee;
 
-        int24 tick = TickMath.sqrtPriceToTick(sqrtPrice);
-        (pool.tickLastUpdate, pool.tickEma20, pool.tickEma40) = (uint32(block.timestamp), tick, tick);
         (amount0, amount1) = _addTier(pool, sqrtGamma, sqrtPrice);
 
         // BE AWARE the pool is locked. Please unlock it after token transfer is done.
@@ -120,7 +107,6 @@ library Pools {
     {
         lock(pool);
         require((tierId = uint8(pool.tiers.length)) > 0);
-        _updateTWAP(pool, pool.tiers);
         (amount0, amount1) = _addTier(pool, sqrtGamma, pool.tiers[0].sqrtPrice); // use 1st tier sqrt price as reference
 
         // BE AWARE the pool is locked. Please unlock it after token transfer is done.
@@ -201,50 +187,10 @@ library Pools {
     }
 
     /*===============================================================
-     *                       TWAP, INCENTIVES
-     *==============================================================*/
-
-    uint256 private constant Q64 = 0x10000000000000000;
-
-    function _updateTWAP(Pool storage pool, Tiers.Tier[] memory tiers) internal {
-        uint32 lastUpdate = pool.tickLastUpdate;
-        int56 tickCum = pool.tickCumulative;
-        int24 ema20 = pool.tickEma20;
-        int24 ema40 = pool.tickEma40;
-        uint96 secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
-        uint32 timestamp = uint32(block.timestamp);
-
-        unchecked {
-            uint32 secs = timestamp - lastUpdate;
-            if (secs == 0) return;
-
-            uint256 sumL;
-            int256 sumLTick; // sum of liquidity * tick (Q24 * UQ128)
-            for (uint256 i; i < tiers.length; i++) {
-                Tiers.Tier memory tier = tiers[i];
-                sumL += tier.liquidity;
-                sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
-            }
-            tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
-            secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
-
-            // calculate tick ema
-            (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
-            ema20 = int24(((sumLTick * int256(Q64 - d20)) / int256(sumL) + ema20 * int256(d20)) >> 64);
-            ema40 = int24(((sumLTick * int256(Q64 - d40)) / int256(sumL) + ema40 * int256(d40)) >> 64);
-        }
-
-        pool.tickLastUpdate = timestamp;
-        pool.tickCumulative = tickCum;
-        pool.tickEma20 = ema20;
-        pool.tickEma40 = ema40;
-        pool.secondsPerLiquidityCumulative = secsPerLiqCumulative;
-    }
-
-    /*===============================================================
      *                            SWAP
      *==============================================================*/
 
+    uint256 private constant Q64 = 0x10000000000000000;
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
 
     struct SwapCache {
@@ -290,15 +236,24 @@ library Pools {
         uint256 tierChoices
     ) internal returns (SwapResult memory result) {
         lock(pool);
-        Tiers.Tier[] memory tiers = pool.tiers;
+        Tiers.Tier[] memory tiers;
         TierState[MAX_TIERS] memory states;
         unchecked {
-            if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
-            if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & ((1 << tiers.length) - 1) == 0)
-                revert InvalidTierChoices();
-        }
+            uint256 tiersCount = pool.tiers.length;
+            uint256 maxTierChoices = (1 << tiersCount) - 1;
 
-        _updateTWAP(pool, tiers);
+            if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
+            if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & maxTierChoices == 0) revert InvalidTierChoices();
+
+            if (tierChoices & maxTierChoices == maxTierChoices) {
+                tiers = pool.tiers;
+            } else {
+                tiers = new Tiers.Tier[](tiersCount);
+                for (uint256 i; i < tiers.length; i++) {
+                    if (tierChoices & (1 << i) == 1) tiers[i] = pool.tiers[i];
+                }
+            }
+        }
 
         SwapCache memory cache = SwapCache({
             zeroForOne: isToken0 == (amtDesired > 0),
@@ -416,7 +371,7 @@ library Pools {
 
             // flip the direction of tick's data (effect)
             Ticks.Tick storage cross = pool.ticks[tierId][tickCross];
-            cross.flip(tier.feeGrowthGlobal0, tier.feeGrowthGlobal1, pool.secondsPerLiquidityCumulative);
+            cross.flip(tier.feeGrowthGlobal0, tier.feeGrowthGlobal1);
             unchecked {
                 // update tier's liquidity and next ticks (locally)
                 (uint128 liqLowerD8, uint128 liqUpperD8) = (cross.liquidityLowerD8, cross.liquidityUpperD8);
@@ -521,7 +476,6 @@ library Pools {
         )
     {
         lock(pool);
-        _updateTWAP(pool, pool.tiers);
         _checkTickInputs(tickLower, tickUpper);
         if (liquidityDeltaD8 > 0) {
             if (tickLower % int24(uint24(pool.tickSpacing)) != 0) revert InvalidTick();
@@ -618,7 +572,6 @@ library Pools {
             if (tick <= tier.tick) {
                 obj.feeGrowthOutside0 = tier.feeGrowthGlobal0;
                 obj.feeGrowthOutside1 = tier.feeGrowthGlobal1;
-                obj.secondsPerLiquidityOutside = pool.secondsPerLiquidityCumulative;
             }
         }
 
@@ -897,94 +850,5 @@ library Pools {
             if (settled) return (snapshot.feeGrowthInside0, snapshot.feeGrowthInside1);
         }
         return _getFeeGrowthInside(pool, tierId, tickLower, tickUpper);
-    }
-
-    function getPositionSecondsPerLiquidityInside(
-        Pool storage pool,
-        address owner,
-        uint256 positionRefId,
-        uint8 tierId,
-        int24 tickLower,
-        int24 tickUpper
-    ) internal view returns (uint96 secondsPerLiquidityInside) {
-        if (owner != address(0)) {
-            (bool settled, Settlement.Snapshot memory snapshot) = Settlement.getSnapshot(
-                pool.settlements[tierId],
-                Positions.get(pool.positions, owner, positionRefId, tierId, tickLower, tickUpper),
-                tickLower,
-                tickUpper
-            );
-            if (settled) return snapshot.secondsPerLiquidityInside;
-        }
-
-        // -----
-
-        Ticks.Tick storage lower = pool.ticks[tierId][tickLower];
-        Ticks.Tick storage upper = pool.ticks[tierId][tickUpper];
-        Tiers.Tier storage tier = pool.tiers[tierId];
-        int24 tickCurrent = tier.tick;
-
-        unchecked {
-            if (tickCurrent < tickLower) {
-                // current price below range
-                secondsPerLiquidityInside = lower.secondsPerLiquidityOutside - upper.secondsPerLiquidityOutside;
-            } else if (tickCurrent >= tickUpper) {
-                // current price above range
-                secondsPerLiquidityInside = upper.secondsPerLiquidityOutside - lower.secondsPerLiquidityOutside;
-            } else {
-                // current price in range
-                // calculate latest secondsPerLiquidityCumulative
-                uint96 secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
-                uint32 secs = uint32(block.timestamp) - pool.tickLastUpdate;
-                if (secs != 0) {
-                    uint256 sumL;
-                    for (uint256 i; i < pool.tiers.length; i++) sumL += pool.tiers[i].liquidity;
-                    secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
-                }
-                secondsPerLiquidityInside =
-                    secsPerLiqCumulative -
-                    upper.secondsPerLiquidityOutside -
-                    lower.secondsPerLiquidityOutside;
-            }
-        }
-    }
-
-    function getDerivedTWAP(Pool storage pool)
-        internal
-        view
-        returns (
-            int56 tickCum,
-            int24 ema20,
-            int24 ema40,
-            uint96 secsPerLiqCumulative
-        )
-    {
-        Tiers.Tier[] storage tiers = pool.tiers;
-        uint32 lastUpdate = pool.tickLastUpdate;
-        tickCum = pool.tickCumulative;
-        ema20 = pool.tickEma20;
-        ema40 = pool.tickEma40;
-        secsPerLiqCumulative = pool.secondsPerLiquidityCumulative;
-
-        unchecked {
-            uint32 secs = uint32(block.timestamp) - lastUpdate;
-            if (secs != 0) {
-                uint256 sumL;
-                int256 sumLTick; // sum of liquidity * tick (Q24 * UQ128)
-
-                for (uint256 i; i < tiers.length; i++) {
-                    Tiers.Tier storage tier = tiers[i];
-                    sumL += tier.liquidity;
-                    sumLTick += int256(tier.tick) * int256(uint256(tier.liquidity));
-                }
-                tickCum += int56((sumLTick * int256(uint256(secs))) / int256(sumL));
-                secsPerLiqCumulative += uint96((uint256(secs) << 80) / sumL);
-
-                // calculate tick ema
-                (uint256 d40, uint256 d20) = EMAMath.calcDecayFactors(secs);
-                ema20 = int24(((sumLTick * int256(Q64 - d20)) / int256(sumL) + ema20 * int256(d20)) >> 64);
-                ema40 = int24(((sumLTick * int256(Q64 - d40)) / int256(sumL) + ema40 * int256(d40)) >> 64);
-            }
-        }
     }
 }

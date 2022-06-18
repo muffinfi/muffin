@@ -65,7 +65,6 @@ contract MockPool {
     function prepareUpdateLiquidity() external {
         pool.tiers[0].feeGrowthGlobal0 = 1 << 40;
         pool.tiers[0].feeGrowthGlobal1 = 1 << 40;
-        pool.secondsPerLiquidityCumulative = 1 << 40;
     }
 
     function increaseFeeGrowthGlobal(uint80 increase0, uint80 increase1) external {

@@ -28,7 +28,6 @@ library Settlement {
     struct Snapshot {
         uint80 feeGrowthInside0;
         uint80 feeGrowthInside1;
-        uint96 secondsPerLiquidityInside;
     }
 
     /**
@@ -70,7 +69,7 @@ library Settlement {
         nextSnapshotId = settlement.nextSnapshotId;
         if (settlement.tickSpacing == 0) {
             settlement.tickSpacing = defaultTickSpacing;
-            settlement.snapshots[nextSnapshotId] = Snapshot(0, 0, 1); // pre-fill to reduce SSTORE gas during swap
+            settlement.snapshots[nextSnapshotId] = Snapshot(0, 1); // pre-fill to reduce SSTORE gas during swap
         }
 
         // if no liqudity to settle, clear tick spacing so as to set a latest one next time
@@ -163,8 +162,7 @@ library Settlement {
             // snapshot data inside the tick range (effect)
             settlement.snapshots[settlement.nextSnapshotId] = Snapshot(
                 end.feeGrowthOutside0 - start.feeGrowthOutside0,
-                end.feeGrowthOutside1 - start.feeGrowthOutside1,
-                end.secondsPerLiquidityOutside - start.secondsPerLiquidityOutside
+                end.feeGrowthOutside1 - start.feeGrowthOutside1
             );
         }
 
