@@ -140,9 +140,6 @@ const testRemoveLiquidity = async (
   // perform remove liquidity
   const tx = await pool.updateLiquidity(pool.address, 1, tierId, tickLower, tickUpper, liquidityDeltaD8, collectAllFees);
 
-  // check twap last update
-  expect((await pool.pool()).tickLastUpdate).eq(timestamp);
-
   // check current liquidity change if in-range
   const tier = await pool.getTier(tierId);
   const inRange = tickLower <= tier.tick && tier.tick < tickUpper;
@@ -172,7 +169,6 @@ const testRemoveLiquidity = async (
       expect(after.nextAbove).eq(0);
       expect(after.feeGrowthOutside0).eq(0);
       expect(after.feeGrowthOutside1).eq(0);
-      expect(after.secondsPerLiquidityOutside).eq(0);
 
       // check its adjacent ticks have updated their next{Below,Above}
       let tickBelow = before.nextBelow;
@@ -203,7 +199,6 @@ const testRemoveLiquidity = async (
       // check data unchanged
       expect(after.feeGrowthOutside0).eq(before.feeGrowthOutside0);
       expect(after.feeGrowthOutside1).eq(before.feeGrowthOutside1);
-      expect(after.secondsPerLiquidityOutside).eq(before.secondsPerLiquidityOutside);
     }
   }
 

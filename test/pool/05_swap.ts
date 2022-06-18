@@ -318,13 +318,31 @@ describe('pool swap', () => {
         });
 
         it('token0 exact input', async () => {
-          await test(pool, true, 18177069 + 10000, -15796400, [54522], [bn('3044253451861908254066')], [true], [[MIN_TICK, -3000]]);
+          await test(
+            pool,
+            true,
+            18177069 + 10000,
+            -15796400,
+            [54522],
+            [bn('3044253451861908254066')],
+            [true],
+            [[MIN_TICK, -3000]],
+          );
         });
 
         it('token1 exact input', async () => {
-          await test(pool, false, 18177069 + 10000, -15796400, [54522], [bn('7325521856562624091456')], [true], [[3000, MAX_TICK]]);
+          await test(
+            pool,
+            false,
+            18177069 + 10000,
+            -15796400,
+            [54522],
+            [bn('7325521856562624091456')],
+            [true],
+            [[3000, MAX_TICK]],
+          );
         });
-      })
+      });
     });
 
     context('three tier', () => {
@@ -519,11 +537,6 @@ const test = async (
   // perform swap
   const tx = await pool.swap(isToken0, amtDesired, tierChoices);
 
-  // check twap last update
-  const poolState = await pool.pool();
-  expect(poolState.tickLastUpdate).eq(timestamp);
-  expect(poolState.secondsPerLiquidityCumulative).gt(poolStateBefore.secondsPerLiquidityCumulative); // assume no overflow
-
   // check swap amount0 and amount1
   const event = await getEvent(tx, pool, 'SwapReturns');
   const amt0 = event.amount0 as BigNumber;
@@ -635,7 +648,8 @@ const test = async (
       token0In ? tierBefore.feeGrowthGlobal0 : tierBefore.feeGrowthGlobal1,
       token0In ? tier.feeGrowthGlobal0 : tier.feeGrowthGlobal1,
     );
-    const feeAmt = feeAmtAccruedByLPs.mul(255).div(255 - poolState.protocolFee); // protocol fee
+    const protocolFee = (await pool.pool()).protocolFee;
+    const feeAmt = feeAmtAccruedByLPs.mul(255).div(255 - protocolFee); // protocol fee
     const roundingErrorTolerance = relatedTickArrs[i].length - 1;
     expect(feeAmt).closeTo(bn(expectedFeeAmts[i]), roundingErrorTolerance);
   }

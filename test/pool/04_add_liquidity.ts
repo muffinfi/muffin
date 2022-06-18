@@ -92,9 +92,6 @@ const testAddLiquidity = async (
   // perform add liquidity
   const tx = await pool.updateLiquidity(pool.address, 1, tierId, tickLower, tickUpper, liquidityDeltaD8, false);
 
-  // check twap last update
-  expect((await pool.pool()).tickLastUpdate).eq(timestamp);
-
   // check current liquidity change if in-range
   const tier = await pool.getTier(tierId);
   const inRange = tickLower <= tier.tick && tier.tick < tickUpper;
@@ -121,16 +118,13 @@ const testAddLiquidity = async (
       if (tick <= tier.tick) {
         expect(after.feeGrowthOutside0).eq(tier.feeGrowthGlobal0);
         expect(after.feeGrowthOutside1).eq(tier.feeGrowthGlobal0);
-        expect(after.secondsPerLiquidityOutside).eq((await pool.pool()).secondsPerLiquidityCumulative);
       } else {
         expect(after.feeGrowthOutside0).eq(0);
         expect(after.feeGrowthOutside1).eq(0);
-        expect(after.secondsPerLiquidityOutside).eq(0);
       }
     } else {
       expect(after.feeGrowthOutside0).eq(before.feeGrowthOutside0);
       expect(after.feeGrowthOutside1).eq(before.feeGrowthOutside1);
-      expect(after.secondsPerLiquidityOutside).eq(before.secondsPerLiquidityOutside);
     }
 
     // check tick's next ticks below and above

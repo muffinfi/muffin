@@ -245,12 +245,13 @@ library Pools {
             if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
             if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & maxTierChoices == 0) revert InvalidTierChoices();
 
+            // only load tiers that are allowed by users
             if (tierChoices & maxTierChoices == maxTierChoices) {
                 tiers = pool.tiers;
             } else {
                 tiers = new Tiers.Tier[](tiersCount);
                 for (uint256 i; i < tiers.length; i++) {
-                    if (tierChoices & (1 << i) == 1) tiers[i] = pool.tiers[i];
+                    if (tierChoices & (1 << i) != 0) tiers[i] = pool.tiers[i];
                 }
             }
         }

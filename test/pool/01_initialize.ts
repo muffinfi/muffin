@@ -45,9 +45,6 @@ describe('pool initialize', () => {
     // check required token input amounts
     await expect(promise).to.emit(pool, 'InitializeReturns').withArgs(expectedAmt0In, expectedAmt1In);
 
-    // check twap last update
-    expect((await pool.pool()).tickLastUpdate).eq(timestamp);
-
     // check tier state
     const tier = await pool.getTier(0);
     expect(tier.liquidity).eq(BASE_LIQUIDITY);
@@ -72,7 +69,6 @@ describe('pool initialize', () => {
       expect(tick.nextAbove).eq(MAX_TICK);
       expect(tick.feeGrowthOutside0).eq(0);
       expect(tick.feeGrowthOutside1).eq(0);
-      expect(tick.secondsPerLiquidityOutside).eq(0);
     }
 
     // check tick map flags

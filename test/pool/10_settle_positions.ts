@@ -133,7 +133,6 @@ describe('pool settle positions', () => {
         : await pool.getSettlementSnapshot(0, tickUpper, true, origSnapshoId);
     expect(snapshot.feeGrowthInside0).gt(0);
     expect(snapshot.feeGrowthInside1).gt(0);
-    expect(snapshot.secondsPerLiquidityInside).gt(0);
 
     const end = await pool.getTick(0, tickKind === TickKind.Lower ? tickLower : tickUpper);
     const start = await pool.getTick(0, tickKind === TickKind.Lower ? tickUpper : tickLower);

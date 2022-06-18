@@ -47,9 +47,6 @@ describe('pool add tier', () => {
     // check tiers length
     expect(await pool.getTierCount()).eq(tierId + 1);
 
-    // check twap last update
-    expect((await pool.pool()).tickLastUpdate).eq(timestamp);
-
     // check tier state
     const tier = await pool.getTier(tierId);
     expect(tier.liquidity).eq(BASE_LIQUIDITY);
@@ -74,7 +71,6 @@ describe('pool add tier', () => {
       expect(tick.nextAbove).eq(MAX_TICK);
       expect(tick.feeGrowthOutside0).eq(0);
       expect(tick.feeGrowthOutside1).eq(0);
-      expect(tick.secondsPerLiquidityOutside).eq(0);
     }
 
     // check tick map flags
