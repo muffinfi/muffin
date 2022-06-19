@@ -258,6 +258,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             result.amount0,
             result.amount1,
             result.amountInDistribution,
+            result.amountOutDistribution,
             result.tierData
         );
 

@@ -206,6 +206,7 @@ library Pools {
     struct TierState {
         uint128 sqrtPTick;
         uint256 amountIn;
+        uint256 amountOut;
         bool crossed;
     }
 
@@ -219,6 +220,7 @@ library Pools {
         int256 amount0;
         int256 amount1;
         uint256 amountInDistribution;
+        uint256 amountOutDistribution;
         uint256[] tierData;
         uint256 protocolFeeAmt;
     }
@@ -297,12 +299,15 @@ library Pools {
         }
 
         result.protocolFeeAmt = cache.protocolFeeAmt;
-        (result.amountInDistribution, result.tierData) = _updateTiers(
-            pool,
-            states,
-            tiers,
-            uint256(cache.exactIn ? amountA : amountB)
-        );
+        unchecked {
+            (result.amountInDistribution, result.amountOutDistribution, result.tierData) = _updateTiers(
+                pool,
+                states,
+                tiers,
+                uint256(cache.exactIn ? amountA : amountB),
+                uint256(cache.exactIn ? -amountB : -amountA)
+            );
+        }
         (result.amount0, result.amount1) = isToken0 ? (amountA, amountB) : (amountB, amountA);
 
         // BE AWARE the pool is locked. Please unlock it after token transfer is done.
@@ -339,8 +344,14 @@ library Pools {
             );
             if (amtAStep == SwapMath.REJECTED) return (0, 0);
 
-            // cache input amount for later event logging (locally)
-            state.amountIn += uint256(cache.exactIn ? amtAStep : amtBStep);
+            // cache input & output amounts for later event logging (locally)
+            if (cache.exactIn) {
+                state.amountIn += uint256(amtAStep);
+                state.amountOut += uint256(-amtBStep);
+            } else {
+                state.amountIn += uint256(amtBStep);
+                state.amountOut += uint256(-amtAStep);
+            }
 
             // update protocol fee amt (locally)
             uint256 protocolFeeAmt = (feeAmtStep * cache.protocolFee) / type(uint8).max;
@@ -405,13 +416,22 @@ library Pools {
         Pool storage pool,
         TierState[MAX_TIERS] memory states,
         Tiers.Tier[] memory tiers,
-        uint256 amtIn
-    ) internal returns (uint256 amtInDistribution, uint256[] memory tierData) {
+        uint256 amtIn,
+        uint256 amtOut
+    )
+        internal
+        returns (
+            uint256 amtInDistribution,
+            uint256 amtOutDistribution,
+            uint256[] memory tierData
+        )
+    {
         tierData = new uint256[](tiers.length);
         unchecked {
-            bool noOverflow = amtIn < (1 << (256 - AMOUNT_DISTRIBUTION_RESOLUTION));
+            bool amtInNoOverflow = amtIn < (1 << (256 - AMOUNT_DISTRIBUTION_RESOLUTION));
+            bool amtOutNoOverflow = amtOut < (1 << (256 - AMOUNT_DISTRIBUTION_RESOLUTION));
 
-            for (uint8 i; i < tiers.length; i++) {
+            for (uint256 i; i < tiers.length; i++) {
                 TierState memory state = states[i];
                 // we can safely assume tier data is unchanged when there's zero input amount and no crossing tick,
                 // since we would have rejected the tier if such case happened.
@@ -430,10 +450,17 @@ library Pools {
                     tierData[i] = (uint256(tier.sqrtPrice) << 128) | tier.liquidity;
                     if (amtIn > 0) {
                         amtInDistribution |= (
-                            noOverflow
+                            amtInNoOverflow
                                 ? (state.amountIn << AMOUNT_DISTRIBUTION_RESOLUTION) / amtIn
                                 : state.amountIn / ((amtIn >> AMOUNT_DISTRIBUTION_RESOLUTION) + 1)
-                        ) << (uint256(i) * AMOUNT_DISTRIBUTION_BITS); // prettier-ignore
+                        ) << (i * AMOUNT_DISTRIBUTION_BITS); // prettier-ignore
+                    }
+                    if (amtOut > 0) {
+                        amtOutDistribution |= (
+                            amtOutNoOverflow
+                                ? (state.amountOut << AMOUNT_DISTRIBUTION_RESOLUTION) / amtOut
+                                : state.amountOut / ((amtOut >> AMOUNT_DISTRIBUTION_RESOLUTION) + 1)
+                        ) << (i * AMOUNT_DISTRIBUTION_BITS); // prettier-ignore
                     }
                 }
             }

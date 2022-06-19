@@ -118,6 +118,7 @@ interface IMuffinHubEvents {
         int256 amount0,
         int256 amount1,
         uint256 amountInDistribution,
+        uint256 amountOutDistribution,
         uint256[] tierData
     );
 }
