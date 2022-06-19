@@ -94,6 +94,9 @@ library Pools {
 
         (amount0, amount1) = _addTier(pool, sqrtGamma, sqrtPrice);
 
+        // default enable limit order on first tier
+        pool.limitOrderTickSpacingMultipliers[0] = 1;
+
         // BE AWARE the pool is locked. Please unlock it after token transfer is done.
     }
 

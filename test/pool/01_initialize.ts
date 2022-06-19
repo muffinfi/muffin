@@ -74,5 +74,8 @@ describe('pool initialize', () => {
     // check tick map flags
     await pool.checkTickMap(0, MIN_TICK, true);
     await pool.checkTickMap(0, MAX_TICK, true);
+
+    // check limit order enabled
+    expect(await pool.getLimitOrderTickSpacingMultiplier(0)).eq(1);
   });
 });

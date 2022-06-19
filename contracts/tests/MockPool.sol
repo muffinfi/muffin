@@ -273,6 +273,10 @@ contract MockPool {
         return settlement.snapshots[snapshotId];
     }
 
+    function getLimitOrderTickSpacingMultiplier(uint8 tierId) external view returns (uint8) {
+        return pool.limitOrderTickSpacingMultipliers[tierId];
+    }
+
     // ----- helpers -----
 
     function calcAmtsForLiquidityFromTicks(
