@@ -119,11 +119,13 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         address token1,
         uint24 sqrtGamma,
         uint256 senderAccRefId
-    ) external {
+    ) external returns (uint8 tierId) {
         (Pools.Pool storage pool, bytes32 poolId) = pools.getPoolAndId(token0, token1);
         if (!isSqrtGammaAllowed(poolId, sqrtGamma)) revert NotAllowedSqrtGamma();
 
-        (uint256 amount0, uint256 amount1, uint8 tierId) = pool.addTier(sqrtGamma);
+        uint256 amount0;
+        uint256 amount1;
+        (amount0, amount1, tierId) = pool.addTier(sqrtGamma);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 

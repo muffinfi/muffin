@@ -91,18 +91,21 @@ abstract contract PositionManager is ManagerBase, ERC721Extended {
     /// @param token0       Address of token0 of the pool
     /// @param token1       Address of token1 of the pool
     /// @param sqrtGamma    Sqrt of (1 - percentage swap fee of the 1st tier)
+    /// @param expectedTierId Expected id of the new tier. Revert if unmatched. Set to type(uint8).max for skipping the check.
     function addTier(
         address token0,
         address token1,
         uint24 sqrtGamma,
-        bool useAccount
+        bool useAccount,
+        uint8 expectedTierId
     ) external payable {
         IMuffinHub _hub = IMuffinHub(hub);
         // get first tier's sqrtPrice. revert if pool is not created.
         uint128 sqrtPrice = _hub.getTier(_getPoolId(token0, token1), 0).sqrtPrice;
         _depositForTierCreation(token0, token1, sqrtPrice, useAccount);
 
-        _hub.addTier(token0, token1, sqrtGamma, getAccRefId(msg.sender));
+        uint8 tierId = _hub.addTier(token0, token1, sqrtGamma, getAccRefId(msg.sender));
+        require(tierId == expectedTierId || expectedTierId == type(uint8).max);
         _cacheTokenPair(token0, token1);
     }
 

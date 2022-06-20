@@ -51,12 +51,13 @@ interface IMuffinHubActions {
     /// @param token1           Address of token1 of the pool
     /// @param sqrtGamma        Sqrt (1 - percentage swap fee) (precision: 1e5)
     /// @param senderAccRefId   Sender's account id, for paying the base liquidity
+    /// @return tierId          Id of the new tier
     function addTier(
         address token0,
         address token1,
         uint24 sqrtGamma,
         uint256 senderAccRefId
-    ) external;
+    ) external returns (uint8 tierId);
 
     /// @notice                 Swap one token for another
     /// @param tokenIn          Input token address

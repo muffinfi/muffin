@@ -226,7 +226,7 @@ describe('manager position manager', () => {
           { account: hub, token: token1, delta: 25600 },
         ],
         async () => {
-          await manager.addTier(token0.address, token1.address, 99900, false);
+          await manager.addTier(token0.address, token1.address, 99900, false, 1);
           expect((await hub.getTier(poolId01, 1)).sqrtGamma).eq(99900);
         },
       );
@@ -245,7 +245,7 @@ describe('manager position manager', () => {
           { account: hub, token: token1, delta: 25600 - 777 },
         ],
         async () => {
-          await manager.addTier(token0.address, token1.address, 99900, true);
+          await manager.addTier(token0.address, token1.address, 99900, true, 1);
           expect((await hub.getTier(poolId01, 1)).sqrtGamma).eq(99900);
         },
       );
@@ -259,7 +259,7 @@ describe('manager position manager', () => {
       await token4.approve(manager.address, 1e12);
 
       const outOfBoundErrMsg = 'reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)';
-      await expect(manager.addTier(tokens[0].address, tokens[1].address, 99900, false)).to.be.revertedWith(outOfBoundErrMsg);
+      await expect(manager.addTier(tokens[0].address, tokens[1].address, 99900, false, 255)).to.be.revertedWith(outOfBoundErrMsg);
     });
   });
 

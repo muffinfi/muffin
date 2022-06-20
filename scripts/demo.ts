@@ -56,9 +56,9 @@ async function main() {
   );
 
   // 7. add some more tiers
-  await logTx(manager.addTier(token0.address, token1.address, 99940, false, { gasLimit: 500000 }), 'add tier 12 bps');
-  await logTx(manager.addTier(token0.address, token1.address, 99875, false, { gasLimit: 500000 }), 'add tier 25 bps');
-  await logTx(manager.addTier(token0.address, token1.address, 99800, false, { gasLimit: 500000 }), 'add tier 40 bps');
+  await logTx(manager.addTier(token0.address, token1.address, 99940, false, 255, { gasLimit: 500000 }), 'add tier 12 bps');
+  await logTx(manager.addTier(token0.address, token1.address, 99875, false, 255, { gasLimit: 500000 }), 'add tier 25 bps');
+  await logTx(manager.addTier(token0.address, token1.address, 99800, false, 255, { gasLimit: 500000 }), 'add tier 40 bps');
 
   // 8. set pool's tick spacing to 1, protocol fee to 15%
   await logTx(hub.setPoolParameters(poolId, 25, Math.floor(0.15 * 255)), 'set pool parameters');
