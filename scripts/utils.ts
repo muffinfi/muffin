@@ -1,8 +1,10 @@
-import { BigNumber, BigNumberish, ContractTransaction, ContractReceipt, ContractFactory } from 'ethers';
-import { ethers } from 'hardhat';
-import hre from 'hardhat';
-import util from 'util';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import chalk from 'chalk';
+import { BigNumber, BigNumberish, constants, ContractFactory, ContractReceipt, ContractTransaction, Wallet } from 'ethers';
+import { splitSignature } from 'ethers/lib/utils';
+import hre, { ethers } from 'hardhat';
+import util from 'util';
+import { ERC20Permit, MockERC20 } from '../typechain';
 
 //////////////////////////////////////////////////////////////////////////
 //                          PATCH BIGNUMBER
@@ -129,4 +131,35 @@ export const logTxGas = async (
   const receipt = await tx.wait();
   console.log('call:      ', note, ' ', +receipt.gasUsed, `($${gasFeeUsd(+receipt.gasUsed)})`);
   if (callback) await callback(receipt, tx);
+};
+
+//////////////////////////////////////////////////////////////////////////
+//                             ERC20 PERMIT
+//////////////////////////////////////////////////////////////////////////
+
+export const permit = async (wallet: Wallet | SignerWithAddress, spender: string, token: ERC20Permit | MockERC20) => {
+  const TYPES = {
+    Permit: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ],
+  };
+  const domain = {
+    name: await token.name(),
+    version: '1',
+    chainId: await wallet.getChainId(),
+    verifyingContract: token.address,
+  };
+  const values = {
+    owner: wallet.address,
+    spender: spender,
+    value: constants.MaxUint256,
+    nonce: await token.nonces(wallet.address),
+    deadline: constants.MaxUint256,
+  };
+  const signature = await wallet._signTypedData(domain, TYPES, values);
+  return splitSignature(signature);
 };

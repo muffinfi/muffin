@@ -1,8 +1,8 @@
 import { BigNumber, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
-import { Manager, MockERC20, MuffinHub, IMuffinHubCombined, MuffinHubPositions, WETH9 } from '../typechain';
-import { bn, deploy, logTx, printStruct, wad } from './utils';
+import { IMuffinHubCombined, Manager, MockERC20, MuffinHub, WETH9 } from '../typechain';
+import { bn, deploy, logTx, permit, printStruct } from './utils';
 
 /**
  * A demo script to deploy and call the hub contract.
@@ -32,33 +32,38 @@ async function main() {
   const hub = (await ethers.getContractAt('IMuffinHubCombined', _hub.address)) as IMuffinHubCombined;
   const manager = (await deploy('Manager', hub.address, weth.address)) as Manager;
 
-  // 4. mint and approve tokens
+  // 4. mint tokens
   await logTx(wbtc.mint(10000e8), 'mint wbtc');
   await logTx(usdc.mint(10000e6), 'mint usdc');
-  await logTx(wbtc.approve(manager.address, ethers.constants.MaxUint256), 'approve wbtc to manager');
-  await logTx(usdc.approve(manager.address, ethers.constants.MaxUint256), 'approve usdc to manager');
 
-  // 5. deposit tokens for creating pool
-  await logTx(manager.deposit(user.address, wbtc.address, 1e8), 'deposit wbtc');
-  await logTx(manager.deposit(user.address, usdc.address, 1e6), 'deposit usdc');
-
-  // 6. create pool
+  // 5. calculate token price
   const btcUsdPrice = bn(1e6).shl(144).div(1e8); // assume btc:usd = 1:1
   const [token0, token1, price] =
     wbtc.address.toLowerCase() < usdc.address.toLowerCase()
       ? [wbtc, usdc, btcUsdPrice]
       : [usdc, wbtc, bn(1).shl(288).div(btcUsdPrice)];
+
+  // 6. set pool fee tier whitelist
   const poolId = keccak256(defaultAbiCoder.encode(['address', 'address'], [token0.address, token1.address]));
   await logTx(hub.setPoolAllowedSqrtGammas(poolId, [99975, 99940, 99875, 99800]), 'set pool sqrt gammas whitelist');
-  await logTx(
-    manager.createPool(token0.address, token1.address, 99975, sqrt(price), false, { gasLimit: 600_000 }),
-    'create pool + add tier 5 bps',
-  );
 
-  // 7. add some more tiers
-  await logTx(manager.addTier(token0.address, token1.address, 99940, false, 255, { gasLimit: 500000 }), 'add tier 12 bps');
-  await logTx(manager.addTier(token0.address, token1.address, 99875, false, 255, { gasLimit: 500000 }), 'add tier 25 bps');
-  await logTx(manager.addTier(token0.address, token1.address, 99800, false, 255, { gasLimit: 500000 }), 'add tier 40 bps');
+  // 7. create pool and add tiers
+  const sig0 = await permit(user, manager.address, token0);
+  const sig1 = await permit(user, manager.address, token1);
+  await logTx(
+    manager.multicall(
+      [
+        manager.interface.encodeFunctionData('selfPermit', [token0.address, constants.MaxUint256, constants.MaxUint256, sig0.v, sig0.r, sig0.s]), // prettier-ignore
+        manager.interface.encodeFunctionData('selfPermit', [token1.address, constants.MaxUint256, constants.MaxUint256, sig1.v, sig1.r, sig1.s]), // prettier-ignore
+        manager.interface.encodeFunctionData('createPool', [token0.address, token1.address, 99975, sqrt(price), false]),
+        manager.interface.encodeFunctionData('addTier', [token0.address, token1.address, 99940, false, 255]),
+        manager.interface.encodeFunctionData('addTier', [token0.address, token1.address, 99875, false, 255]),
+        manager.interface.encodeFunctionData('addTier', [token0.address, token1.address, 99800, false, 255]),
+      ],
+      { gasLimit: 3_000_000 },
+    ),
+    'create pool + add tier 5, 12, 25, 40 bps',
+  );
 
   // 8. set pool's tick spacing to 1, protocol fee to 15%
   await logTx(hub.setPoolParameters(poolId, 25, Math.floor(0.15 * 255)), 'set pool parameters');
