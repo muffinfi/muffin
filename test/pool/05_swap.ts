@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish, constants } from 'ethers';
 import { waffle } from 'hardhat';
 import { MockPool } from '../../typechain';
-import { MAX_SQRT_P, MAX_TICK, MIN_SQRT_P, MIN_TICK } from '../shared/constants';
+import { MAX_SQRT_P, MAX_TICK, MAX_TIERS, MAX_TIER_CHOICES, MIN_SQRT_P, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { Awaited, bn, getEvent, getLatestBlockTimestamp, setNextBlockTimestamp, sliceBits, wad } from '../shared/utils';
 
@@ -87,25 +87,25 @@ describe('pool swap', () => {
     };
 
     it('min tick; exact input', async () => {
-      await testMinTick(() => pool.swap(true, wad(5000), 0b111111));
+      await testMinTick(() => pool.swap(true, wad(5000), MAX_TIER_CHOICES));
     });
 
     it('min tick; exact output', async () => {
-      await testMinTick(() => pool.swap(false, wad(-5000), 0b111111));
+      await testMinTick(() => pool.swap(false, wad(-5000), MAX_TIER_CHOICES));
     });
 
     it('max tick; exact input', async () => {
-      await testMaxTick(() => pool.swap(false, wad(5000), 0b111111));
+      await testMaxTick(() => pool.swap(false, wad(5000), MAX_TIER_CHOICES));
     });
 
     it('max tick; exact output', async () => {
-      await testMaxTick(() => pool.swap(true, wad(-5000), 0b111111));
+      await testMaxTick(() => pool.swap(true, wad(-5000), MAX_TIER_CHOICES));
     });
   });
 
   describe('test very small swap', () => {
     const run = async (isToken: boolean, amountDesired: number, expectedAmounts: [BigNumberish, BigNumberish]) => {
-      const tx = await pool.swap(isToken, amountDesired, 0b111111);
+      const tx = await pool.swap(isToken, amountDesired, MAX_TIER_CHOICES);
       const event = await getEvent(tx, pool, 'SwapReturns');
       expect(event.amount0).eq(expectedAmounts[0]);
       expect(event.amount1).eq(expectedAmounts[1]);
@@ -193,21 +193,21 @@ describe('pool swap', () => {
       });
 
       it('max amount0 in', async () => {
-        await pool.swap(true, constants.MaxInt256.sub(1), 0b111111);
+        await pool.swap(true, constants.MaxInt256.sub(1), MAX_TIER_CHOICES);
       });
 
       it('max amount1 in', async () => {
-        await pool.swap(false, constants.MaxInt256.sub(1), 0b111111);
+        await pool.swap(false, constants.MaxInt256.sub(1), MAX_TIER_CHOICES);
       });
     });
 
     context('exact output', () => {
       it('max amount0 out', async () => {
-        await pool.swap(true, constants.MinInt256, 0b111111);
+        await pool.swap(true, constants.MinInt256, MAX_TIER_CHOICES);
       });
 
       it('max amount1 out', async () => {
-        await pool.swap(true, constants.MinInt256, 0b111111);
+        await pool.swap(true, constants.MinInt256, MAX_TIER_CHOICES);
       });
     });
   });
@@ -250,8 +250,8 @@ describe('pool swap', () => {
       const badAmt = constants.MaxInt256.sub(reserve).add(1);
       expect(badAmt).gt(bn(1).shl(254));
 
-      await expect(pool.swap(false, badAmt, 0b111111)).to.be.reverted;
-      await pool.swap(false, amt, 0b111111);
+      await expect(pool.swap(false, badAmt, MAX_TIER_CHOICES)).to.be.reverted;
+      await pool.swap(false, amt, MAX_TIER_CHOICES);
     });
   });
 
@@ -516,7 +516,7 @@ const test = async (
   expectedTierSqrtPrices: BigNumberish[],
   expectedToCross: boolean[],
   expectedNextTicks: [number, number][],
-  tierChoices: number = 0b111111,
+  tierChoices: number = MAX_TIER_CHOICES,
 ) => {
   // load states before state change
   const token0In = isToken0 == amtDesired >= 0;
@@ -554,26 +554,34 @@ const test = async (
   }
   expect(amtB).eq(expectedAmtOutcome);
 
-  // check tierData and input amount distribution
-  const Q41 = bn(1).shl(41);
+  // check tierData and {input,ouput} amount distribution
+  const amtDistBits = Math.floor(256 / MAX_TIERS);
+  const amtDistONE = bn(1).shl(amtDistBits - 1);
   for (const [i, tierData] of event.tierData.entries()) {
+    const amtInPercent = sliceBits(event.amountInDistribution, i * amtDistBits, amtDistBits);
+    const amtOutPercent = sliceBits(event.amountOutDistribution, i * amtDistBits, amtDistBits);
     // fee amt is expected to be zero iff the tier is expected to be rejected in the swap
     if (expectedFeeAmts[i] === 0) {
-      expect(sliceBits(event.amountInDistribution, i * 42, 42)).eq(0);
+      expect(amtInPercent).eq(0);
+      expect(amtOutPercent).eq(0);
       expect(tierData).eq(0);
     } else {
-      expect(sliceBits(event.amountInDistribution, i * 42, 42)).gt(0).and.lte(Q41); // prettier-ignore
+      expect(amtInPercent).gt(0).and.lte(amtDistONE);
+      expect(amtOutPercent).gt(0).and.lte(amtDistONE);
       expect(sliceBits(tierData, 0, 128)).eq((await pool.getTier(i)).liquidity);
       expect(sliceBits(tierData, 128, 128)).eq(expectedTierSqrtPrices[i]);
     }
   }
 
-  // check sum of all input amount percentages ≈ 1
-  const maxTierCount = 6;
-  let totalPercent = bn(0);
-  for (let i = 0; i < maxTierCount; i++) totalPercent = totalPercent.add(sliceBits(event.amountInDistribution, i * 42, 42));
-  expect(totalPercent).lte(Q41);
-  expect(totalPercent).gte(Q41.sub(maxTierCount)); // max rounding error
+  // check sum of all {input,ouput} amount percentages ≈ 1
+  let totalPercentAmtIn = bn(0);
+  let totalPercentAmtOut = bn(0);
+  for (let i = 0; i < MAX_TIERS; i++) {
+    totalPercentAmtIn = totalPercentAmtIn.add(sliceBits(event.amountInDistribution, i * amtDistBits, amtDistBits));
+    totalPercentAmtOut = totalPercentAmtOut.add(sliceBits(event.amountOutDistribution, i * amtDistBits, amtDistBits));
+  }
+  expect(totalPercentAmtIn).lte(amtDistONE).and.gte(amtDistONE.sub(MAX_TIERS)); // max rounding error
+  expect(totalPercentAmtOut).lte(amtDistONE).and.gte(amtDistONE.sub(MAX_TIERS)); // max rounding error
 
   // check fee growth global changes
   const tiers = await pool.getAllTiers();

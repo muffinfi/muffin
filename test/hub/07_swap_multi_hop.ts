@@ -4,7 +4,7 @@ import { BigNumber, utils } from 'ethers';
 import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
 import { IMockMuffinHub, MockCaller, MockERC20 } from '../../typechain';
-import { MAX_TICK, MIN_TICK } from '../shared/constants';
+import { MAX_TICK, MAX_TIER_CHOICES, MIN_TICK } from '../shared/constants';
 import { hubWithTwoPoolsFixture } from '../shared/fixtures';
 import { getEvents } from '../shared/utils';
 
@@ -85,7 +85,7 @@ describe('hub swap multi hop', () => {
       types.push('address');
       types.push('uint8');
       values.push(token.address);
-      values.push(0b111111);
+      values.push(MAX_TIER_CHOICES);
     }
     types.pop();
     values.pop();
@@ -124,7 +124,7 @@ describe('hub swap multi hop', () => {
   });
 
   it('pool not exists', async () => {
-    const path = solidityPack(['address', 'uint8', 'address'], [token0.address, 0b111111, user.address]);
+    const path = solidityPack(['address', 'uint8', 'address'], [token0.address, MAX_TIER_CHOICES, user.address]);
     await expect(swapMultiHop({ path })).to.be.revertedWith('');
   });
 

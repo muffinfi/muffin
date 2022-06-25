@@ -3,7 +3,8 @@ import { expect } from 'chai';
 import { constants } from 'ethers';
 import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { Manager, IMockMuffinHub, MockERC20, WETH9 } from '../../typechain';
+import { IMockMuffinHub, Manager, MockERC20, WETH9 } from '../../typechain';
+import { MAX_TIER_CHOICES } from '../shared/constants';
 import { managerFixture } from '../shared/fixtures';
 import { bn, expectBalanceChanges, getEvent, getEvents } from '../shared/utils';
 
@@ -40,7 +41,7 @@ describe('manager swap manager', () => {
       types.push('address');
       types.push('uint8');
       values.push(token.address);
-      values.push(0b111111);
+      values.push(MAX_TIER_CHOICES);
     }
     types.pop();
     values.pop();

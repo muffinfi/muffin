@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { waffle } from 'hardhat';
 import { MockPool } from '../../typechain';
-import { BASE_LIQUIDITY, BASE_LIQUIDITY_D8, MAX_TICK, MIN_TICK } from '../shared/constants';
+import { BASE_LIQUIDITY, BASE_LIQUIDITY_D8, MAX_TICK, MAX_TIERS, MIN_TICK } from '../shared/constants';
 import { poolTestFixture } from '../shared/fixtures';
 import { bn, getLatestBlockTimestamp, setNextBlockTimestamp } from '../shared/utils';
 
@@ -17,12 +17,9 @@ describe('pool add tier', () => {
     await expect(pool.addTier(100001)).to.be.reverted;
   });
 
-  it('cannot be more than 6 tiers', async () => {
-    await pool.addTier(99990);
-    await pool.addTier(99990);
-    await pool.addTier(99990);
-    await pool.addTier(99990);
-    await pool.addTier(99990);
+  it('cannot be more than MAX_TIERS tiers', async () => {
+    for (let i = 1; i < MAX_TIERS; i++) await pool.addTier(99990);
+    expect(await pool.getTierCount()).eq(MAX_TIERS);
     await expect(pool.addTier(99990)).to.be.reverted;
   });
 

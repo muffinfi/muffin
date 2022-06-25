@@ -21,6 +21,7 @@ contract MockPool {
         int256 amount1,
         uint256 protocolFeeAmt,
         uint256 amountInDistribution,
+        uint256 amountOutDistribution,
         uint256[] tierData
     );
 
@@ -118,6 +119,7 @@ contract MockPool {
             result.amount1,
             result.protocolFeeAmt,
             result.amountInDistribution,
+            result.amountOutDistribution,
             result.tierData
         );
 

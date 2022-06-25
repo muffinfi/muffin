@@ -42,5 +42,5 @@ interface IMuffinHubPositionsView {
         uint32 snapshotId
     ) external view returns (Settlement.Snapshot memory);
 
-    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory);
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[6] memory); // MAX_TIERS = 6
 }

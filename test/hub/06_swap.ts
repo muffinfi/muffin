@@ -3,7 +3,8 @@ import { expect } from 'chai';
 import { BigNumberish, constants, utils } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
-import { MockCaller, IMockMuffinHub, MockERC20 } from '../../typechain';
+import { IMockMuffinHub, MockCaller, MockERC20 } from '../../typechain';
+import { MAX_TIER_CHOICES } from '../shared/constants';
 import { hubWithPoolFixture } from '../shared/fixtures';
 import { getEvent } from '../shared/utils';
 
@@ -35,7 +36,7 @@ describe('hub swap', () => {
     return await caller.swap(
       params?.tokenIn ?? token0.address,
       params?.tokenOut ?? token1.address,
-      params?.tierChoices ?? 0b111111,
+      params?.tierChoices ?? MAX_TIER_CHOICES,
       params?.amountDesired ?? 10000,
       params?.recipient ?? user.address,
       params?.recipientAccRefId ?? 0,
