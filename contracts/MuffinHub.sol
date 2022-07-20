@@ -306,23 +306,28 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
      *                         VIEW FUNCTIONS
      *==============================================================*/
 
+    /// @inheritdoc IMuffinHubView
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee) {
         return (defaultTickSpacing, defaultProtocolFee);
     }
 
+    /// @inheritdoc IMuffinHubView
     function getPoolParameters(bytes32 poolId) external view returns (uint8 tickSpacing, uint8 protocolFee) {
         Pools.Pool storage pool = pools[poolId];
         return (pool.tickSpacing, pool.protocolFee);
     }
 
+    /// @inheritdoc IMuffinHubView
     function getTier(bytes32 poolId, uint8 tierId) external view returns (Tiers.Tier memory) {
         return pools[poolId].tiers[tierId];
     }
 
+    /// @inheritdoc IMuffinHubView
     function getTiersCount(bytes32 poolId) external view returns (uint256) {
         return pools[poolId].tiers.length;
     }
 
+    /// @inheritdoc IMuffinHubView
     function getTick(
         bytes32 poolId,
         uint8 tierId,
@@ -331,6 +336,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         return pools[poolId].ticks[tierId][tick];
     }
 
+    /// @inheritdoc IMuffinHubView
     function getPosition(
         bytes32 poolId,
         address owner,

@@ -167,18 +167,22 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
      *                         VIEW FUNCTIONS
      *==============================================================*/
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getDefaultAllowedSqrtGammas() external view returns (uint24[] memory) {
         return defaultAllowedSqrtGammas;
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getPoolAllowedSqrtGammas(bytes32 poolId) external view returns (uint24[] memory) {
         return poolAllowedSqrtGammas[poolId];
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory) {
         return pools[poolId].tiers;
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getPositionFeeGrowthInside(
         bytes32 poolId,
         address owner,
@@ -190,6 +194,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         return pools[poolId].getPositionFeeGrowthInside(owner, positionRefId, tierId, tickLower, tickUpper);
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getSettlement(
         bytes32 poolId,
         uint8 tierId,
@@ -208,6 +213,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         return (settlement.liquidityD8, settlement.tickSpacing, settlement.nextSnapshotId);
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getSettlementSnapshot(
         bytes32 poolId,
         uint8 tierId,
@@ -219,6 +225,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         return settlement.snapshots[snapshotId];
     }
 
+    /// @inheritdoc IMuffinHubPositionsView
     function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[MAX_TIERS] memory) {
         return pools[poolId].limitOrderTickSpacingMultipliers;
     }
