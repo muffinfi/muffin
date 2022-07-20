@@ -6,7 +6,7 @@ import { waffle } from 'hardhat';
 import { IMockMuffinHub, MockCaller, MockERC20 } from '../../typechain';
 import { MAX_TICK, MAX_TIER_CHOICES, MIN_TICK } from '../shared/constants';
 import { hubWithTwoPoolsFixture } from '../shared/fixtures';
-import { getEvents } from '../shared/utils';
+import { getEvents, toPath } from '../shared/utils';
 
 const EXTRA_INTERMEDIATE_OUTPUT = 100;
 
@@ -78,20 +78,6 @@ describe('hub swap multi hop', () => {
     });
   };
 
-  const toPath = (tokens: MockERC20[]) => {
-    const types = [];
-    const values = [];
-    for (const token of tokens) {
-      types.push('address');
-      types.push('uint8');
-      values.push(token.address);
-      values.push(MAX_TIER_CHOICES);
-    }
-    types.pop();
-    values.pop();
-    return solidityPack(types, values);
-  };
-
   const checkEventSenderRecipient = (
     events: any[],
     exactIn: boolean,
@@ -124,7 +110,7 @@ describe('hub swap multi hop', () => {
   });
 
   it('pool not exists', async () => {
-    const path = solidityPack(['address', 'uint8', 'address'], [token0.address, MAX_TIER_CHOICES, user.address]);
+    const path = toPath([token0, { address: user.address } as any as MockERC20]);
     await expect(swapMultiHop({ path })).to.be.revertedWith('');
   });
 

@@ -1,10 +1,9 @@
 import { expect } from 'chai';
-import { solidityPack } from 'ethers/lib/utils';
 import { ethers, waffle } from 'hardhat';
 import { ILens, Manager, MockERC20 } from '../../typechain';
 import { MAX_TIER_CHOICES } from '../shared/constants';
 import { managerFixture } from '../shared/fixtures';
-import { deploy } from '../shared/utils';
+import { deploy, toPath } from '../shared/utils';
 
 describe('quote swap', () => {
   let token0: MockERC20;
@@ -35,20 +34,6 @@ describe('quote swap', () => {
   });
 
   context('quote', async () => {
-    const toPath = (tokens: MockERC20[]) => {
-      const types = [];
-      const values = [];
-      for (const token of tokens) {
-        types.push('address');
-        types.push('uint8');
-        values.push(token.address);
-        values.push(MAX_TIER_CHOICES);
-      }
-      types.pop();
-      values.pop();
-      return solidityPack(types, values);
-    };
-
     it('exact in', async () => {
       const path = toPath([token0, token1]);
       const result = await lens.quote(path, 3);

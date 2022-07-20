@@ -1,12 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { constants } from 'ethers';
-import { defaultAbiCoder, keccak256, solidityPack } from 'ethers/lib/utils';
+import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { waffle } from 'hardhat';
 import { IMockMuffinHub, Manager, MockERC20, WETH9 } from '../../typechain';
-import { MAX_TIER_CHOICES } from '../shared/constants';
 import { managerFixture } from '../shared/fixtures';
-import { bn, expectBalanceChanges, getEvent, getEvents } from '../shared/utils';
+import { bn, expectBalanceChanges, getEvent, getEvents, toPath } from '../shared/utils';
 
 const { MaxUint256 } = constants;
 
@@ -32,20 +31,6 @@ describe('manager swap manager', () => {
   const getAccBalance = async (token: string, userAddress: string) => {
     const accHash = keccak256(defaultAbiCoder.encode(['address', 'uint256'], [manager.address, bn(userAddress)]));
     return await hub.accounts(token, accHash);
-  };
-
-  const toPath = (tokens: (MockERC20 | WETH9)[]) => {
-    const types = [];
-    const values = [];
-    for (const token of tokens) {
-      types.push('address');
-      types.push('uint8');
-      values.push(token.address);
-      values.push(MAX_TIER_CHOICES);
-    }
-    types.pop();
-    values.pop();
-    return solidityPack(types, values);
   };
 
   context('exactInSingle', () => {

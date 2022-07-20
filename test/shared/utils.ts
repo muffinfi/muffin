@@ -2,10 +2,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect, use } from 'chai';
 import chalk from 'chalk';
 import { BigNumber, BigNumberish, Contract, ContractFactory, ContractTransaction } from 'ethers';
+import { solidityPack } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
 import { jestSnapshotPlugin } from 'mocha-chai-jest-snapshot';
 import util from 'util';
 import { MockERC20, WETH9 } from '../../typechain';
+import { MAX_TIER_CHOICES } from './constants';
 
 use(jestSnapshotPlugin());
 
@@ -117,6 +119,20 @@ export const getEvents = async (tx: ContractTransaction, contract: Contract, eve
     }
   }
   return parsedEvents;
+};
+
+export const toPath = (tokens: (MockERC20 | WETH9)[]) => {
+  const types = [];
+  const values = [];
+  for (const token of tokens) {
+    types.push('address');
+    types.push('uint8');
+    values.push(token.address);
+    values.push(MAX_TIER_CHOICES);
+  }
+  types.pop();
+  values.pop();
+  return solidityPack(types, values);
 };
 
 //////////////////////////////////////////////////////////////////////////

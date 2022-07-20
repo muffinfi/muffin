@@ -8,7 +8,10 @@ library PathLib {
 
     function invalid(bytes memory path) internal pure returns (bool) {
         unchecked {
-            return (path.length > PATH_MAX_BYTES || (path.length - ADDR_BYTES) % ADDR_UINT8_BYTES != 0);
+            return
+                path.length > PATH_MAX_BYTES ||
+                path.length <= ADDR_BYTES ||
+                (path.length - ADDR_BYTES) % ADDR_UINT8_BYTES != 0;
         }
     }
 
