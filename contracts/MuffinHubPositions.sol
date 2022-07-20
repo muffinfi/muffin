@@ -20,8 +20,6 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     using Pools for Pools.Pool;
     using Pools for mapping(bytes32 => Pools.Pool);
 
-    uint256 internal constant MAX_TIERS = 6;
-
     /*===============================================================
      *                          POSITIONS
      *==============================================================*/
@@ -226,8 +224,8 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     /// @inheritdoc IMuffinHubPositionsView
-    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[MAX_TIERS] memory) {
-        return pools[poolId].limitOrderTickSpacingMultipliers;
+    function getLimitOrderTickSpacingMultipliers(bytes32 poolId) external view returns (uint8[] memory) {
+        return pools[poolId].getLimitOrderTickSpacingMultipliers();
     }
 
     function getTickMapBlockMap(bytes32 poolId, uint8 tierId) external view returns (uint256) {

@@ -72,5 +72,5 @@ interface IMuffinHubPositionsView {
     function getLimitOrderTickSpacingMultipliers(bytes32 poolId)
         external
         view
-        returns (uint8[6] memory tickSpacingMultipliers); // MAX_TIERS = 6
+        returns (uint8[] memory tickSpacingMultipliers);
 }

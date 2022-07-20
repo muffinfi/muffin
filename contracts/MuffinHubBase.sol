@@ -46,6 +46,11 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     /// In general, tokens with multiple addresses are not supported here and will cost losts of fund.
     address internal constant TUSD_LEGACY_ADDRESS = 0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E;
 
+    /// @notice Maximum number of tiers each pool can technically have. This number might vary in different networks.
+    function MAX_TIERS() external pure returns (uint256) {
+        return Pools.MAX_TIERS;
+    }
+
     /// @dev Get token balance of this contract
     function getBalance(address token) private view returns (uint256) {
         (bool success, bytes memory data) = token.staticcall(

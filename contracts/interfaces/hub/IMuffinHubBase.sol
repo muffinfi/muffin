@@ -22,4 +22,7 @@ interface IMuffinHubBase {
     /// @return token0  Address of the pool's token0
     /// @return token1  Address of the pool's token1
     function underlyings(bytes32 poolId) external view returns (address token0, address token1);
+
+    /// @notice Maximum number of tiers each pool can technically have. This number might vary in different networks.
+    function MAX_TIERS() external pure returns (uint256);
 }

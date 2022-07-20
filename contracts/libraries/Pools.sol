@@ -882,4 +882,13 @@ library Pools {
         }
         return _getFeeGrowthInside(pool, tierId, tickLower, tickUpper);
     }
+
+    /// @dev Convert fixed-sized array to dynamic-sized
+    function getLimitOrderTickSpacingMultipliers(Pool storage pool) internal view returns (uint8[] memory multipliers) {
+        uint8[MAX_TIERS] memory ms = pool.limitOrderTickSpacingMultipliers;
+        multipliers = new uint8[](pool.tiers.length);
+        unchecked {
+            for (uint256 i; i < multipliers.length; i++) multipliers[i] = ms[i];
+        }
+    }
 }
