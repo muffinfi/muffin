@@ -3,9 +3,10 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/common/IWETH.sol";
 import "../../interfaces/hub/IMuffinHub.sol";
+import "../../interfaces/manager/IManagerBase.sol";
 import "../../libraries/utils/SafeTransferLib.sol";
 
-abstract contract ManagerBase {
+abstract contract ManagerBase is IManagerBase {
     address public immutable WETH9;
     address public immutable hub;
 

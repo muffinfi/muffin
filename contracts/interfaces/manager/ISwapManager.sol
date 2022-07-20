@@ -1,36 +1,16 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.10;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity ^0.8.0;
 
-import "../../interfaces/hub/IMuffinHub.sol";
-import "../../interfaces/manager/ISwapManager.sol";
-import "../../libraries/math/Math.sol";
-import "./ManagerBase.sol";
+import "./IManagerBase.sol";
 
-abstract contract SwapManager is ISwapManager, ManagerBase {
-    using Math for uint256;
-
-    error DeadlinePassed();
-
-    modifier checkDeadline(uint256 deadline) {
-        _checkDeadline(deadline);
-        _;
-    }
-
-    /// @dev Reverts if the transaction deadline has passed
-    function _checkDeadline(uint256 deadline) internal view {
-        if (block.timestamp > deadline) revert DeadlinePassed();
-    }
-
-    /// @dev Called by the hub contract
+interface ISwapManager is IManagerBase {
     function swapCallback(
         address tokenIn,
-        address, // tokenOut,
+        address tokenOut,
         uint256 amountIn,
-        uint256, // amountOut,
+        uint256 amountOut,
         bytes calldata data
-    ) external fromHub {
-        if (amountIn > 0) payHub(tokenIn, abi.decode(data, (address)), amountIn);
-    }
+    ) external;
 
     /**
      * @notice                  Swap `amountIn` of one token for as much as possible of another token
@@ -55,19 +35,7 @@ abstract contract SwapManager is ISwapManager, ManagerBase {
         bool fromAccount,
         bool toAccount,
         uint256 deadline
-    ) external payable checkDeadline(deadline) returns (uint256 amountOut) {
-        (, amountOut) = IMuffinHub(hub).swap(
-            tokenIn,
-            tokenOut,
-            tierChoices,
-            amountIn.toInt256(),
-            toAccount ? address(this) : recipient,
-            toAccount ? getAccRefId(recipient) : 0,
-            fromAccount ? getAccRefId(msg.sender) : 0,
-            abi.encode(msg.sender)
-        );
-        require(amountOut >= amountOutMinimum, "TOO_LITTLE_RECEIVED");
-    }
+    ) external payable returns (uint256 amountOut);
 
     /**
      * @notice                  Swap `amountIn` of one token for as much as possible of another along the specified path
@@ -88,19 +56,7 @@ abstract contract SwapManager is ISwapManager, ManagerBase {
         bool fromAccount,
         bool toAccount,
         uint256 deadline
-    ) external payable checkDeadline(deadline) returns (uint256 amountOut) {
-        (, amountOut) = IMuffinHub(hub).swapMultiHop(
-            IMuffinHubActions.SwapMultiHopParams({
-                path: path,
-                amountDesired: amountIn.toInt256(),
-                recipient: toAccount ? address(this) : recipient,
-                recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
-                senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
-                data: abi.encode(msg.sender)
-            })
-        );
-        require(amountOut >= amountOutMinimum, "TOO_LITTLE_RECEIVED");
-    }
+    ) external payable returns (uint256 amountOut);
 
     /**
      * @notice                  Swap as little as possible of one token for `amountOut` of another token
@@ -125,19 +81,7 @@ abstract contract SwapManager is ISwapManager, ManagerBase {
         bool fromAccount,
         bool toAccount,
         uint256 deadline
-    ) external payable checkDeadline(deadline) returns (uint256 amountIn) {
-        (amountIn, ) = IMuffinHub(hub).swap(
-            tokenIn,
-            tokenOut,
-            tierChoices,
-            -amountOut.toInt256(),
-            toAccount ? address(this) : recipient,
-            toAccount ? getAccRefId(recipient) : 0,
-            fromAccount ? getAccRefId(msg.sender) : 0,
-            abi.encode(msg.sender)
-        );
-        require(amountIn <= amountInMaximum, "TOO_MUCH_REQUESTED");
-    }
+    ) external payable returns (uint256 amountIn);
 
     /**
      * @notice                  Swap as little as possible of one token for `amountOut` of another along the specified path
@@ -158,17 +102,5 @@ abstract contract SwapManager is ISwapManager, ManagerBase {
         bool fromAccount,
         bool toAccount,
         uint256 deadline
-    ) external payable checkDeadline(deadline) returns (uint256 amountIn) {
-        (amountIn, ) = IMuffinHub(hub).swapMultiHop(
-            IMuffinHubActions.SwapMultiHopParams({
-                path: path,
-                amountDesired: -amountOut.toInt256(),
-                recipient: toAccount ? address(this) : recipient,
-                recipientAccRefId: toAccount ? getAccRefId(recipient) : 0,
-                senderAccRefId: fromAccount ? getAccRefId(msg.sender) : 0,
-                data: abi.encode(msg.sender)
-            })
-        );
-        require(amountIn <= amountInMaximum, "TOO_MUCH_REQUESTED");
-    }
+    ) external payable returns (uint256 amountIn);
 }

@@ -4,8 +4,9 @@ pragma solidity 0.8.10;
 import "./ERC721.sol";
 import "../../interfaces/common/IERC1271.sol";
 import "../../interfaces/common/IERC721Descriptor.sol";
+import "../../interfaces/manager/IERC721Extended.sol";
 
-abstract contract ERC721Extended is ERC721 {
+abstract contract ERC721Extended is IERC721Extended, ERC721 {
     address public tokenDescriptor;
     address public tokenDescriptorSetter;
 
@@ -25,7 +26,7 @@ abstract contract ERC721Extended is ERC721 {
      *                             TOKEN URI
      *====================================================================*/
 
-    function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
+    function tokenURI(uint256 tokenId) public view override(IERC721Metadata, ERC721) returns (string memory) {
         require(_exists(tokenId), "token not exist");
         return tokenDescriptor != address(0) ? IERC721Descriptor(tokenDescriptor).tokenURI(address(this), tokenId) : "";
     }
