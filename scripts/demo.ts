@@ -1,36 +1,74 @@
 import { BigNumber, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
-import { IMuffinHubCombined, Manager, MockERC20, MuffinHub, WETH9 } from '../typechain';
-import { bn, deploy, logTx, permit, printStruct } from './utils';
+import { IMuffinHubCombined, Manager, MockERC20, WETH9 } from '../typechain';
+import { bn, getOrDeployContract, logTx, permit, printStruct } from './utils';
 
 /**
  * A demo script to deploy and call the hub contract.
  * Run on hardhat network or rinkeby testnet to try it out.
  */
+
+/***/
+
+const wethAddressMap = {
+  hardhat: true,
+  rinkeby: '0xc778417e063141139fce010982780140aa0cd5ab',
+  arbitrumTestnet: '0xb47e6a5f8b33b3f17603c83a0535a9dcd7e32681',
+};
+
+const wbtcAddressMap = {
+  hardhat: true,
+  rinkeby: true,
+  arbitrumTestnet: '0x689E3BC156Cdf5d05689A128B53A3be0f7ca3406',
+};
+
+const usdcAddressMap = {
+  hardhat: true,
+  rinkeby: true,
+  arbitrumTestnet: '0xE39515Fa7414d39803c21A58626aC29DBc328A5f',
+};
+
+const hubPositionsAddressMap = {
+  hardhat: true,
+  rinkeby: true,
+  arbitrumTestnet: '0x74E8e8A800618be03cf04F2E80A1dB4F2eAd7caE',
+};
+
+const hubAddressMap = {
+  hardhat: true,
+  rinkeby: true,
+  arbitrumTestnet: '0x1bB9dCBD601718EB4f562000BA77f712587D9B5B',
+};
+
+const managerAddressMap = {
+  hardhat: true,
+  rinkeby: true,
+  arbitrumTestnet: '0x23934f8D38Fdb9C36Dd5A026C0e113Da1e1e775a',
+};
+
 async function main() {
+  const gasMultiplier = network.name === 'arbitrum' || network.name === 'arbitrumTestnet' ? 1000 : 1;
+
   // 0. show current user eth balance
   const [user] = await ethers.getSigners();
   console.log('================= main =================');
   console.log('Account Balance: ', await user.getBalance());
 
   // 1. deploy weth if we're on local network
-  let WETH_ADDRESS;
-  if (network.name === 'hardhat') WETH_ADDRESS = (await deploy('WETH9')).address;
-  else if (network.name === 'rinkeby') WETH_ADDRESS = '0xc778417e063141139fce010982780140aa0cd5ab';
-  else throw new Error('unknown network');
+  const weth = await getOrDeployContract<WETH9>('WETH9', wethAddressMap);
 
   // 2. deploy mock tokens
-  const weth = (await ethers.getContractAt('WETH9', WETH_ADDRESS)) as WETH9;
-  const wbtc = (await deploy('MockERC20', 'Wrapped BTC', 'WBTC')) as MockERC20;
-  const usdc = (await deploy('MockERC20', 'USD Coin', 'USDC')) as MockERC20;
-  await logTx(wbtc.setDecimals(8), 'wbtc.setDecimals');
-  await logTx(usdc.setDecimals(6), 'usdc.setDecimals');
+  const wbtc = await getOrDeployContract<MockERC20>('MockERC20', wbtcAddressMap);
+  const usdc = await getOrDeployContract<MockERC20>('MockERC20', usdcAddressMap);
+  if ((await wbtc.decimals()) !== 8) await logTx(wbtc.setDecimals(8), 'wbtc.setDecimals');
+  if ((await usdc.decimals()) !== 6) await logTx(usdc.setDecimals(6), 'usdc.setDecimals');
 
   // 3. deploy contracts
-  const _hub = (await deploy('MuffinHub', (await deploy('MuffinHubPositions')).address)) as MuffinHub;
+  const _hubPositions = await getOrDeployContract('MuffinHubPositions', hubPositionsAddressMap);
+  const _hub = await getOrDeployContract('MuffinHub', hubAddressMap, [_hubPositions.address]);
   const hub = (await ethers.getContractAt('IMuffinHubCombined', _hub.address)) as IMuffinHubCombined;
-  const manager = (await deploy('Manager', hub.address, weth.address)) as Manager;
+  const manager = await getOrDeployContract<Manager>('Manager', managerAddressMap, [hub.address, weth.address]);
 
   // 4. mint tokens
   await logTx(wbtc.mint(10000e8), 'mint wbtc');
@@ -60,7 +98,7 @@ async function main() {
         manager.interface.encodeFunctionData('addTier', [token0.address, token1.address, 99875, false, 255]),
         manager.interface.encodeFunctionData('addTier', [token0.address, token1.address, 99800, false, 255]),
       ],
-      { gasLimit: 3_000_000 },
+      { gasLimit: 3_000_000 * gasMultiplier },
     ),
     'create pool + add tier 5, 12, 25, 40 bps',
   );
@@ -132,7 +170,7 @@ async function main() {
     await logTx(weth.approve(manager.address, constants.MaxUint256), 'approve weth to manager');
     await logTx(hub.setPoolAllowedSqrtGammas(poolId, [99975, 99940, 99875, 99800]), 'set pool sqrt gammas whitelist');
     await logTx(
-      manager.createPool(token0.address, token1.address, 99975, sqrt(price), false, { gasLimit: 600_000 }),
+      manager.createPool(token0.address, token1.address, 99975, sqrt(price), false, { gasLimit: 600_000 * gasMultiplier }),
       'create weth-usdc pool',
     );
   }

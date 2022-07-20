@@ -1,6 +1,15 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import chalk from 'chalk';
-import { BigNumber, BigNumberish, constants, ContractFactory, ContractReceipt, ContractTransaction, Wallet } from 'ethers';
+import {
+  BigNumber,
+  BigNumberish,
+  constants,
+  Contract,
+  ContractFactory,
+  ContractReceipt,
+  ContractTransaction,
+  Wallet,
+} from 'ethers';
 import { splitSignature } from 'ethers/lib/utils';
 import hre, { ethers } from 'hardhat';
 import util from 'util';
@@ -56,6 +65,19 @@ export const deploy = async (factoryName: string | ContractFactory, ...args: any
   console.log('');
 
   return contract;
+};
+
+export const getOrDeployContract = async <T extends Contract>(
+  contractName: string,
+  addressMap: Record<string, string | boolean>,
+  deployArgs: any[] = [],
+) => {
+  const address = addressMap[hre.network.name];
+  if (!address) throw new Error(`Unsupported network for ${contractName}`);
+
+  return typeof address === 'string'
+    ? (ethers.getContractAt(contractName, address) as Promise<T>)
+    : (deploy(contractName, ...deployArgs) as Promise<T>);
 };
 
 export const logTx = async (
