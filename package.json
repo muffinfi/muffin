@@ -1,8 +1,20 @@
 {
-  "name": "@muffinfi/muffin-contract",
+  "name": "@muffinfi/muffin-contracts",
   "version": "1.0.9",
   "description": "Smart contracts of Muffin Protocol",
   "repository": "https://github.com/muffinfi/muffin.git",
+  "homepage": "https://muffin.fi",
+  "keywords": [
+    "muffin",
+    "amm"
+  ],
+  "files": [
+    "contracts",
+    "!contracts/tests",
+    "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/**/*.dbg.json",
+    "!artifacts/contracts/tests/**/*"
+  ],
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test"
