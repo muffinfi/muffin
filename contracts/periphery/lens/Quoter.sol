@@ -177,8 +177,6 @@ contract Quoter {
         require(!QuickSort.sortAndHasDuplicate(poolIds), "POOL_REPEATED");
     }
 
-    uint256 internal constant MAX_TIERS = 6;
-
     function _swap(
         bytes32 poolId,
         bool isToken0,

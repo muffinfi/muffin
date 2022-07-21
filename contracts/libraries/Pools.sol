@@ -27,12 +27,11 @@ library Pools {
     error PositionAlreadySettled();
     error PositionNotSettled();
 
-    uint256 internal constant MAX_TIERS = 6;
     uint24 internal constant MAX_SQRT_GAMMA = 100_000;
     uint96 internal constant BASE_LIQUIDITY_D8 = 100; // tier's base liquidity, scaled down 2^8. User pays it when adding a tier
     int256 internal constant SWAP_AMOUNT_TOLERANCE = 100; // tolerance between desired and actual swap amounts
 
-    uint256 internal constant AMOUNT_DISTRIBUTION_BITS = 256 / MAX_TIERS; // i.e. 42 if MAX_TIERS == 6
+    uint256 internal constant AMOUNT_DISTRIBUTION_BITS = 256 / MAX_TIERS; // i.e. 42 if MAX_TIERS is 6
     uint256 internal constant AMOUNT_DISTRIBUTION_RESOLUTION = AMOUNT_DISTRIBUTION_BITS - 1;
 
     /// @param unlocked     Reentrancy lock

@@ -7,11 +7,14 @@ import "./UnsafeMath.sol";
 import "./Math.sol";
 import "../Tiers.sol";
 
+/// @dev Technically maximum number of fee tiers per pool.
+/// @dev Declared at file level so other libraries/contracts can use it to define fixed-size array.
+uint256 constant MAX_TIERS = 6;
+
 library SwapMath {
     using Math for uint256;
     using Math for int256;
 
-    uint256 internal constant MAX_TIERS = 6;
     int256 internal constant REJECTED = type(int256).max; // represents the tier is rejected for the swap
     int256 private constant MAX_UINT_DIV_1E10 = 0x6DF37F675EF6EADF5AB9A2072D44268D97DF837E6748956E5C6C2117;
     uint256 private constant Q72 = 0x1000000000000000000;
