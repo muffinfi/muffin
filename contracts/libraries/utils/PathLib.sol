@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 library PathLib {
     uint256 internal constant ADDR_BYTES = 20;
     uint256 internal constant ADDR_UINT16_BYTES = ADDR_BYTES + 2;
-    uint256 internal constant PATH_MAX_BYTES = ADDR_UINT16_BYTES * 256 + ADDR_BYTES; // 256 pools (i.e. 5396 bytes)
+    uint256 internal constant PATH_MAX_BYTES = ADDR_UINT16_BYTES * 256 + ADDR_BYTES; // 256 pools (i.e. 5652 bytes)
 
     function invalid(bytes memory path) internal pure returns (bool) {
         unchecked {
