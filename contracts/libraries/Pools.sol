@@ -244,14 +244,16 @@ library Pools {
         Tiers.Tier[] memory tiers;
         TierState[MAX_TIERS] memory states;
         unchecked {
+            // truncate tierChoices
             uint256 tiersCount = pool.tiers.length;
             uint256 maxTierChoices = (1 << tiersCount) - 1;
+            tierChoices &= maxTierChoices;
 
             if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert InvalidAmount();
-            if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & maxTierChoices == 0) revert InvalidTierChoices();
+            if (tierChoices == 0) revert InvalidTierChoices();
 
             // only load tiers that are allowed by users
-            if (tierChoices & maxTierChoices == maxTierChoices) {
+            if (tierChoices == maxTierChoices) {
                 tiers = pool.tiers;
             } else {
                 tiers = new Tiers.Tier[](tiersCount);
@@ -266,7 +268,7 @@ library Pools {
             exactIn: amtDesired > 0,
             protocolFee: pool.protocolFee,
             protocolFeeAmt: 0,
-            tierChoices: tierChoices & ((1 << tiers.length) - 1),
+            tierChoices: tierChoices,
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
             amounts: [int256(0), 0, 0, 0, 0, 0]
         });
