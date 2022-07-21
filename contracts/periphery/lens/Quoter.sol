@@ -189,13 +189,13 @@ contract Quoter {
         unchecked {
             uint256 tiersCount = hub.getTiersCount(poolId);
             uint256 maxTierChoices = (1 << tiersCount) - 1;
+            tierChoices &= maxTierChoices;
 
             if (amtDesired == 0 || amtDesired == SwapMath.REJECTED) revert Pools.InvalidAmount();
-            if (tierChoices > ((1 << MAX_TIERS) - 1) || tierChoices & maxTierChoices == 0)
-                revert Pools.InvalidTierChoices();
+            if (tierChoices == 0) revert Pools.InvalidTierChoices();
 
             // only load tiers that are allowed by users
-            if (tierChoices & maxTierChoices == maxTierChoices) {
+            if (tierChoices == maxTierChoices) {
                 tiers = hub.getAllTiers(poolId);
             } else {
                 tiers = new Tiers.Tier[](tiersCount);
