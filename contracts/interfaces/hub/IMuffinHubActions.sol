@@ -82,7 +82,7 @@ interface IMuffinHubActions {
     ) external returns (uint256 amountIn, uint256 amountOut);
 
     /// @notice                 Parameters for the multi-hop swap function
-    /// @param path             Multi-hop path. encodePacked(address tokenA, uint8 tierChoices, address tokenB, uint8 tierChoices ...)
+    /// @param path             Multi-hop path. encodePacked(address tokenA, uint16 tierChoices, address tokenB, uint16 tierChoices ...)
     /// @param amountDesired    Desired swap amount (positive: input, negative: output)
     /// @param recipient        Recipient's address
     /// @param recipientAccRefId Recipient's account id

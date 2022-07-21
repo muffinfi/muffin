@@ -16,7 +16,7 @@ interface ISwapManager is IManagerBase {
      * @notice                  Swap `amountIn` of one token for as much as possible of another token
      * @param tokenIn           Address of input token
      * @param tokenOut          Address of output token
-     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
+     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0xFFFF to allow all possible tiers)
      * @param amountIn          Desired input amount
      * @param amountOutMinimum  Minimum output amount
      * @param recipient         Address of the recipient of the output token
@@ -62,7 +62,7 @@ interface ISwapManager is IManagerBase {
      * @notice                  Swap as little as possible of one token for `amountOut` of another token
      * @param tokenIn           Address of input token
      * @param tokenOut          Address of output token
-     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0b111111 to allow all tiers)
+     * @param tierChoices       Bitmap to select which tiers are allowed to swap (e.g. 0xFFFF to allow all possible tiers)
      * @param amountOut         Desired output amount
      * @param amountInMaximum   Maximum input amount to pay
      * @param recipient         Address of the recipient of the output token
