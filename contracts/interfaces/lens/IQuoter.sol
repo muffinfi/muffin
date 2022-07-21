@@ -6,8 +6,7 @@ pragma solidity >=0.8.0;
  * 1. Call "swap" in Hub contract, then throw an error to revert the swap.
  * 2. Fetch data from hub and simulate the swap in this contract.
  *
- * The former guarantees correctness and can estimate the gas cost of the swap. It can also be used with multicall
- * to quote a swap after some other swaps or liquidity actions.
+ * The former guarantees correctness and can estimate the gas cost of the swap.
  * The latter can generate a more detailed result, e.g. the input and output amounts for each tier.
  */
 interface IQuoter {
