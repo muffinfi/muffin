@@ -126,7 +126,7 @@ export const toPath = (tokens: (MockERC20 | WETH9)[]) => {
   const values = [];
   for (const token of tokens) {
     types.push('address');
-    types.push('uint8');
+    types.push('uint16');
     values.push(token.address);
     values.push(MAX_TIER_CHOICES);
   }

@@ -3,22 +3,22 @@ pragma solidity ^0.8.0;
 
 library PathLib {
     uint256 internal constant ADDR_BYTES = 20;
-    uint256 internal constant ADDR_UINT8_BYTES = ADDR_BYTES + 1;
-    uint256 internal constant PATH_MAX_BYTES = ADDR_UINT8_BYTES * 256 + ADDR_BYTES;  // 256 pools (i.e. 5396 bytes)
+    uint256 internal constant ADDR_UINT16_BYTES = ADDR_BYTES + 2;
+    uint256 internal constant PATH_MAX_BYTES = ADDR_UINT16_BYTES * 256 + ADDR_BYTES; // 256 pools (i.e. 5396 bytes)
 
     function invalid(bytes memory path) internal pure returns (bool) {
         unchecked {
             return
                 path.length > PATH_MAX_BYTES ||
                 path.length <= ADDR_BYTES ||
-                (path.length - ADDR_BYTES) % ADDR_UINT8_BYTES != 0;
+                (path.length - ADDR_BYTES) % ADDR_UINT16_BYTES != 0;
         }
     }
 
     /// @dev Assume the path is valid
     function hopCount(bytes memory path) internal pure returns (uint256) {
         unchecked {
-            return path.length / ADDR_UINT8_BYTES;
+            return path.length / ADDR_UINT16_BYTES;
         }
     }
 
@@ -37,10 +37,10 @@ library PathLib {
         )
     {
         unchecked {
-            uint256 offset = ADDR_UINT8_BYTES * poolIndex;
+            uint256 offset = ADDR_UINT16_BYTES * poolIndex;
             tokenIn = _readAddressAt(path, offset);
-            tokenOut = _readAddressAt(path, ADDR_UINT8_BYTES + offset);
-            tierChoices = _readUint8At(path, ADDR_BYTES + offset);
+            tokenOut = _readAddressAt(path, ADDR_UINT16_BYTES + offset);
+            tierChoices = _readUint16At(path, ADDR_BYTES + offset);
             if (!exactIn) (tokenIn, tokenOut) = (tokenOut, tokenIn);
         }
     }
@@ -60,9 +60,9 @@ library PathLib {
         }
     }
 
-    function _readUint8At(bytes memory data, uint256 offset) internal pure returns (uint8 value) {
+    function _readUint16At(bytes memory data, uint256 offset) internal pure returns (uint16 value) {
         assembly {
-            value := mload(add(add(data, 1), offset))
+            value := mload(add(add(data, 2), offset))
         }
     }
 }
