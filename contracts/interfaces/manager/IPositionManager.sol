@@ -54,7 +54,7 @@ interface IPositionManager is IERC721Extended, IManagerBase {
     ) external payable;
 
     /// @dev Called by hub contract
-    function mintCallback(
+    function muffinMintCallback(
         address token0,
         address token1,
         uint256 amount0,

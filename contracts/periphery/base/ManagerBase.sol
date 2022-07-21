@@ -46,7 +46,7 @@ abstract contract ManagerBase is IManagerBase {
      *==============================================================*/
 
     /// @dev Called by the hub contract
-    function depositCallback(
+    function muffinDepositCallback(
         address token,
         uint256 amount,
         bytes calldata data

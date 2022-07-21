@@ -6,7 +6,7 @@ interface IManagerBase {
 
     function hub() external view returns (address);
 
-    function depositCallback(
+    function muffinDepositCallback(
         address token,
         uint256 amount,
         bytes calldata data

@@ -20,7 +20,7 @@ contract MockCallerRealistic is IMuffinHubCallbacks {
         hub = _hub;
     }
 
-    function depositCallback(
+    function muffinDepositCallback(
         address token,
         uint256 amount,
         bytes calldata data
@@ -29,7 +29,7 @@ contract MockCallerRealistic is IMuffinHubCallbacks {
         if (amount > 0) IMockERC20(token).transferFrom(payer, msg.sender, amount);
     }
 
-    function mintCallback(
+    function muffinMintCallback(
         address token0,
         address token1,
         uint256 amount0,
@@ -41,7 +41,7 @@ contract MockCallerRealistic is IMuffinHubCallbacks {
         if (amount1 > 0) IMockERC20(token1).transferFrom(payer, msg.sender, amount1);
     }
 
-    function swapCallback(
+    function muffinSwapCallback(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,

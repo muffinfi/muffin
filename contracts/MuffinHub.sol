@@ -43,7 +43,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         bytes calldata data
     ) external {
         uint256 balanceBefore = getBalanceAndLock(token);
-        IMuffinHubCallbacks(msg.sender).depositCallback(token, amount, data);
+        IMuffinHubCallbacks(msg.sender).muffinDepositCallback(token, amount, data);
         checkBalanceAndUnlock(token, balanceBefore + amount);
 
         accounts[token][getAccHash(recipient, recipientAccRefId)] += amount;
@@ -297,7 +297,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         }
         if (amountIn > 0) {
             uint256 balanceBefore = getBalanceAndLock(tokenIn);
-            IMuffinHubCallbacks(msg.sender).swapCallback(tokenIn, tokenOut, amountIn, amountOut, data);
+            IMuffinHubCallbacks(msg.sender).muffinSwapCallback(tokenIn, tokenOut, amountIn, amountOut, data);
             checkBalanceAndUnlock(tokenIn, balanceBefore + amountIn);
         }
     }

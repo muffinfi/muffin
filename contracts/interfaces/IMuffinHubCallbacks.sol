@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 interface IMuffinHubCallbacks {
-    function depositCallback(
+    function muffinDepositCallback(
         address token,
         uint256 amount,
         bytes calldata data
     ) external;
 
-    function mintCallback(
+    function muffinMintCallback(
         address token0,
         address token1,
         uint256 amount0,
@@ -16,7 +16,7 @@ interface IMuffinHubCallbacks {
         bytes calldata data
     ) external;
 
-    function swapCallback(
+    function muffinSwapCallback(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,

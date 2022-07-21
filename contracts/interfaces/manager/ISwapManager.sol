@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./IManagerBase.sol";
 
 interface ISwapManager is IManagerBase {
-    function swapCallback(
+    function muffinSwapCallback(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,

@@ -20,7 +20,7 @@ contract MockCaller is IMuffinHubCallbacks {
         hub = _hub;
     }
 
-    function depositCallback(
+    function muffinDepositCallback(
         address token,
         uint256 amount,
         bytes calldata _data
@@ -51,7 +51,7 @@ contract MockCaller is IMuffinHubCallbacks {
 
     // -----
 
-    function mintCallback(
+    function muffinMintCallback(
         address token0,
         address token1,
         uint256 amount0,
@@ -83,7 +83,7 @@ contract MockCaller is IMuffinHubCallbacks {
 
     // -----
 
-    function swapCallback(
+    function muffinSwapCallback(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,

@@ -22,7 +22,7 @@ abstract contract SwapManager is ISwapManager, ManagerBase {
     }
 
     /// @dev Called by the hub contract
-    function swapCallback(
+    function muffinSwapCallback(
         address tokenIn,
         address, // tokenOut,
         uint256 amountIn,

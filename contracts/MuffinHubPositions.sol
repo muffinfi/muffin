@@ -46,7 +46,7 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         if (_amt0 != 0 || _amt1 != 0) {
             uint256 balance0Before = getBalanceAndLock(params.token0);
             uint256 balance1Before = getBalanceAndLock(params.token1);
-            IMuffinHubCallbacks(msg.sender).mintCallback(params.token0, params.token1, _amt0, _amt1, params.data);
+            IMuffinHubCallbacks(msg.sender).muffinMintCallback(params.token0, params.token1, _amt0, _amt1, params.data);
             checkBalanceAndUnlock(params.token0, balance0Before + _amt0);
             checkBalanceAndUnlock(params.token1, balance1Before + _amt1);
         }

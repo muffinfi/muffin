@@ -28,7 +28,7 @@ contract Quoter {
      *                  QUOTE BY POPULATING ERROR
      *==============================================================*/
 
-    function swapCallback(
+    function muffinSwapCallback(
         address,
         address,
         uint256 amountIn,

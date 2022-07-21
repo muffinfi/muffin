@@ -86,7 +86,7 @@ describe('manager accounts', () => {
     });
   });
 
-  it('depositCallback called by non-hub', async () => {
-    await expect(manager.depositCallback(token0.address, 1, [])).to.be.revertedWith('');
+  it('muffinDepositCallback called by non-hub', async () => {
+    await expect(manager.muffinDepositCallback(token0.address, 1, [])).to.be.revertedWith('');
   });
 });

@@ -143,7 +143,7 @@ abstract contract PositionManager is IPositionManager, ManagerBase, ERC721Extend
      *==============================================================*/
 
     /// @dev Called by hub contract
-    function mintCallback(
+    function muffinMintCallback(
         address token0,
         address token1,
         uint256 amount0,
