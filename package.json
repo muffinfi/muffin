@@ -1,8 +1,8 @@
 {
   "name": "@muffinfi/muffin-contract",
-  "version": "1.0.8",
-  "description": "Smart contracts of Muffin AMM",
-  "repository": "https://github.com/deliswap/muffin.git",
+  "version": "1.0.9",
+  "description": "Smart contracts of Muffin Protocol",
+  "repository": "https://github.com/muffinfi/muffin.git",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test"
