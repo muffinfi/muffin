@@ -59,8 +59,8 @@ async function main() {
   const weth = await getOrDeployContract<WETH9>('WETH9', wethAddressMap);
 
   // 2. deploy mock tokens
-  const wbtc = await getOrDeployContract<MockERC20>('MockERC20', wbtcAddressMap);
-  const usdc = await getOrDeployContract<MockERC20>('MockERC20', usdcAddressMap);
+  const wbtc = await getOrDeployContract<MockERC20>('MockERC20', wbtcAddressMap, ['Wrapped BTC', 'WBTC']);
+  const usdc = await getOrDeployContract<MockERC20>('MockERC20', usdcAddressMap, ['USD Coin', 'USDC']);
   if ((await wbtc.decimals()) !== 8) await logTx(wbtc.setDecimals(8), 'wbtc.setDecimals');
   if ((await usdc.decimals()) !== 6) await logTx(usdc.setDecimals(6), 'usdc.setDecimals');
 
