@@ -7,26 +7,41 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-
 contract MockERC20 is ERC20, ERC20Permit {
     uint8 internal _decimals = 18;
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {}
+    address public owner;
+    uint256 public maxMintAmount;
 
-    function setDecimals(uint8 __decimals) public {
-        _decimals = __decimals;
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "ONLY OWNER");
+        _;
     }
 
     function decimals() public view virtual override returns (uint8) {
         return _decimals;
     }
 
-    function mint(uint256 amount) public {
+    function setDecimals(uint8 __decimals) public onlyOwner {
+        _decimals = __decimals;
+    }
+
+    modifier checkMintAmount(uint256 amount) {
+        require(msg.sender == owner || maxMintAmount == 0 || amount <= maxMintAmount, "MINT AMOUNT");
+        _;
+    }
+
+    function mint(uint256 amount) public checkMintAmount(amount) {
         _mint(msg.sender, amount);
     }
 
-    function mintTo(address to, uint256 amount) public {
+    function mintTo(address to, uint256 amount) public checkMintAmount(amount) {
         _mint(to, amount);
     }
 
-    function setBalance(address owner, uint256 amount) public {
-        _burn(owner, balanceOf(owner));
+    function setBalance(address account, uint256 amount) public onlyOwner {
+        _burn(owner, balanceOf(account));
         _mint(owner, amount);
     }
 }
