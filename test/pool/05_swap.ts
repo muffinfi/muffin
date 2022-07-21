@@ -257,8 +257,8 @@ describe('pool swap', () => {
 
   it('empty tier choices', async () => {
     await initialize(99850, Q72);
-    await expect(pool.swap(true, 100, 0b000000)).to.be.revertedWith('InvalidTierChoices');
-    await expect(pool.swap(true, 100, 0b111110)).to.be.revertedWith('InvalidTierChoices');
+    await expect(pool.swap(true, 100, 0)).to.be.revertedWith('InvalidTierChoices');
+    await expect(pool.swap(true, 100, MAX_TIER_CHOICES ^ 0b1)).to.be.revertedWith('InvalidTierChoices');
     await pool.swap(true, 100, 0b000001);
   });
 
