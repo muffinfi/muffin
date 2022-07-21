@@ -269,7 +269,7 @@ library Pools {
             protocolFeeAmt: 0,
             tierChoices: tierChoices,
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
-            amounts: [int256(0), 0, 0, 0, 0, 0]
+            amounts: _emptyInt256Array()
         });
 
         int256 initialAmtDesired = amtDesired;
@@ -470,6 +470,8 @@ library Pools {
             }
         }
     }
+
+    function _emptyInt256Array() internal pure returns (int256[MAX_TIERS] memory) {}
 
     /*===============================================================
      *                      UPDATE LIQUIDITY
