@@ -2,49 +2,49 @@ import { BigNumber, constants } from 'ethers';
 import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
 import { IMuffinHubCombined, Manager, MockERC20, WETH9 } from '../typechain';
-import { bn, getOrDeployContract, logTx, permit, printStruct } from './utils';
+import { bn, deploy, getOrDeployContract, logTx, permit, printStruct } from './utils';
 
 /**
  * A demo script to deploy and call the hub contract.
- * Run on hardhat network or rinkeby testnet to try it out.
+ * Run on hardhat network or local testnet to try it out.
  */
 
 /***/
 
 const wethAddressMap = {
   hardhat: true,
-  rinkeby: '0xc778417e063141139fce010982780140aa0cd5ab',
-  arbitrumTestnet: '0xb47e6a5f8b33b3f17603c83a0535a9dcd7e32681',
+  rinkeby: true,
+  arbitrumTestnet: true,
 };
 
 const wbtcAddressMap = {
   hardhat: true,
   rinkeby: true,
-  arbitrumTestnet: '0x689E3BC156Cdf5d05689A128B53A3be0f7ca3406',
+  arbitrumTestnet: true,
 };
 
 const usdcAddressMap = {
   hardhat: true,
   rinkeby: true,
-  arbitrumTestnet: '0xE39515Fa7414d39803c21A58626aC29DBc328A5f',
+  arbitrumTestnet: true,
 };
 
 const hubPositionsAddressMap = {
   hardhat: true,
   rinkeby: true,
-  arbitrumTestnet: '0x74E8e8A800618be03cf04F2E80A1dB4F2eAd7caE',
+  arbitrumTestnet: true,
 };
 
 const hubAddressMap = {
   hardhat: true,
   rinkeby: true,
-  arbitrumTestnet: '0x1bB9dCBD601718EB4f562000BA77f712587D9B5B',
+  arbitrumTestnet: true,
 };
 
 const managerAddressMap = {
   hardhat: true,
   rinkeby: true,
-  arbitrumTestnet: '0x23934f8D38Fdb9C36Dd5A026C0e113Da1e1e775a',
+  arbitrumTestnet: true,
 };
 
 async function main() {
@@ -174,6 +174,9 @@ async function main() {
       'create weth-usdc pool',
     );
   }
+
+  // 16. deploy lens contract
+  await deploy('Lens', manager.address);
 }
 
 main()
