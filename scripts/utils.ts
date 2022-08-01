@@ -101,7 +101,7 @@ export const logTx = async (
 //                               MATHS
 //////////////////////////////////////////////////////////////////////////
 
-const gasFeeUsd = (v: number) => Math.floor(v * 100 * 0.000000001 * 3800 * 10) / 10; // 100 gwei, 3800 eth price
+const gasFeeUsd = (v: number) => Math.floor(v * 30 * 0.000000001 * 2000 * 10) / 10; // 30 gwei, 2000 eth price
 
 export const wad = (v: number | string) => ethers.utils.parseEther(`${v}`.replace(/_/g, ''));
 
