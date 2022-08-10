@@ -58,28 +58,43 @@ describe('hub create pool', () => {
       await expect(hub.createPool(token0.address, token1.address, 99850, Q72, 1)).to.be.revertedWith('');
     });
 
-    it('create pool successfully', async () => {
-      expect(await getAccBalance(token0.address, user.address, 1)).eq(25600);
-      expect(await getAccBalance(token1.address, user.address, 1)).eq(25600);
+    context('create pool successfully', () => {
+      it('with global default tick spacing', async () => {
+        expect(await getAccBalance(token0.address, user.address, 1)).eq(25600);
+        expect(await getAccBalance(token1.address, user.address, 1)).eq(25600);
 
-      const promise = hub.createPool(token0.address, token1.address, 99850, Q72, 1);
-      await promise;
+        const promise = hub.createPool(token0.address, token1.address, 99850, Q72, 1);
+        await promise;
 
-      // check events
-      expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address, poolId);
-      expect(promise).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 99850, 0);
+        // check events
+        expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address, poolId);
+        expect(promise).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 99850, 0);
 
-      // check underlying tokens are stored
-      const underlying = await hub.underlyings(poolId);
-      expect(underlying.token0).eq(token0.address);
-      expect(underlying.token1).eq(token1.address);
+        // check underlying tokens are stored
+        const underlying = await hub.underlyings(poolId);
+        expect(underlying.token0).eq(token0.address);
+        expect(underlying.token1).eq(token1.address);
 
-      // check pool object created
-      expect((await hub.getPoolParameters(poolId)).tickSpacing).gt(0);
+        // check pool created, i.e. tick spacing ≠ 0
+        const { tickSpacing: defaultTickSpacing } = await hub.getDefaultParameters();
+        expect((await hub.getPoolParameters(poolId)).tickSpacing).eq(defaultTickSpacing);
 
-      // check account balance change
-      expect(await getAccBalance(token0.address, user.address, 1)).eq(0);
-      expect(await getAccBalance(token1.address, user.address, 1)).eq(0);
+        // check account balance change
+        expect(await getAccBalance(token0.address, user.address, 1)).eq(0);
+        expect(await getAccBalance(token1.address, user.address, 1)).eq(0);
+      });
+
+      it('with pool default tick spacing', async () => {
+        const poolDefaultTickSpacing = 123;
+        await hub.setPoolDefaultTickSpacing(poolId, poolDefaultTickSpacing);
+        await hub.createPool(token0.address, token1.address, 99850, Q72, 1);
+
+        const { tickSpacing: globalDefaultTickSpacing } = await hub.getDefaultParameters();
+        const { tickSpacing } = await hub.getPoolParameters(poolId);
+
+        expect(tickSpacing).not.eq(globalDefaultTickSpacing);
+        expect(tickSpacing).eq(poolDefaultTickSpacing);
+      });
     });
 
     it('pool already created', async () => {

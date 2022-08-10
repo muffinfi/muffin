@@ -13,7 +13,8 @@ interface IMuffinHubView {
     function isSqrtGammaAllowed(bytes32 poolId, uint24 sqrtGamma) external view returns (bool allowed);
 
     /// @notice Return pool's default tick spacing and protocol fee
-    /// @return tickSpacing     Default tick spacing applied to new pools
+    /// @return tickSpacing     Default tick spacing applied to new pools. Note that there is also pool-specific default
+    ///                         tick spacing which overrides the global default if set.
     /// @return protocolFee     Default protocol fee applied to new pools
     function getDefaultParameters() external view returns (uint8 tickSpacing, uint8 protocolFee);
 

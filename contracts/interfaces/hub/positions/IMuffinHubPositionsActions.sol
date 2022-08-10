@@ -139,6 +139,10 @@ interface IMuffinHubPositionsActions {
     /// @notice Update the pool-specific whitelist of swap fees
     function setPoolAllowedSqrtGammas(bytes32 poolId, uint24[] calldata sqrtGammas) external;
 
+    /// @notice Update the pool-specific default tick spacing
+    /// @param tickSpacing Tick spacing. Set to zero to unset the default.
+    function setPoolDefaultTickSpacing(bytes32 poolId, uint8 tickSpacing) external;
+
     /// @notice Collect the protocol fee accrued
     function collectProtocolFee(address token, address recipient) external returns (uint256 amount);
 }

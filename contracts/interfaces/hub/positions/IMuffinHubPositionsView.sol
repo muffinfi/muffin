@@ -14,6 +14,11 @@ interface IMuffinHubPositionsView {
     /// @return sqrtGammas  List of fee rate, expressed in sqrt(1 - %fee) (precision: 1e5)
     function getPoolAllowedSqrtGammas(bytes32 poolId) external view returns (uint24[] memory sqrtGammas);
 
+    /// @notice Return the pool's default tick spacing. If set, it overrides the global default tick spacing.
+    /// @param poolId       Pool id
+    /// @return tickSpacing Tick spacing. Zero means it is not set.
+    function getPoolDefaultTickSpacing(bytes32 poolId) external view returns (uint8 tickSpacing);
+
     /// @notice Return the states of all the tiers in the given pool
     function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory tiers);
 

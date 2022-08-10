@@ -103,7 +103,9 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         (pool, poolId) = pools.getPoolAndId(token0, token1);
         if (!isSqrtGammaAllowed(poolId, sqrtGamma)) revert NotAllowedSqrtGamma();
 
-        (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, defaultTickSpacing, defaultProtocolFee);
+        uint8 tickSpacing = poolDefaultTickSpacing[poolId];
+        if (tickSpacing == 0) tickSpacing = defaultTickSpacing;
+        (uint256 amount0, uint256 amount1) = pool.initialize(sqrtGamma, sqrtPrice, tickSpacing, defaultProtocolFee);
         accounts[token0][getAccHash(msg.sender, senderAccRefId)] -= amount0;
         accounts[token1][getAccHash(msg.sender, senderAccRefId)] -= amount1;
 

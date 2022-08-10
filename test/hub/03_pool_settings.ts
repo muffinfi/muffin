@@ -22,6 +22,7 @@ describe('hub pool settings', () => {
     await expect(hub.connect(other).setDefaultParameters(123, 234)).to.be.revertedWith('');
     await expect(hub.connect(other).setDefaultAllowedSqrtGammas([99999])).to.be.revertedWith('');
     await expect(hub.connect(other).setPoolAllowedSqrtGammas(poolId, [99999])).to.be.revertedWith('');
+    await expect(hub.connect(other).setPoolDefaultTickSpacing(poolId, 123)).to.be.revertedWith('');
   });
 
   it('setTierParameters', async () => {
@@ -55,5 +56,10 @@ describe('hub pool settings', () => {
   it('setPoolAllowedSqrtGammas', async () => {
     await hub.setPoolAllowedSqrtGammas(poolId, [1, 2, 3, 4, 5, 6, 7, 8]);
     expect(await hub.getPoolAllowedSqrtGammas(poolId)).deep.eq([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it('setPoolDefaultTickSpacing', async () => {
+    await hub.setPoolDefaultTickSpacing(poolId, 147);
+    expect(await hub.getPoolDefaultTickSpacing(poolId)).eq(147);
   });
 });

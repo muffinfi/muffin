@@ -176,6 +176,11 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     }
 
     /// @inheritdoc IMuffinHubPositionsView
+    function getPoolDefaultTickSpacing(bytes32 poolId) external view returns (uint8) {
+        return poolDefaultTickSpacing[poolId];
+    }
+
+    /// @inheritdoc IMuffinHubPositionsView
     function getAllTiers(bytes32 poolId) external view returns (Tiers.Tier[] memory) {
         return pools[poolId].tiers;
     }
@@ -295,6 +300,11 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
     /// @inheritdoc IMuffinHubPositionsActions
     function setPoolAllowedSqrtGammas(bytes32 poolId, uint24[] calldata sqrtGammas) external onlyGovernance {
         poolAllowedSqrtGammas[poolId] = sqrtGammas;
+    }
+
+    /// @inheritdoc IMuffinHubPositionsActions
+    function setPoolDefaultTickSpacing(bytes32 poolId, uint8 tickSpacing) external onlyGovernance {
+        poolDefaultTickSpacing[poolId] = tickSpacing;
     }
 
     /// @inheritdoc IMuffinHubPositionsActions
