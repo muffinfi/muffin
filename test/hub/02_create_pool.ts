@@ -118,6 +118,15 @@ describe('hub create pool', () => {
       await expect(hub.addTier(token0.address, token1.address, 99851, 1)).to.be.revertedWith('');
     });
 
+    it('invalid sqrtGamma', async () => {
+      await expect(hub.addTier(token0.address, token1.address, 99849, 1)).to.be.revertedWith('NotAllowedSqrtGamma()');
+    });
+
+    it('invalid sqrtGamma (pool-specific)', async () => {
+      await hub.setPoolAllowedSqrtGammas(poolId, [99849]);
+      await expect(hub.addTier(token0.address, token1.address, 99851, 1)).to.be.revertedWith('NotAllowedSqrtGamma()');
+    });
+
     it('repeated sqrt gamma', async () => {
       await expect(hub.addTier(token0.address, token1.address, 99850, 1)).to.be.revertedWith('NotAllowedSqrtGamma');
     });
