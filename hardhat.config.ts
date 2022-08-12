@@ -1,4 +1,5 @@
 import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-etherscan';
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'dotenv/config';
@@ -70,6 +71,11 @@ const config: HardhatUserConfig = {
       'contracts/periphery/Manager.sol': managerCompiler,
       'contracts/tests/MockPool.sol': testCompiler,
       'contracts/tests/MockMuffinHub.sol': testCompiler,
+    },
+  },
+  etherscan: {
+    apiKey: {
+      rinkeby: process.env.ETHERSCAN_API_KEY_RINKEBY ?? '',
     },
   },
 };
