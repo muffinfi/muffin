@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
-import "../../interfaces/hub/IMuffinHubCombined.sol";
 import "../../libraries/utils/PathLib.sol";
 import "../../libraries/Pools.sol";
 import "../../MuffinHub.sol";
+import "./LensBase.sol";
 
 /**
  * @dev There's two quoting methods available in this contract.
@@ -15,14 +15,8 @@ import "../../MuffinHub.sol";
  * to quote a swap after some other swaps or liquidity actions.
  * The latter can generate a more detailed result, e.g. the input and output amounts for each tier.
  */
-contract Quoter {
+abstract contract Quoter is LensBase {
     using PathLib for bytes;
-
-    IMuffinHubCombined public immutable hub;
-
-    constructor(address _hub) {
-        hub = IMuffinHubCombined(_hub);
-    }
 
     /*===============================================================
      *                  QUOTE BY POPULATING ERROR
