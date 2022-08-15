@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
+
+import "./ILensBase.sol";
 
 /**
  * @dev There's two quoting methods available in this contract.
@@ -9,9 +11,7 @@ pragma solidity >=0.8.0;
  * The former guarantees correctness and can estimate the gas cost of the swap.
  * The latter can generate a more detailed result, e.g. the input and output amounts for each tier.
  */
-interface IQuoter {
-    function hub() external view returns (address);
-
+interface IQuoter is ILensBase {
     /// @notice Quote a single-hop swap
     function quoteSingle(
         address tokenIn,
@@ -20,7 +20,6 @@ interface IQuoter {
         int256 amountDesired
     )
         external
-        view
         returns (
             uint256 amountIn,
             uint256 amountOut,
@@ -30,7 +29,6 @@ interface IQuoter {
     /// @notice Quote a swap
     function quote(bytes calldata path, int256 amountDesired)
         external
-        view
         returns (
             uint256 amountIn,
             uint256 amountOut,

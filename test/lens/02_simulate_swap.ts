@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { ethers, waffle } from 'hardhat';
-import { ILens, Manager, MockERC20 } from '../../typechain';
+import { waffle } from 'hardhat';
+import { Lens, Manager, MockERC20 } from '../../typechain';
 import { MAX_TIER_CHOICES } from '../shared/constants';
 import { managerFixture } from '../shared/fixtures';
 import { deploy, toPath } from '../shared/utils';
@@ -8,13 +8,12 @@ import { deploy, toPath } from '../shared/utils';
 describe('simulate swap', () => {
   let token0: MockERC20;
   let token1: MockERC20;
-  let lens: ILens;
+  let lens: Lens;
 
   beforeEach(async () => {
     let manager: Manager;
     ({ manager, token0, token1 } = await waffle.loadFixture(managerFixture));
-    const _lens = await deploy('Lens', manager.address);
-    lens = (await ethers.getContractAt('ILens', _lens.address)) as ILens;
+    lens = (await deploy('Lens', manager.address)) as Lens;
   });
 
   context('simulateSingle', async () => {

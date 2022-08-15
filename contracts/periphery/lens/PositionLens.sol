@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
+import "../../interfaces/lens/IPositionLens.sol";
 import "../../libraries/math/PoolMath.sol";
 import "../../libraries/math/TickMath.sol";
 import "./LensBase.sol";
@@ -8,16 +9,20 @@ import "./LensBase.sol";
 /**
  * @dev This contract providers utility functions to help derive information for position.
  */
-abstract contract PositionLens is LensBase {
-    struct PositionInfo {
-        address owner;
-        address token0;
-        address token1;
-        uint8 tierId;
-        int24 tickLower;
-        int24 tickUpper;
-    }
+abstract contract PositionLens is IPositionLens, LensBase {
+    // PositionInfo struct, defined in IPositionLens.sol.
+    // ```
+    // struct PositionInfo {
+    //     address owner;
+    //     address token0;
+    //     address token1;
+    //     uint8 tierId;
+    //     int24 tickLower;
+    //     int24 tickUpper;
+    // }
+    // ```
 
+    /// @inheritdoc IPositionLens
     function getPosition(uint256 tokenId)
         public
         view
@@ -27,6 +32,7 @@ abstract contract PositionLens is LensBase {
             .getPosition(tokenId);
     }
 
+    /// @inheritdoc IPositionLens
     function getDerivedPosition(uint256 tokenId)
         external
         view
@@ -46,6 +52,7 @@ abstract contract PositionLens is LensBase {
         (feeAmount0, feeAmount1) = getFeeAmounts(tokenId, info, position);
     }
 
+    /// @inheritdoc IPositionLens
     function getFeeAmounts(
         uint256 tokenId,
         PositionInfo memory info,
@@ -67,6 +74,7 @@ abstract contract PositionLens is LensBase {
         }
     }
 
+    /// @inheritdoc IPositionLens
     function isSettled(PositionInfo memory info, Positions.Position memory position)
         public
         view
@@ -86,6 +94,7 @@ abstract contract PositionLens is LensBase {
 
     uint96 internal constant MAX_INT96 = uint96(type(int96).max);
 
+    /// @inheritdoc IPositionLens
     function getUnderlyingAmounts(
         PositionInfo memory info,
         Positions.Position memory position,
@@ -113,6 +122,7 @@ abstract contract PositionLens is LensBase {
         }
     }
 
+    /// @inheritdoc IPositionLens
     function getPoolId(address token0, address token1) public pure returns (bytes32) {
         return keccak256(abi.encode(token0, token1));
     }

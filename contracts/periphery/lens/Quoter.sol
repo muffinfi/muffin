@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
+import "../../interfaces/lens/IQuoter.sol";
 import "../../libraries/utils/PathLib.sol";
 import "../../libraries/Pools.sol";
 import "../../MuffinHub.sol";
@@ -11,11 +12,10 @@ import "./LensBase.sol";
  * 1. Call "swap" in Hub contract, then throw an error to revert the swap.
  * 2. Fetch data from hub and simulate the swap in this contract.
  *
- * The former guarantees correctness and can estimate the gas cost of the swap. It can also be used with multicall
- * to quote a swap after some other swaps or liquidity actions.
+ * The former guarantees correctness and can estimate the gas cost of the swap.
  * The latter can generate a more detailed result, e.g. the input and output amounts for each tier.
  */
-abstract contract Quoter is LensBase {
+abstract contract Quoter is IQuoter, LensBase {
     using PathLib for bytes;
 
     /*===============================================================
@@ -44,6 +44,7 @@ abstract contract Quoter is LensBase {
         }
     }
 
+    /// @inheritdoc IQuoter
     function quoteSingle(
         address tokenIn,
         address tokenOut,
@@ -66,6 +67,7 @@ abstract contract Quoter is LensBase {
         }
     }
 
+    /// @inheritdoc IQuoter
     function quote(bytes calldata path, int256 amountDesired)
         external
         returns (
@@ -96,15 +98,19 @@ abstract contract Quoter is LensBase {
      *                   QUOTE BY SIMULATING SWAP
      *==============================================================*/
 
-    struct Hop {
-        uint256 amountIn;
-        uint256 amountOut;
-        uint256 protocolFeeAmt;
-        uint256[] tierAmountsIn;
-        uint256[] tierAmountsOut;
-        uint256[] tierData;
-    }
+    // Hop struct, defined in IQuoter.sol.
+    // ```
+    // struct Hop {
+    //     uint256 amountIn;
+    //     uint256 amountOut;
+    //     uint256 protocolFeeAmt;
+    //     uint256[] tierAmountsIn;
+    //     uint256[] tierAmountsOut;
+    //     uint256[] tierData;
+    // }
+    // ```
 
+    /// @inheritdoc IQuoter
     function simulateSingle(
         address tokenIn,
         address tokenOut,
@@ -117,6 +123,7 @@ abstract contract Quoter is LensBase {
         return _swap(poolId, (amountDesired > 0) == (tokenIn < tokenOut), amountDesired, tierChoices);
     }
 
+    /// @inheritdoc IQuoter
     function simulate(bytes calldata path, int256 amountDesired)
         external
         view

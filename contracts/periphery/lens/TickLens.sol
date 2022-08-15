@@ -1,39 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.10;
 
+import "../../interfaces/lens/ITickLens.sol";
 import "../../libraries/Ticks.sol";
 import "./LensBase.sol";
 
-import "hardhat/console.sol";
-
-abstract contract TickLens is LensBase {
+abstract contract TickLens is ITickLens, LensBase {
     using Bytes32ArrayLib for Bytes32ArrayLib.Bytes32Array;
 
     uint256 private constant CHUNK_SIZE = 100;
 
-    /**
-     * @notice  Get ticks of a tier.
-     * @param poolId    Pool id
-     * @param tierId    Tier id
-     * @param tickStart First tick to get. This tick must be initialized.
-     * @param tickEnd   Ticks beyond "tickEnd" is not included in the return data. Can be uninitialized.
-     * @param maxCount  Max number of ticks to retrieve
-     * @return count    Number of ticks retrieved
-     * @return ticks    List of ticks concatenated into bytes.
-     * Each tick consists of 256 bits:
-     * - int24  tickIdx
-     * - uint96 liquidityLowerD8
-     * - uint96 liquidityUpperD8
-     * - bool   needSettle0
-     * - bool   needSettle1
-     * To parse it in ether.js, see the example https://github.com/muffinfi/muffin/blob/master/test/lens/03_tick_lens.ts#L11
-     *
-     * @dev Estimated gas costs:
-     *  - 1 tick:     13220 gas
-     *  - 10 ticks:   94222 gas
-     *  - 100 ticks:  889844 gas
-     *  - 1000 ticks: 10361238 gas
-     */
+    /// @inheritdoc ITickLens
     function getTicks(
         bytes32 poolId,
         uint8 tierId,
@@ -73,6 +50,9 @@ abstract contract TickLens is LensBase {
     }
 }
 
+/**
+ * For building in-memory dynamic-sized bytes32 array
+ */
 library Bytes32ArrayLib {
     uint256 internal constant CHUNK_SIZE = 3;
 
