@@ -41,7 +41,7 @@ contract MockERC20 is ERC20, ERC20Permit {
     }
 
     function setBalance(address account, uint256 amount) public onlyOwner {
-        _burn(owner, balanceOf(account));
-        _mint(owner, amount);
+        _burn(account, balanceOf(account));
+        _mint(account, amount);
     }
 }
