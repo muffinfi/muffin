@@ -10,7 +10,7 @@ import {
   ContractTransaction,
   Wallet,
 } from 'ethers';
-import { splitSignature } from 'ethers/lib/utils';
+import { serializeTransaction, splitSignature } from 'ethers/lib/utils';
 import hre, { ethers } from 'hardhat';
 import util from 'util';
 import { ERC20Permit, MockERC20 } from '../typechain';
@@ -101,7 +101,7 @@ export const logTx = async (
 //                               MATHS
 //////////////////////////////////////////////////////////////////////////
 
-const gasFeeUsd = (v: number) => Math.floor(v * 30 * 0.000000001 * 2000 * 10) / 10; // 30 gwei, 2000 eth price
+const gasFeeUsd = (v: number, dp: number = 1) => Math.floor(v * 30 * 0.000000001 * 2000 * 10 ** dp) / 10 ** dp; // 30 gwei, 2000 eth price
 
 export const wad = (v: number | string) => ethers.utils.parseEther(`${v}`.replace(/_/g, ''));
 
@@ -151,8 +151,39 @@ export const logTxGas = async (
 ) => {
   const tx = await txOrPromise;
   const receipt = await tx.wait();
-  console.log('call:      ', note, ' ', +receipt.gasUsed, `($${gasFeeUsd(+receipt.gasUsed)})`);
+  console.log('call:      ', note, ' ', +receipt.gasUsed, `($${gasFeeUsd(+receipt.gasUsed)})`, ...(await getOptimismGasFee(tx)));
   if (callback) await callback(receipt, tx);
+};
+
+const LOG_OPTIMISM_GAS_FEE = false;
+
+/**
+ * https://community.optimism.io/docs/developers/build/transaction-fees/
+ * OP gas fee =   L1DataFee + L2ExecFee
+ * L1DataFee  =   L1GasPrice * [(countZeroBytes * 4 + countNonzeroBytes * 16) + 2100] * 1.000
+ * L2ExecFee  =   gasUsed * L2GasPrice (0.001 gwei)
+ */
+const getOptimismGasFee = async (tx: ContractTransaction) => {
+  if (!LOG_OPTIMISM_GAS_FEE) {
+    return '';
+  }
+  const data = serializeTransaction({
+    data: tx.data,
+    to: tx.to,
+    type: tx.type,
+    gasPrice: undefined,
+    gasLimit: tx.gasLimit,
+    nonce: 88888, // Nonce for L2
+  });
+  const txDataGas =
+    data.split('').reduce((acc, char) => acc + (char === '0' ? 4 : 16), 0) +
+    2100 + //   overhead
+    68 * 16; // 68 bytes signature
+  const l1DataFeeEth = txDataGas * (30 / 1e9); // L1: 30 gwei
+  const l2ExecFeeEth = Number((await tx.wait()).gasUsed) * (0.001 / 1e9); // L2: 0.001 gwei
+
+  const fmt = (x: number, dp: number = 5) => (x * 2000).toFixed(dp); // 2000 USD per ETH
+  return ['\t', txDataGas, `[$${fmt(l1DataFeeEth)}, $${fmt(l2ExecFeeEth)}]`];
 };
 
 //////////////////////////////////////////////////////////////////////////
