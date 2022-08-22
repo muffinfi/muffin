@@ -28,7 +28,7 @@ abstract contract MuffinHubBase is IMuffinHubBase {
     /// @dev Default protocl fee of new pool (base 255)
     uint8 internal defaultProtocolFee = 0;
     /// @dev Whitelist of swap fees that LPs can choose to create a pool
-    uint24[] internal defaultAllowedSqrtGammas = [99800, 99650, 99500];
+    uint24[] internal defaultAllowedSqrtGammas = [99900, 99800, 99700, 99600, 99499]; // 20, 40, 60, 80, 100 bps
 
     /// @dev Pool-specific default tick spacing
     mapping(bytes32 => uint8) internal poolDefaultTickSpacing;
