@@ -251,7 +251,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         bool isExactIn = tokenIn < tokenOut;
         bool isToken0 = (amountDesired > 0) == isExactIn; // i.e. isToken0In == isExactIn
         (pool, poolId) = isExactIn ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
-        Pools.SwapResult memory result = pool.swap(isToken0, amountDesired, tierChoices);
+        Pools.SwapResult memory result = pool.swap(isToken0, amountDesired, tierChoices, poolId);
 
         emit Swap(
             poolId,

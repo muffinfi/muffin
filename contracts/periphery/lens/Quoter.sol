@@ -213,7 +213,8 @@ abstract contract Quoter is IQuoter, LensBase {
             protocolFeeAmt: 0,
             tierChoices: tierChoices & ((1 << tiers.length) - 1),
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
-            amounts: Pools._emptyInt256Array()
+            amounts: Pools._emptyInt256Array(),
+            poolId: 0
         });
         (, cache.protocolFee) = hub.getPoolParameters(poolId);
 

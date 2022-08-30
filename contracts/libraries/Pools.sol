@@ -195,6 +195,17 @@ library Pools {
     uint256 private constant Q64 = 0x10000000000000000;
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
 
+    /// @notice Emitted when limit order settlement occurs during a swap
+    /// @dev Normally, we emit events from hub contract instead of from this pool library, but bubbling up the event
+    /// data back to hub contract comsumes gas significantly, therefore we simply emit the "settle" event here.
+    event Settle(
+        bytes32 indexed poolId,
+        uint8 indexed tierId,
+        int24 indexed tickEnd,
+        int24 tickStart,
+        uint96 liquidityD8
+    );
+
     struct SwapCache {
         bool zeroForOne;
         bool exactIn;
@@ -203,6 +214,7 @@ library Pools {
         uint256 tierChoices;
         TickMath.Cache tmCache;
         int256[MAX_TIERS] amounts;
+        bytes32 poolId;
     }
 
     struct TierState {
@@ -232,12 +244,14 @@ library Pools {
     /// @param isToken0         True if amtDesired refers to token0
     /// @param amtDesired       Desired swap amount (positive: exact input, negative: exact output)
     /// @param tierChoices      Bitmap to allow which tiers to swap
+    /// @param poolId           Pool id, only used for emitting settle event. Can pass in zero to skip emitting event
     /// @return result          Swap result
     function swap(
         Pool storage pool,
         bool isToken0,
         int256 amtDesired,
-        uint256 tierChoices
+        uint256 tierChoices,
+        bytes32 poolId // only used for `Settle` event
     ) internal returns (SwapResult memory result) {
         lock(pool);
         Tiers.Tier[] memory tiers;
@@ -269,7 +283,8 @@ library Pools {
             protocolFeeAmt: 0,
             tierChoices: tierChoices,
             tmCache: TickMath.Cache({tick: type(int24).max, sqrtP: 0}),
-            amounts: _emptyInt256Array()
+            amounts: _emptyInt256Array(),
+            poolId: poolId
         });
 
         int256 initialAmtDesired = amtDesired;
@@ -403,8 +418,8 @@ library Pools {
             }
 
             // settle single-sided positions (i.e. filled limit orders) if neccessary
-            if (cache.zeroForOne ? cross.needSettle0 : cross.needSettle1)
-                Settlement.settle(
+            if (cache.zeroForOne ? cross.needSettle0 : cross.needSettle1) {
+                (int24 tickStart, uint96 liquidityD8Settled) = Settlement.settle(
                     pool.settlements[tierId],
                     pool.ticks[tierId],
                     pool.tickMaps[tierId],
@@ -412,6 +427,10 @@ library Pools {
                     tickCross,
                     cache.zeroForOne
                 );
+                if (cache.poolId != 0) {
+                    emit Settle(cache.poolId, uint8(tierId), tickCross, tickStart, liquidityD8Settled);
+                }
+            }
         }
     }
 
