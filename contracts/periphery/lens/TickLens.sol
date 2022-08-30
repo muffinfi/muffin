@@ -8,8 +8,6 @@ import "./LensBase.sol";
 abstract contract TickLens is ITickLens, LensBase {
     using Bytes32ArrayLib for Bytes32ArrayLib.Bytes32Array;
 
-    uint256 private constant CHUNK_SIZE = 100;
-
     /// @inheritdoc ITickLens
     function getTicks(
         bytes32 poolId,
@@ -54,7 +52,7 @@ abstract contract TickLens is ITickLens, LensBase {
  * For building in-memory dynamic-sized bytes32 array
  */
 library Bytes32ArrayLib {
-    uint256 internal constant CHUNK_SIZE = 3;
+    uint256 internal constant CHUNK_SIZE = 100;
 
     struct Bytes32Array {
         bytes data;
