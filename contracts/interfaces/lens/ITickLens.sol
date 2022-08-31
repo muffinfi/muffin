@@ -22,10 +22,11 @@ interface ITickLens is ILensBase {
      * To parse it in ether.js, see the example https://github.com/muffinfi/muffin/blob/master/test/lens/03_tick_lens.ts#L11
      *
      * @dev Estimated gas costs:
-     *  - 1 tick:     13220 gas
-     *  - 10 ticks:   94222 gas
-     *  - 100 ticks:  889844 gas
-     *  - 1000 ticks: 10361238 gas
+     * - 1 tick:     33659 gas
+     * - 10 ticks:   74157 gas
+     * - 100 ticks:  476268 gas
+     * - 1000 ticks: 5045298 gas
+     * - 2000 ticks: 12886983 gas
      */
     function getTicks(
         bytes32 poolId,

@@ -20,22 +20,26 @@ abstract contract TickLens is ITickLens, LensBase {
         int24 tickIdx = tickStart;
         Bytes32ArrayLib.Bytes32Array memory arr;
 
+        bytes32 tierTicksSlot = _getTierTicksSlot(poolId, tierId);
+
         while (arr.length < maxCount) {
-            Ticks.Tick memory tick = hub.getTick(poolId, tierId, tickIdx);
+            uint256 data = uint256(hub.getStorageAt(_getTickSlot(tierTicksSlot, tickIdx)));
+
+            uint192 liquidityLowerAndUpperD8 = uint192(data & 0xffffffffffffffffffffffffffffffff); // (1 << 128) - 1)
+            int24 nextBelow = int24(int256(data >> 192) & 0xffffff); // (1 << 24) - 1)
+            int24 nextAbove = int24(int256(data >> 216) & 0xffffff); // (1 << 24) - 1)
+            uint16 needSettle0And1 = uint16((data >> 240) & 0xffff); // (1 << 16) - 1)
 
             // for the first tick, check if it is initialized
-            if (arr.length == 0 && tick.liquidityLowerD8 == 0 && tick.liquidityUpperD8 == 0) break;
+            if (arr.length == 0 && liquidityLowerAndUpperD8 == 0) break;
 
-            bytes memory tickPacked = abi.encodePacked(
-                tickIdx, //                 int24
-                tick.liquidityLowerD8, //   uint96
-                tick.liquidityUpperD8, //   uint96
-                tick.needSettle0, //        bool
-                tick.needSettle1 //         bool
-            );
-            arr.push(bytes32(tickPacked));
+            arr.push(bytes32(abi.encodePacked(
+                tickIdx, //                     int24
+                liquidityLowerAndUpperD8, //    uint96 + uint96
+                needSettle0And1 //              bool + bool
+            ))); // prettier-ignore
 
-            int24 tickNext = upwardDirection ? tick.nextAbove : tick.nextBelow;
+            int24 tickNext = upwardDirection ? int24(nextAbove) : int24(nextBelow);
 
             if (tickIdx == tickNext) break; // it only happens when it reaches end tick
             if (upwardDirection ? tickNext > tickEnd : tickNext < tickEnd) break;
@@ -45,6 +49,19 @@ abstract contract TickLens is ITickLens, LensBase {
         arr.end();
         ticks = arr.data;
         count = arr.length;
+    }
+
+    /// @dev Returns the slot of `pools[poolId].ticks[tierId]`, i.e. `mapping(uint256 => mapping(int24 => Ticks.Tick)))`
+    function _getTierTicksSlot(bytes32 poolId, uint8 tierId) internal pure returns (bytes32 tierTicksSlot) {
+        bytes32 poolSlot = keccak256(abi.encodePacked(poolId, uint256(4))); // slot 4 in hub contract
+        bytes32 ticksSlot = bytes32(uint256(poolSlot) + 3); // offset 3 in pool struct
+        tierTicksSlot = keccak256(abi.encodePacked(uint256(tierId), ticksSlot));
+    }
+
+    /// @dev Returns the slot of `pools[poolId].ticks[tierId][tickIdx]`, i.e. the first slot of a `Ticks.Tick`
+    function _getTickSlot(bytes32 tierTicksSlot, int24 tickIdx) internal pure returns (bytes32 tickSlot) {
+        // note that "int24 -> int256" is left-padded with 1 but not 0.
+        tickSlot = keccak256(abi.encodePacked(uint256(int256(tickIdx)), tierTicksSlot));
     }
 }
 
