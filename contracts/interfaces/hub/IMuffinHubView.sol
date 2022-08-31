@@ -52,4 +52,7 @@ interface IMuffinHubView {
         int24 tickLower,
         int24 tickUpper
     ) external view returns (Positions.Position memory position);
+
+    /// @notice Return the value of a slot in MuffinHub contract
+    function getStorageAt(bytes32 slot) external view returns (bytes32 word);
 }

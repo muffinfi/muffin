@@ -350,6 +350,13 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         return Positions.get(pools[poolId].positions, owner, positionRefId, tierId, tickLower, tickUpper);
     }
 
+    /// @inheritdoc IMuffinHubView
+    function getStorageAt(bytes32 slot) external view returns (bytes32 word) {
+        assembly {
+            word := sload(slot)
+        }
+    }
+
     /*===============================================================
      *                FALLBACK TO POSITION CONTROLLER
      *==============================================================*/
