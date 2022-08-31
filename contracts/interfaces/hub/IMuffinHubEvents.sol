@@ -78,6 +78,17 @@ interface IMuffinHubEvents {
         uint256 feeAmount1
     );
 
+    /// @notice Emitted when limit order settlement occurs during a swap
+    /// @dev when tickEnd < tickStart, it means the tier crossed from a higher tick to a lower tick, and the settled
+    /// limit orders were selling token1 for token0, vice versa.
+    event Settle(
+        bytes32 indexed poolId,
+        uint8 indexed tierId,
+        int24 indexed tickEnd,
+        int24 tickStart,
+        uint96 liquidityD8
+    );
+
     /// @notice Emitted when a settled position's liquidity is collected
     event CollectSettled(
         bytes32 indexed poolId,

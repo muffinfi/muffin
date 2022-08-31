@@ -121,6 +121,8 @@ library Settlement {
      * @param tier          Latest tier data (in memory) currently used in the swap
      * @param tickEnd       Ending tick of the limit orders, i.e. the tick just being crossed in the swap
      * @param token0In      The direction of the ongoing swap
+     * @return tickStart    Starting tick of the limit orders, i.e. the other tick besides "tickEnd" that forms the positions
+     * @return liquidityD8  Amount of liquidity settled
      */
     function settle(
         mapping(int24 => Info[2]) storage settlements,
@@ -129,9 +131,8 @@ library Settlement {
         Tiers.Tier memory tier,
         int24 tickEnd,
         bool token0In
-    ) internal {
+    ) internal returns (int24 tickStart, uint96 liquidityD8) {
         Info storage settlement; // we assume settlement is intialized
-        int24 tickStart; // i.e. the starting tick of the limit orders
         Ticks.Tick storage start;
         Ticks.Tick storage end = ticks[tickEnd];
 
@@ -142,8 +143,9 @@ library Settlement {
                 start = ticks[tickStart];
 
                 // remove liquidity changes on ticks (effect)
-                start.liquidityUpperD8 -= settlement.liquidityD8;
-                end.liquidityLowerD8 -= settlement.liquidityD8;
+                liquidityD8 = settlement.liquidityD8;
+                start.liquidityUpperD8 -= liquidityD8;
+                end.liquidityLowerD8 -= liquidityD8;
                 end.needSettle0 = false;
             } else {
                 settlement = settlements[tickEnd][1];
@@ -151,8 +153,9 @@ library Settlement {
                 start = ticks[tickStart];
 
                 // remove liquidity changes on ticks (effect)
-                start.liquidityLowerD8 -= settlement.liquidityD8;
-                end.liquidityUpperD8 -= settlement.liquidityD8;
+                liquidityD8 = settlement.liquidityD8;
+                start.liquidityLowerD8 -= liquidityD8;
+                end.liquidityUpperD8 -= liquidityD8;
                 end.needSettle1 = false;
             }
 

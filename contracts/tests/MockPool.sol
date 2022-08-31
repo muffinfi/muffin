@@ -112,7 +112,7 @@ contract MockPool {
         int256 amtDesired,
         uint256 tierChoices
     ) external unlock {
-        Pools.SwapResult memory result = pool.swap(isToken0, amtDesired, tierChoices);
+        Pools.SwapResult memory result = pool.swap(isToken0, amtDesired, tierChoices, 0);
 
         emit SwapReturns(
             result.amount0,
@@ -171,6 +171,47 @@ contract MockPool {
 
         reserve0 = reserve0 - amount0 - feeAmtOut0;
         reserve1 = reserve1 - amount1 - feeAmtOut1;
+    }
+
+    // --- cheatcode ---
+
+    function addTierWithSqrtPrice(uint24 sqrtGamma, uint128 sqrtPrice) external unlock {
+        (uint256 amount0, uint256 amount1) = pool._addTier(sqrtGamma, sqrtPrice);
+        emit AddTierReturns(amount0, amount1);
+        reserve0 += amount0;
+        reserve1 += amount1;
+    }
+
+    function setTick(
+        uint8 tierId,
+        int24 tick,
+        uint96 liquidityLowerD8,
+        uint96 liquidityUpperD8,
+        int24 nextBelow,
+        int24 nextAbove
+    ) external {
+        Ticks.Tick storage t = pool.ticks[tierId][tick];
+        t.liquidityLowerD8 = liquidityLowerD8;
+        t.liquidityUpperD8 = liquidityUpperD8;
+        t.nextBelow = nextBelow;
+        t.nextAbove = nextAbove;
+    }
+
+    function setTier(
+        uint8 tierId,
+        uint128 liquidity,
+        int24 nextTickBelow,
+        int24 nextTickAbove
+    ) external {
+        Tiers.Tier storage tier = pool.tiers[tierId];
+        tier.liquidity = liquidity;
+        tier.nextTickBelow = nextTickBelow;
+        tier.nextTickAbove = nextTickAbove;
+    }
+
+    function setReserve(uint256 _reserve0, uint256 _reserve1) external {
+        reserve0 = _reserve0;
+        reserve1 = _reserve1;
     }
 
     // ---
