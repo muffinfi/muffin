@@ -288,8 +288,9 @@ contract MuffinHubPositions is IMuffinHubPositions, MuffinHubBase {
         uint24 sqrtGamma,
         uint8 limitOrderTickSpacingMultiplier
     ) external onlyGovernance {
-        pools[poolId].setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
-        emit UpdateTier(poolId, tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+        Pools.Pool storage pool = pools[poolId];
+        pool.setTierParameters(tierId, sqrtGamma, limitOrderTickSpacingMultiplier);
+        emit UpdateTier(poolId, tierId, sqrtGamma, pool.tiers[tierId].sqrtPrice, limitOrderTickSpacingMultiplier);
     }
 
     /// @inheritdoc IMuffinHubPositionsActions

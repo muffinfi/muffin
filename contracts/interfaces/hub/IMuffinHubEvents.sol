@@ -28,6 +28,7 @@ interface IMuffinHubEvents {
         bytes32 indexed poolId,
         uint8 indexed tierId,
         uint24 indexed sqrtGamma,
+        uint128 sqrtPrice,
         uint8 limitOrderTickSpacingMultiplier
     );
 
