@@ -1,6 +1,6 @@
 {
   "name": "@muffinfi/muffin-contracts",
-  "version": "1.0.12",
+  "version": "1.0.13-alpha.0",
   "description": "Smart contracts of Muffin Protocol",
   "repository": "https://github.com/muffinfi/muffin.git",
   "homepage": "https://muffin.fi",
