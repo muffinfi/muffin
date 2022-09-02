@@ -54,6 +54,15 @@ const config: HardhatUserConfig = {
       initialBaseFeePerGas: 0,
       gasPrice: 0,
     },
+    mainnet: {
+      url: process.env.MAINNET_RPC,
+      accounts: process.env.MAINNET_ACCOUNT ? [process.env.MAINNET_ACCOUNT] : undefined,
+      gasMultiplier: 1.2,
+    },
+    goerli: {
+      url: process.env.GOERLI_RPC,
+      accounts: process.env.GOERLI_ACCOUNT ? [process.env.GOERLI_ACCOUNT] : undefined,
+    },
     rinkeby: {
       url: process.env.RINKEBY_RPC,
       accounts: process.env.RINKEBY_ACCOUNT ? [process.env.RINKEBY_ACCOUNT] : undefined,
@@ -74,9 +83,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
-      rinkeby: process.env.ETHERSCAN_API_KEY_RINKEBY ?? '',
-    },
+    apiKey: process.env.RINKEBY_ETHERSCAN_API_KEY ?? '',
   },
 };
 
