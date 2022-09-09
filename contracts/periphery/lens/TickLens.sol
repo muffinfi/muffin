@@ -25,21 +25,25 @@ abstract contract TickLens is ITickLens, LensBase {
         while (arr.length < maxCount) {
             uint256 data = uint256(hub.getStorageAt(_getTickSlot(tierTicksSlot, tickIdx)));
 
-            uint192 liquidityLowerAndUpperD8 = uint192(data & 0xffffffffffffffffffffffffffffffff); // (1 << 128) - 1)
-            int24 nextBelow = int24(int256(data >> 192) & 0xffffff); // (1 << 24) - 1)
-            int24 nextAbove = int24(int256(data >> 216) & 0xffffff); // (1 << 24) - 1)
-            uint16 needSettle0And1 = uint16((data >> 240) & 0xffff); // (1 << 16) - 1)
+            uint96 liquidityLowerD8 = uint96(data);
+            uint96 liquidityUpperD8 = uint96(data >> 96);
+            int24 nextBelow = int24(int256(data >> 192));
+            int24 nextAbove = int24(int256(data >> 216));
+            uint8 needSettle0 = uint8(data >> 240);
+            uint8 needSettle1 = uint8(data >> 248);
 
             // for the first tick, check if it is initialized
-            if (arr.length == 0 && liquidityLowerAndUpperD8 == 0) break;
+            if (arr.length == 0 && liquidityLowerD8 == 0 && liquidityUpperD8 == 0) break;
 
             arr.push(bytes32(abi.encodePacked(
-                tickIdx, //                     int24
-                liquidityLowerAndUpperD8, //    uint96 + uint96
-                needSettle0And1 //              bool + bool
+                tickIdx, //             int24
+                liquidityLowerD8, //    uint96
+                liquidityUpperD8, //    uint96
+                needSettle0, //         bool
+                needSettle1 //          bool
             ))); // prettier-ignore
 
-            int24 tickNext = upwardDirection ? int24(nextAbove) : int24(nextBelow);
+            int24 tickNext = upwardDirection ? nextAbove : nextBelow;
 
             if (tickIdx == tickNext) break; // it only happens when it reaches end tick
             if (upwardDirection ? tickNext > tickEnd : tickNext < tickEnd) break;
