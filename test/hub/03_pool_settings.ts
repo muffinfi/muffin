@@ -26,7 +26,10 @@ describe('hub pool settings', () => {
   });
 
   it('setTierParameters', async () => {
-    await expect(hub.setTierParameters(poolId, 0, 90000, 10)).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 90000, 10);
+    const sqrtPrice = (await hub.getTier(poolId, 0)).sqrtPrice;
+    await expect(hub.setTierParameters(poolId, 0, 90000, 10))
+      .to.emit(hub, 'UpdateTier')
+      .withArgs(poolId, 0, 90000, sqrtPrice, 10);
     expect((await hub.getTier(poolId, 0)).sqrtGamma).eq(90000);
     expect((await hub.getLimitOrderTickSpacingMultipliers(poolId))[0]).eq(10);
   });

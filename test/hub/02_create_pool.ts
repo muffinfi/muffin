@@ -67,8 +67,8 @@ describe('hub create pool', () => {
         await promise;
 
         // check events
-        expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address, poolId);
-        expect(promise).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 99850, 0);
+        await expect(promise).to.emit(hub, 'PoolCreated').withArgs(token0.address, token1.address, poolId);
+        await expect(promise).to.emit(hub, 'UpdateTier').withArgs(poolId, 0, 99850, Q72, 1);
 
         // check underlying tokens are stored
         const underlying = await hub.underlyings(poolId);
@@ -159,9 +159,10 @@ describe('hub create pool', () => {
       await promise;
 
       // check events
-      expect(promise)
+      const tier0SqrtPrice = (await hub.getTier(poolId, 0)).sqrtPrice;
+      await expect(promise)
         .to.emit(hub, 'UpdateTier')
-        .withArgs(poolId, +tierCount, 99851, 0);
+        .withArgs(poolId, +tierCount, 99851, tier0SqrtPrice, 0);
 
       // check tier count
       expect(await hub.getTiersCount(poolId)).eq(tierCount.add(1));
