@@ -38,8 +38,8 @@ interface IPositionManager is IERC721Extended, IManagerBase {
         bool useAccount
     ) external payable;
 
-    /// @notice             Add a tier to a pool
-    /// @dev                This function is subject to sandwitch attack which costs more tokens to add a tier, but the extra cost
+    /// @notice             Add a tier to a pool. The new tier will have the same price as the first tier of the pool.
+    /// @dev                This function is subject to sandwitch attack which might cost more tokens to add a tier, but the extra cost
     ///                     should be small in common token pairs. Also, users can multicall with "mint" to do slippage check.
     /// @param token0       Address of token0 of the pool
     /// @param token1       Address of token1 of the pool

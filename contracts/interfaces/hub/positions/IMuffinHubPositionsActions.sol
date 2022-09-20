@@ -10,8 +10,8 @@ interface IMuffinHubPositionsActions {
     /// @param tickUpper        Position's upper tick boundary
     /// @param liquidityD8      Amount of liquidity to mint, divided by 2^8
     /// @param recipient        Recipient's address
-    /// @param positionRefId    Arbitrary reference id for the position
-    /// @param senderAccRefId   Sender's account id
+    /// @param positionRefId    Arbitrary reference id you will set for this position
+    /// @param senderAccRefId   Sender's account id. Set to 0 to skip using account and pay all via callback function
     /// @param data             Arbitrary data that is passed to callback function
     struct MintParams {
         address token0;
@@ -39,7 +39,7 @@ interface IMuffinHubPositionsActions {
     /// @param tickLower        Lower tick boundary of the position
     /// @param tickUpper        Upper tick boundary of the position
     /// @param liquidityD8      Amount of liquidity to burn, divided by 2^8
-    /// @param positionRefId    Arbitrary reference id for the position
+    /// @param positionRefId    Reference id that the position owner have set for this position
     /// @param accRefId         Position owner's account id for receiving tokens
     /// @param collectAllFees   True to collect all accrued fees of the position
     struct BurnParams {
@@ -92,7 +92,7 @@ interface IMuffinHubPositionsActions {
     /// @param tierId           Tier index of the position
     /// @param tickLower        Lower tick boundary of the position
     /// @param tickUpper        Upper tick boundary of the position
-    /// @param positionRefId    Arbitrary reference id for the position
+    /// @param positionRefId    Reference id that the position owner have set for this position
     /// @param limitOrderType   Direction of limit order (0: N/A; 1: zero for one; 2: one for zero)
     function setLimitOrderType(
         address token0,

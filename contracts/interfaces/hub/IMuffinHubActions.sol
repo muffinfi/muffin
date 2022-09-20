@@ -46,7 +46,7 @@ interface IMuffinHubActions {
         uint256 senderAccRefId
     ) external returns (bytes32 poolId);
 
-    /// @notice                 Add a new tier to a pool. Called by governanace only.
+    /// @notice                 Add a new tier to a pool
     /// @param token0           Address of token0 of the pool
     /// @param token1           Address of token1 of the pool
     /// @param sqrtGamma        Sqrt (1 - percentage swap fee) (precision: 1e5)
@@ -60,13 +60,18 @@ interface IMuffinHubActions {
     ) external returns (uint8 tierId);
 
     /// @notice                 Swap one token for another
+    /// @dev                    When called, hub contract will first send the output tokens to the specified recipient. Then, if caller
+    ///                         has specified "senderAccRefId", hub contract will charge input tokens from there. After that, if there
+    ///                         is still an outstanding balance, hub contract will call the sender's `muffinSwapCallback` to request
+    ///                         for the rest of input tokens.
     /// @param tokenIn          Input token address
     /// @param tokenOut         Output token address
-    /// @param tierChoices      Bitmap to select which tiers are allowed to swap
+    /// @param tierChoices      Bitmap to select which tiers you allow to swap, e.g. 0b110000 means only the 5th and 6th tier are
+    ///                         allowed. In general, you will want to use all tiers, i.e. 0xFFFF.
     /// @param amountDesired    Desired swap amount (positive: input, negative: output)
     /// @param recipient        Recipient's address
-    /// @param recipientAccRefId Recipient's account id
-    /// @param senderAccRefId   Sender's account id
+    /// @param recipientAccRefId Recipient's account id. Set to 0 to send directly to recipient's wallet.
+    /// @param senderAccRefId   Sender's account id. Set to 0 to skip using account and pay all via callback function.
     /// @param data             Arbitrary data that is passed to callback function
     /// @return amountIn        Input token amount
     /// @return amountOut       Output token amount
