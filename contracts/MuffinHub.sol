@@ -248,9 +248,9 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
             uint256 amountOut
         )
     {
-        bool isExactIn = tokenIn < tokenOut;
-        bool isToken0 = (amountDesired > 0) == isExactIn; // i.e. isToken0In == isExactIn
-        (pool, poolId) = isExactIn ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
+        bool isToken0In = tokenIn < tokenOut;
+        bool isToken0 = (amountDesired > 0) == isToken0In; // i.e. isToken0In == isToken0In
+        (pool, poolId) = isToken0In ? pools.getPoolAndId(tokenIn, tokenOut) : pools.getPoolAndId(tokenOut, tokenIn);
         Pools.SwapResult memory result = pool.swap(isToken0, amountDesired, tierChoices, poolId);
 
         emit Swap(
@@ -269,7 +269,7 @@ contract MuffinHub is IMuffinHub, MuffinHubBase {
         unchecked {
             // overflow is acceptable and protocol is expected to collect protocol fee before overflow
             if (result.protocolFeeAmt != 0) tokens[tokenIn].protocolFeeAmt += uint248(result.protocolFeeAmt);
-            (amountIn, amountOut) = isExactIn
+            (amountIn, amountOut) = isToken0In
                 ? (uint256(result.amount0), uint256(-result.amount1))
                 : (uint256(result.amount1), uint256(-result.amount0));
         }
